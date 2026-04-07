@@ -4,11 +4,12 @@ pipeline {
     options {
         timestamps()
         disableConcurrentBuilds()
+        skipDefaultCheckout(true)
     }
 
     triggers {
         // Polling works for local VM demos when webhook is not reachable from GitHub.
-        pollSCM('H/2 * * * *')
+        pollSCM('H/1 * * * *')
     }
 
     environment {
