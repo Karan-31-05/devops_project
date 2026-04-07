@@ -1,0 +1,109 @@
+{% extends 'main_app/base.html' %}
+{% load static %}
+
+{% block page_title %} {{page_title}} {% endblock page_title %}
+
+{% block content %}
+<div class="content-header">
+    <div class="container-fluid">
+        <div class="row mb-2">
+            <div class="col-sm-6">
+                <h1 class="m-0 text-dark">{{ page_title }}</h1>
+            </div>
+        </div>
+    </div>
+</div>
+
+<section class="content">
+    <div class="container-fluid">
+        <div class="row">
+            <div class="col-md-10 offset-md-1">
+                <div class="card card-primary">
+                    <div class="card-header">
+                        <h3 class="card-title">
+                            Assign Students to {{ allocation.subject.name }} - {{ allocation.course.name }}
+                        </h3>
+                    </div>
+                    <form method="POST">
+                        {% csrf_token %}
+                        <div class="card-body">
+                            {% if students %}
+                            <div class="alert alert-info">
+                                <i class="fas fa-info-circle"></i>
+                                Select students to assign to this course allocation
+                            </div>
+
+                            <div class="row">
+                                {% for student in students %}
+                                <div class="col-md-6">
+                                    <div class="custom-control custom-checkbox mb-2">
+                                        <input type="checkbox" 
+                                               class="custom-control-input" 
+                                               id="student_{{ student.id }}" 
+                                               name="students" 
+                                               value="{{ student.id }}"
+                                               {% if student.id in allocated_student_ids %}checked{% endif %}>
+                                        <label class="custom-control-label" for="student_{{ student.id }}">
+                                            {{ student.admin.first_name }} {{ student.admin.last_name }}
+                                            <small class="text-muted">({{ student.admin.email }})</small>
+                                        </label>
+                                    </div>
+                                </div>
+                                {% endfor %}
+                            </div>
+                            {% else %}
+                            <div class="alert alert-warning">
+                                <i class="fas fa-exclamation-triangle"></i>
+                                No students found in the course {{ allocation.course.name }}
+                            </div>
+                            {% endif %}
+                        </div>
+
+                        <div class="card-footer">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-check"></i> Assign Selected Students
+                            </button>
+                            <a href="{% url 'manage_course_assignment' %}" class="btn btn-secondary">
+                                <i class="fas fa-arrow-left"></i> Back
+                            </a>
+                        </div>
+                    </form>
+                </div>
+
+                <!-- Show allocated students -->
+                {% if allocation.students.all %}
+                <div class="card card-info mt-3">
+                    <div class="card-header">
+                        <h3 class="card-title">Currently Assigned Students ({{ allocation.students.count }})</h3>
+                    </div>
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table table-sm table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>#</th>
+                                        <th>Name</th>
+                                        <th>Email</th>
+                                        <th>Assigned Date</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for alloc_student in allocation.students.all %}
+                                    <tr>
+                                        <td>{{ forloop.counter }}</td>
+                                        <td>{{ alloc_student.student.admin.first_name }} {{ alloc_student.student.admin.last_name }}</td>
+                                        <td>{{ alloc_student.student.admin.email }}</td>
+                                        <td>{{ alloc_student.created_at|date:"d M Y" }}</td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock content %}

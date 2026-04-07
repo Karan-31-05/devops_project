@@ -1,0 +1,3004 @@
+{% extends 'main_app/base.html' %}
+{% load static %}
+{% load custom_filters %}
+{% block page_title %}{{ page_title }}{% endblock page_title %}
+
+{% block content %}
+<style>
+    .course-type-header {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 10px 15px;
+        border-radius: 5px 5px 0 0;
+        margin-top: 15px;
+    }
+    .course-type-header.core { background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%); }
+    .course-type-header.elective { background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); }
+    .placeholder-course-row {
+        background-color: #fff9e6 !important;
+    }
+    .placeholder-badge {
+        font-size: 0.7rem;
+        padding: 2px 6px;
+    }
+    .elective-offerings {
+        background: #e8f4fd;
+        border: 1px dashed #007bff;
+        padding: 10px;
+        border-radius: 5px;
+        margin-top: 5px;
+    }
+    .offering-item {
+        display: flex;
+        align-items: center;
+        padding: 5px;
+        border-bottom: 1px solid #dee2e6;
+    }
+    .offering-item:last-child {
+        border-bottom: none;
+    }
+    .assignment-badge {
+        display: inline-flex;
+        align-items: center;
+        margin: 2px;
+        padding: 3px 8px;
+        background: #e9ecef;
+        border-radius: 15px;
+        font-size: 0.85rem;
+    }
+    .assignment-badge .batch {
+        background: #007bff;
+        color: white;
+        padding: 2px 6px;
+        border-radius: 10px;
+        margin-right: 5px;
+        font-size: 0.75rem;
+    }
+    /* PEC Arrangement Matrix */
+    #pec-arrangement-table .custom-radio { padding-left: 1.25rem; }
+    #pec-arrangement-table .custom-control-label::before,
+    #pec-arrangement-table .custom-control-label::after { left: -0.5rem; }
+    #pec-arrangement-table td { vertical-align: middle; }
+    .pec-remove-row { opacity: 0.4; transition: opacity 0.2s; }
+    .pec-remove-row:hover { opacity: 1; }
+    #pec-arrangement-table thead th { border-bottom: 2px solid #dee2e6; }
+    /* AC / IOC pending rows */
+    .pending-name-row { background-color: #fffbf0 !important; }
+    .badge-tbd { background-color: #fd7e14; color: #fff; font-size: 0.68rem; padding: 2px 6px; }
+    .searchable-entity-picker {
+        position: relative;
+    }
+    .searchable-entity-picker .entity-search-dropdown {
+        top: 100%;
+        left: 0;
+        right: 0;
+        z-index: 2055;
+    }
+</style>
+
+<section class="content">
+    <div class="container-fluid">
+        <!-- Step 1: Select Semester -->
+        <div class="row">
+            <div class="col-md-12">
+                <div class="card card-outline card-primary">
+                    <div class="card-header">
+                        <h3 class="card-title">
+                            <i class="fas fa-calendar-check mr-2"></i>Step 1: Select Semester
+                        </h3>
+                    </div>
+                    <div class="card-body">
+                        <form method="GET" action="{% url 'semester_course_assignment' %}" id="filterForm">
+                            <div class="row align-items-end">
+                                <div class="col-md-3">
+                                    <div class="form-group mb-0">
+                                        <label><i class="fas fa-calendar mr-1"></i>Academic Semester</label>
+                                        <select name="semester_id" class="form-control" id="semesterSelect">
+                                            <option value="">-- Select Semester --</option>
+                                            {% for sem in semesters %}
+                                            <option value="{{ sem.id }}" {% if selected_semester == sem.id|stringformat:"i" %}selected{% endif %}>
+                                                {{ sem.academic_year }} - Sem {{ sem.semester_number }} ({{ sem.semester_type }})
+                                                {% if sem.is_current %} ★{% endif %}
+                                            </option>
+                                            {% endfor %}
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="col-md-2">
+                                    <div class="form-group mb-0">
+                                        <label><i class="fas fa-graduation-cap mr-1"></i>Program</label>
+                                        <select name="program_type" id="programTypeFilter" class="form-control" onchange="this.form.submit()">
+                                            {% for code, name in program_levels %}
+                                            <option value="{{ code }}" {% if selected_program == code %}selected{% endif %}>{{ name }}</option>
+                                            {% endfor %}
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="col-md-2">
+                                    <div class="form-group mb-0">
+                                        <label><i class="fas fa-code-branch mr-1"></i>Branch</label>
+                                        <select name="branch" id="branchFilter" class="form-control">
+                                            {% for program in filtered_programs %}
+                                            <option value="{{ program.code }}" {% if selected_branch == program.code %}selected{% endif %}>
+                                                {{ program.code }}{% if program.specialization %} - {{ program.specialization }}{% endif %}
+                                            </option>
+                                            {% empty %}
+                                            <option value="">No programs</option>
+                                            {% endfor %}
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="col-md-3">
+                                    <button type="submit" class="btn btn-primary btn-block" style="margin-top: 30px;">
+                                        <i class="fas fa-search mr-1"></i> Load Courses
+                                    </button>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        {% if semester_obj %}
+        <!-- Info Summary -->
+        <div class="row">
+            <div class="col-md-12">
+                <div class="callout callout-info">
+                    <div class="row">
+                        <div class="col-md-3">
+                            <h5><i class="fas fa-calendar-alt mr-2"></i>{{ semester_obj.academic_year }}</h5>
+                            <p class="mb-0">Semester {{ semester_obj.semester_number }} ({{ semester_obj.semester_type }})</p>
+                        </div>
+                        <div class="col-md-3">
+                            <h5><i class="fas fa-users mr-2"></i>{{ student_count }} Students</h5>
+                            <p class="mb-0">{{ selected_branch }} ({{ batch_choices|length }} sections)</p>
+                        </div>
+                        <div class="col-md-3">
+                            <h5><i class="fas fa-book mr-2"></i>Regulation</h5>
+                            <p class="mb-0">
+                                {% if regulation %}
+                                <span class="badge badge-success badge-lg">{{ regulation }}</span>
+                                {% if regulation_auto_detected %}
+                                <small class="text-muted d-block mt-1">
+                                    <i class="fas fa-magic"></i> Auto-detected (Admission Year: {{ detected_admission_year }})
+                                </small>
+                                {% elif regulation_manual_override %}
+                                <small class="text-muted d-block mt-1">
+                                    <i class="fas fa-hand-pointer"></i> Manually selected
+                                </small>
+                                {% endif %}
+                                {% elif needs_regulation_selection %}
+                                <span class="badge badge-info">Select Below ↓</span>
+                                {% else %}
+                                <span class="badge badge-warning">Not Assigned</span>
+                                {% endif %}
+                            </p>
+                        </div>
+                        <div class="col-md-3 text-right">
+                            {% if regulation %}
+                            <a href="{% url 'manage_regulation_courses' regulation.id %}" class="btn btn-outline-primary btn-sm">
+                                <i class="fas fa-cog mr-1"></i> Manage Course Plan
+                            </a>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ===== PEC Course Scheduling Groups ===== -->
+        {% if pec_has_matrix %}
+        <div class="row mt-3">
+            <div class="col-md-12">
+                <div class="card card-outline card-warning">
+                    <div class="card-header">
+                        <h3 class="card-title">
+                            <i class="fas fa-th mr-2"></i>PEC Scheduling Groups
+                        </h3>
+                        <div class="card-tools">
+                            <span class="badge badge-warning mr-2" id="pec-group-count-badge">{{ pec_group_count }} Groups</span>
+                            <button type="button" class="btn btn-tool" data-card-widget="collapse">
+                                <i class="fas fa-minus"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <div class="alert alert-info py-2 mb-3" style="font-size:0.85rem;">
+                            <i class="fas fa-info-circle mr-1"></i>
+                            <strong>How it works:</strong> Each <em>row</em> is an elective course. Each <em>column</em> is a scheduling group.
+                            Courses in the <strong>same group</strong> may run in parallel (students pick one).
+                            Courses in <strong>different groups</strong> run at different time slots.
+                            <br><small class="text-muted mt-1 d-block">
+                                Minimum groups = {{ pec_min_groups }} (number of PEC slots). You can add more groups if needed.
+                            </small>
+                        </div>
+
+                        <!-- Group columns header + Add Group button -->
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <div>
+                                <strong style="font-size:0.9rem;"><i class="fas fa-columns mr-1"></i>Groups:</strong>
+                                <span id="pec-group-labels" class="ml-2" style="font-size:0.85rem;">
+                                    <!-- Filled by JS -->
+                                </span>
+                            </div>
+                            <button type="button" class="btn btn-sm btn-outline-success" id="pec-add-group-btn">
+                                <i class="fas fa-plus mr-1"></i>Add Group
+                            </button>
+                        </div>
+
+                        <!-- The Matrix Table -->
+                        <div class="table-responsive">
+                            <table class="table table-bordered table-hover mb-0" id="pec-arrangement-table">
+                                <thead id="pec-matrix-thead" style="background:#f3f0ff;">
+                                    <!-- Built by JS -->
+                                </thead>
+                                <tbody id="pec-matrix-tbody">
+                                    <!-- Built by JS -->
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <!-- Add Course Row -->
+                        <div class="mt-3 p-3 border rounded" style="background:#f8f9fa;">
+                            <div class="row align-items-end">
+                                <div class="col-md-5">
+                                    <label class="small font-weight-bold mb-1"><i class="fas fa-plus mr-1"></i>Add Course to Matrix</label>
+                                    <input type="text" class="form-control form-control-sm" id="pec-add-course-search" 
+                                           placeholder="Type course code or title..." autocomplete="off">
+                                    <input type="hidden" id="pec-add-course-code">
+                                    <input type="hidden" id="pec-add-course-title">
+                                    <input type="hidden" id="pec-add-course-credits">
+                                    <input type="hidden" id="pec-add-course-type">
+                                    <div id="pec-add-course-dropdown" class="dropdown-menu w-100" style="max-height:200px;overflow-y:auto;"></div>
+                                </div>
+                                <div class="col-md-2">
+                                    <label class="small mb-1">Assign to Group</label>
+                                    <select class="form-control form-control-sm" id="pec-add-target-group">
+                                        <!-- Filled by JS -->
+                                    </select>
+                                </div>
+                                <div class="col-md-1">
+                                    <label class="small mb-1">Batches</label>
+                                    <input type="number" class="form-control form-control-sm" id="pec-add-batch" value="1" min="1" max="10">
+                                </div>
+                                <div class="col-md-2">
+                                    <label class="small mb-1">Capacity/Batch</label>
+                                    <input type="number" class="form-control form-control-sm" id="pec-add-capacity" value="30" min="1" max="200">
+                                </div>
+                                <div class="col-md-2">
+                                    <button type="button" class="btn btn-success btn-sm btn-block" id="pec-add-course-btn" disabled>
+                                        <i class="fas fa-plus mr-1"></i>Add
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Group summary + Save -->
+                            <div class="mt-3 d-flex justify-content-between align-items-center">
+                            <div id="pec-slot-summary" style="font-size:0.85rem;">
+                                <!-- Filled by JS -->
+                            </div>
+                            <div class="d-flex align-items-center">
+                                <div class="form-check mr-3">
+                                    <input class="form-check-input" type="checkbox" value="1" id="pec-push-offerings">
+                                    <label class="form-check-label small" for="pec-push-offerings">Push matrix courses into PEC slots</label>
+                                </div>
+                                <button type="button" class="btn btn-primary" id="pec-save-arrangement-btn">
+                                    <i class="fas fa-save mr-1"></i>Save Configuration
+                                </button>
+                            </div>
+                        </div>
+
+                        {% if student_count %}
+                        <div class="mt-2 text-center">
+                            <small class="text-muted">
+                                <i class="fas fa-users mr-1"></i>{{ student_count }} students pick one course from each group.
+                                Each group should have enough total capacity (≥ {{ student_count }}).
+                            </small>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Course Assignment Section -->
+        <div class="row">
+            <div class="col-md-12">
+                <!-- IOC Clubbing Information -->
+                <div class="alert alert-info" style="border-left: 4px solid #17a2b8;">
+                    <h6 class="mb-2"><i class="fas fa-link mr-1"></i><strong>Industry Oriented Courses (IOC) - Cross-Program Clubbing</strong></h6>
+                    <p class="small mb-2">
+                        <i class="fas fa-lightbulb mr-1 text-warning"></i>
+                        When the <strong>same course</strong> is taught by the <strong>same faculty</strong> in multiple PG programs 
+                        (e.g., as IOC in one program and PEC/PCC/ECC in another), you can <strong>club them together</strong> 
+                        during timetable generation so students from all programs attend the same slot.
+                    </p>
+                    <p class="small mb-0">
+                        <i class="fas fa-arrow-right mr-1 text-info"></i>
+                        Enable clubbing in <strong>Timetable Wizard → Step 3 (PG Course Clubbing)</strong>.
+                    </p>
+                </div>
+
+                {% if course_plans %}
+                
+                <!-- Core Courses Section -->
+                {% if core_courses %}
+                <div class="course-type-header core">
+                    <i class="fas fa-book-open mr-2"></i>Core Courses
+                    <span class="badge badge-light ml-2">{{ core_courses|length }}</span>
+                </div>
+                <div class="card mb-3" style="border-radius: 0 0 5px 5px;">
+                    <div class="card-body p-0">
+                        <table class="table table-hover mb-0">
+                            <thead class="thead-light">
+                                <tr>
+                                    <th width="150">Course Code</th>
+                                    <th>Title</th>
+                                    <th width="80">Credits</th>
+                                    <th width="100">L-T-P</th>
+                                    <th width="300">Faculty Assignment</th>
+                                    <th width="100">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for plan in core_courses %}
+                                {% if plan.course.is_placeholder and plan.course.placeholder_type == 'IOC' %}
+                                <tr class="pending-name-row" data-course="{{ plan.course.course_code }}">
+                                    <td>
+                                        <strong>{{ plan.course.course_code }}</strong>
+                                        {% if plan.category %}
+                                        <br><span class="badge badge-warning">{{ plan.category.code }}</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <span id="title-display-{{ plan.course.course_code }}">{{ plan.course.title }}</span>
+                                        <span class="badge badge-tbd ml-1" title="Course name may be announced later">TBD</span>
+                                        <br>
+                                        <small class="text-muted">
+                                            <i class="fas fa-graduation-cap mr-1"></i>Industry Oriented Course 
+                                            <span class="ml-2" title="Credits for this IOC">{{ plan.course.credits|default:"—" }} cr</span>
+                                        </small>
+                                    </td>
+                                    <td>{{ plan.course.credits|default:"—" }}</td>
+                                    <td>{{ plan.course.ltp_display }}</td>
+                                    <td>
+                                        {% with assignments=plan.course.course_code|get_assignments:existing_assignments %}
+                                        {% if assignments %}
+                                            {% for assign in assignments %}
+                                            <span class="assignment-badge">
+                                                <span class="batch">{{ assign.batch_label }}</span>
+                                                {{ assign.faculty.user.full_name }}
+                                                <small class="text-success"><i class="fas fa-check mr-1"></i>Assigned</small>
+                                            </span>
+                                            {% endfor %}
+                                        {% else %}
+                                            <span class="text-warning"><i class="fas fa-user-clock mr-1"></i>Awaiting Faculty</span>
+                                        {% endif %}
+                                        {% endwith %}
+                                    </td>
+                                    <td>
+                                        <button type="button" class="btn btn-sm btn-primary assign-btn"
+                                                data-course="{{ plan.course.course_code }}"
+                                                data-title="{{ plan.course.title }}"
+                                                data-course-type=""
+                                                data-category="{{ plan.category.code|default:'' }}"
+                                                data-lecture-hours="{{ plan.course.lecture_hours|default:0 }}"
+                                                data-tutorial-hours="{{ plan.course.tutorial_hours|default:0 }}"
+                                                data-practical-hours="{{ plan.course.practical_hours|default:0 }}"
+                                                data-toggle="modal" data-target="#assignModal"
+                                                title="Assign faculty now — course name can be set later">
+                                            <i class="fas fa-user-plus"></i>
+                                        </button>
+                                    </td>
+                                </tr>
+                                {% else %}
+                                <tr data-course="{{ plan.course.course_code }}">
+                                    <td>
+                                        <strong>{{ plan.course.course_code }}</strong>
+                                        {% if plan.category %}
+                                        <br><small class="text-muted">{{ plan.category.code }}</small>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {{ plan.course.title }}
+                                        {% if plan.course.is_placeholder %}
+                                        <br><small class="text-muted"><i class="fas fa-tag mr-1"></i>{{ plan.course.get_placeholder_type_display }}</small>
+                                        {% endif %}
+                                    </td>
+                                    <td>{{ plan.course.credits }}</td>
+                                    <td>{{ plan.course.ltp_display }}</td>
+                                    <td>
+                                        {% with assignments=plan.course.course_code|get_assignments:existing_assignments %}
+                                        {% if assignments %}
+                                            {% for assign in assignments %}
+                                            <span class="assignment-badge">
+                                                <span class="batch">{{ assign.batch_label }}</span>
+                                                {{ assign.faculty.user.full_name }}
+                                            </span>
+                                            {% endfor %}
+                                        {% else %}
+                                            <span class="text-muted"><i class="fas fa-exclamation-circle mr-1"></i>Not Assigned</span>
+                                        {% endif %}
+                                        {% endwith %}
+                                    </td>
+                                    <td>
+                                        <button type="button" class="btn btn-sm btn-primary assign-btn" 
+                                                data-course="{{ plan.course.course_code }}"
+                                                data-title="{{ plan.course.title }}"
+                                                data-course-type="{{ plan.course.course_type }}"
+                                            data-category="{{ plan.category.code|default:'' }}"
+                                                data-lecture-hours="{{ plan.course.lecture_hours|default:0 }}"
+                                                data-tutorial-hours="{{ plan.course.tutorial_hours|default:0 }}"
+                                                data-practical-hours="{{ plan.course.practical_hours }}"
+                                                data-toggle="modal" data-target="#assignModal">
+                                            <i class="fas fa-user-plus"></i>
+                                        </button>
+                                    </td>
+                                </tr>
+                                {% endif %}
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                {% endif %}
+
+                <!-- Elective/Placeholder Courses Section -->
+                {% if elective_courses %}
+                <div class="course-type-header elective">
+                    <i class="fas fa-list-alt mr-2"></i>Elective & Placeholder Courses
+                    <span class="badge badge-light ml-2">{{ elective_courses|length }}</span>
+                </div>
+                <div class="card mb-3" style="border-radius: 0 0 5px 5px;">
+                    <div class="card-body p-0">
+                        <table class="table table-hover mb-0">
+                            <thead class="thead-light">
+                                <tr>
+                                    <th width="150">Slot/Code</th>
+                                    <th width="100">Category</th>
+                                    <th width="80">Credits</th>
+                                    <th>Offered Courses & Faculty</th>
+                                    <th width="120">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% if pec_has_matrix %}
+                                <!-- Merged PEC row (combines all PEC placeholders into one row) -->
+                                <tr class="placeholder-course-row" data-course="PEC-MERGED">
+                                    <td>
+                                        <strong>{{ pec_merged_label }}</strong>
+                                        <br><span class="badge badge-warning placeholder-badge">Placeholder</span>
+                                    </td>
+                                    <td>
+                                        <span class="badge badge-info">PEC</span>
+                                    </td>
+                                    <td>{{ pec_merged_credits }}</td>
+                                    <td>
+                                        <div class="elective-offerings-list">
+                                            {% if pec_all_offerings %}
+                                                {% for offering in pec_all_offerings %}
+                                                <div class="offering-item pec-offering-item" data-offering-id="{{ offering.id }}" data-plan-id="{{ offering.regulation_course_plan.id }}">
+                                                    <span class="badge badge-primary mr-2">{{ offering.batch_count }} batch(es)</span>
+                                                    <strong>{{ offering.actual_course.course_code }}</strong> - 
+                                                    {{ offering.actual_course.title|truncatechars:30 }}
+                                                    {% if offering.faculty %}
+                                                    <span class="ml-2 text-success">
+                                                        <i class="fas fa-user mr-1"></i>{{ offering.faculty.user.full_name }}
+                                                    </span>
+                                                    {% endif %}
+                                                </div>
+                                                {% endfor %}
+                                            {% else %}
+                                                <span class="text-muted">
+                                                    <i class="fas fa-info-circle mr-1"></i>No courses offered. Click "Manage" on individual PEC slots to add.
+                                                </span>
+                                            {% endif %}
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <div class="btn-group mr-2">
+                                            <button type="button" class="btn btn-sm btn-warning" id="pec-merged-manage-default">
+                                                <i class="fas fa-cogs mr-1"></i> Manage
+                                            </button>
+                                            <button type="button" class="btn btn-sm btn-warning dropdown-toggle dropdown-toggle-split" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                                                <span class="sr-only">Toggle Dropdown</span>
+                                            </button>
+                                            <div class="dropdown-menu" id="pec-merged-manage-menu">
+                                                <span class="dropdown-item text-muted">Loading...</span>
+                                            </div>
+                                        </div>
+                                        <span class="badge badge-info" title="Courses grouped via Scheduling Matrix above">
+                                            <i class="fas fa-th mr-1"></i> Matrix
+                                        </span>
+                                    </td>
+                                </tr>
+                                {% endif %}
+
+                                {% for plan in elective_courses %}
+                                {% if plan.id|in_set:pec_plan_ids_set %}
+                                    {# Skip individual PEC rows — they are merged above #}
+                                {% else %}
+                                <tr class="{% if plan.course.is_placeholder %}placeholder-course-row{% endif %}" 
+                                    data-course="{{ plan.course.course_code }}" data-plan-id="{{ plan.id }}">
+                                    <td>
+                                        <strong>{{ plan.course.course_code }}</strong>
+                                        {% if plan.course.is_placeholder %}
+                                        <br><span class="badge badge-warning placeholder-badge">Placeholder</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <span class="badge badge-info">{{ plan.category.code }}</span>
+                                        {% if plan.elective_vertical %}
+                                        <br><small class="text-muted">{{ plan.elective_vertical.name }}</small>
+                                        {% endif %}
+                                    </td>
+                                    <td>{{ plan.course.credits }}</td>
+                                    <td>
+                                        {% if plan.course.is_placeholder %}
+                                        <!-- Show elective offerings for placeholders -->
+                                        <div class="elective-offerings-list" data-plan-id="{{ plan.id }}">
+                                            {% if plan.course.placeholder_type == 'OEC' %}
+                                            <!-- OEC: Externally managed by other departments -->
+                                            <div class="alert alert-secondary py-2 px-3 mb-0" style="font-size: 0.85rem;">
+                                                <i class="fas fa-external-link-alt mr-1 text-info"></i>
+                                                <strong>External Elective</strong> — Managed by other departments.
+                                                <br>
+                                                <small class="text-muted">
+                                                    <i class="fas fa-lightbulb mr-1"></i>
+                                                    Students attend OEC classes in the offering department. 
+                                                    Use <strong>Timetable Wizard → Fixed Reservations</strong> to block 
+                                                    time slots for OEC (e.g., block periods with reason "Open Elective").
+                                                </small>
+                                            </div>
+                                            {% elif plan.course.placeholder_type == 'AC' %}
+                                            <!-- AC: All-dept simultaneous slot, blocked like OEC -->
+                                            <div class="alert alert-warning py-2 px-3 mb-0" style="font-size: 0.85rem;">
+                                                <i class="fas fa-university mr-1 text-warning"></i>
+                                                <strong>Audit Course</strong> — Runs simultaneously across all departments.
+                                                <br>
+                                                <small class="text-muted">
+                                                    <i class="fas fa-lightbulb mr-1"></i>
+                                                    Use <strong>Timetable Wizard → Fixed Reservations</strong> to block the slot.
+                                                    Assign faculty below for attendance tracking.
+                                                </small>
+                                            </div>
+                                            {% with assignments=plan.course.course_code|get_assignments:existing_assignments %}
+                                            {% if assignments %}
+                                                {% for assign in assignments %}
+                                                <span class="assignment-badge mt-1">
+                                                    <span class="batch">{{ assign.batch_label }}</span>
+                                                    {{ assign.faculty.user.full_name }}
+                                                </span>
+                                                {% endfor %}
+                                            {% else %}
+                                                <span class="text-muted d-block mt-1"><i class="fas fa-exclamation-circle mr-1"></i>No faculty assigned yet</span>
+                                            {% endif %}
+                                            {% endwith %}
+                                            {% elif plan.course.placeholder_type == 'IOC' or plan.course.placeholder_type == 'EEC' or plan.course.placeholder_type == 'SDC' or plan.course.placeholder_type == 'SLC' %}
+                                            {% with assignments=plan.course.course_code|get_assignments:existing_assignments %}
+                                            {% if assignments %}
+                                                {% for assign in assignments %}
+                                                <span class="assignment-badge mt-1">
+                                                    <span class="batch">{{ assign.batch_label }}</span>
+                                                    {{ assign.faculty.user.full_name }}
+                                                </span>
+                                                {% endfor %}
+                                            {% else %}
+                                                <span class="text-muted d-block mt-1"><i class="fas fa-exclamation-circle mr-1"></i>No faculty assigned yet</span>
+                                            {% endif %}
+                                            {% endwith %}
+                                            {% else %}
+                                            {% with offerings=plan.id|get_elective_offerings:elective_offerings_map %}
+                                            {% if offerings %}
+                                                {% for offering in offerings %}
+                                                <div class="offering-item">
+                                                    <span class="badge badge-primary mr-2">{{ offering.batch_count }} batch(es)</span>
+                                                    <strong>{{ offering.actual_course.course_code }}</strong> - 
+                                                    {{ offering.actual_course.title|truncatechars:30 }}
+                                                    {% if offering.faculty %}
+                                                    <span class="ml-2 text-success">
+                                                        <i class="fas fa-user mr-1"></i>{{ offering.faculty.user.full_name }}
+                                                    </span>
+                                                    {% endif %}
+                                                </div>
+                                                {% endfor %}
+                                            {% else %}
+                                                <span class="text-muted">
+                                                    <i class="fas fa-info-circle mr-1"></i>No courses offered. Click "Manage" to add.
+                                                </span>
+                                            {% endif %}
+                                            {% endwith %}
+                                            {% endif %}
+                                        </div>
+                                        {% else %}
+                                        <!-- Regular elective - show assignments -->
+                                        {% with assignments=plan.course.course_code|get_assignments:existing_assignments %}
+                                        {% if assignments %}
+                                            {% for assign in assignments %}
+                                            <span class="assignment-badge">
+                                                <span class="batch">{{ assign.batch_label }}</span>
+                                                {{ assign.faculty.user.full_name }}
+                                            </span>
+                                            {% endfor %}
+                                        {% else %}
+                                            <span class="text-muted"><i class="fas fa-exclamation-circle mr-1"></i>Not Assigned</span>
+                                        {% endif %}
+                                        {% endwith %}
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if plan.course.is_placeholder %}
+                                        {% if plan.course.placeholder_type == 'OEC' %}
+                                        <span class="badge badge-secondary" title="Externally managed — block OEC slots in Timetable Wizard">
+                                            <i class="fas fa-external-link-alt"></i> External
+                                        </span>
+                                        {% elif plan.course.placeholder_type == 'IOC' or plan.course.placeholder_type == 'EEC' %}
+                                        <button type="button" class="btn btn-sm btn-primary assign-btn"
+                                                data-course="{{ plan.course.course_code }}"
+                                                data-title="{{ plan.course.title }}"
+                                                data-course-type="{{ plan.course.course_type|default:'' }}"
+                                                data-category="{{ plan.category.code|default:'' }}"
+                                                data-lecture-hours="{{ plan.course.lecture_hours|default:0 }}"
+                                                data-tutorial-hours="{{ plan.course.tutorial_hours|default:0 }}"
+                                                data-practical-hours="{{ plan.course.practical_hours|default:0 }}"
+                                                data-toggle="modal" data-target="#assignModal"
+                                                title="Assign faculty now; selecting a mapped IOC course is optional">
+                                            <i class="fas fa-user-plus"></i>
+                                        </button>
+                                        {% elif plan.course.placeholder_type == 'SDC' or plan.course.placeholder_type == 'SLC' %}
+                                        <button type="button" class="btn btn-sm btn-primary assign-btn"
+                                                data-course="{{ plan.course.course_code }}"
+                                                data-title="{{ plan.course.title }}"
+                                                data-course-type="{{ plan.course.course_type|default:'' }}"
+                                                data-category="{{ plan.category.code|default:'' }}"
+                                                data-lecture-hours="{{ plan.course.lecture_hours|default:0 }}"
+                                                data-tutorial-hours="{{ plan.course.tutorial_hours|default:0 }}"
+                                                data-practical-hours="{{ plan.course.practical_hours|default:0 }}"
+                                                data-toggle="modal" data-target="#assignModal"
+                                                title="Assign staff now; selecting a course is optional">
+                                            <i class="fas fa-user-plus mr-1"></i>Assign Faculty
+                                        </button>
+                                        {% elif plan.course.placeholder_type == 'AC' %}
+                                        <button type="button" class="btn btn-sm btn-primary assign-btn"
+                                                data-course="{{ plan.course.course_code }}"
+                                                data-title="{{ plan.course.title }}"
+                                                data-course-type=""
+                                            data-category="{{ plan.category.code|default:'' }}"
+                                                data-lecture-hours="{{ plan.course.lecture_hours|default:0 }}"
+                                                data-tutorial-hours="{{ plan.course.tutorial_hours|default:0 }}"
+                                                data-practical-hours="0"
+                                                data-toggle="modal" data-target="#assignModal"
+                                                title="Assign faculty for attendance">
+                                            <i class="fas fa-user-plus"></i>
+                                        </button>
+                                        {% else %}
+                                        <button type="button" class="btn btn-sm btn-warning manage-offerings-btn"
+                                                data-plan-id="{{ plan.id }}"
+                                                data-course="{{ plan.course.course_code }}"
+                                                data-type="{{ plan.course.placeholder_type }}"
+                                                data-toggle="modal" data-target="#manageOfferingsModal">
+                                            <i class="fas fa-cogs mr-1"></i>Manage
+                                        </button>
+                                        {% endif %}
+                                        {% else %}
+                                        <button type="button" class="btn btn-sm btn-primary assign-btn"
+                                                data-course="{{ plan.course.course_code }}"
+                                                data-title="{{ plan.course.title }}"
+                                                data-course-type="{{ plan.course.course_type }}"
+                                            data-category="{{ plan.category.code|default:'' }}"
+                                                data-lecture-hours="{{ plan.course.lecture_hours|default:0 }}"
+                                                data-tutorial-hours="{{ plan.course.tutorial_hours|default:0 }}"
+                                                data-practical-hours="{{ plan.course.practical_hours }}"
+                                                data-toggle="modal" data-target="#assignModal">
+                                            <i class="fas fa-user-plus"></i>
+                                        </button>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% endif %}
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                {% endif %}
+
+                {% else %}
+                <div class="card">
+                    <div class="card-body text-center py-5">
+                        <i class="fas fa-inbox fa-3x text-muted mb-3"></i>
+                        <h5 class="text-muted">No Courses in Plan</h5>
+                        {% if regulation %}
+                        <p>No courses found for Semester {{ semester_obj.semester_number }} under {{ regulation }}.</p>
+                        <a href="{% url 'manage_regulation_courses' regulation.id %}" class="btn btn-primary">
+                            <i class="fas fa-plus mr-1"></i> Add Courses to Plan
+                        </a>
+                        {% if regulation_auto_detected %}
+                        <hr class="mt-4">
+                        <p class="text-muted small mb-2">
+                            <i class="fas fa-info-circle"></i> Detected based on admission year {{ detected_admission_year }}. 
+                            Need a different regulation?
+                        </p>
+                        <form method="GET" action="{% url 'semester_course_assignment' %}" class="d-inline-block" style="min-width: 350px;">
+                            <input type="hidden" name="semester_id" value="{{ selected_semester }}">
+                            <input type="hidden" name="program_type" value="{{ selected_program }}">
+                            <input type="hidden" name="branch" value="{{ selected_branch }}">
+                            {% if selected_batch %}<input type="hidden" name="batch" value="{{ selected_batch }}">{% endif %}
+                            <div class="input-group input-group-sm">
+                                <select name="regulation_id" class="form-control">
+                                    {% for reg in all_regulations %}
+                                    <option value="{{ reg.id }}" {% if regulation.id == reg.id %}selected{% endif %}>
+                                        {{ reg.name }} ({{ reg.year }})
+                                    </option>
+                                    {% endfor %}
+                                </select>
+                                <div class="input-group-append">
+                                    <button type="submit" class="btn btn-outline-secondary">
+                                        <i class="fas fa-sync-alt"></i> Change
+                                    </button>
+                                </div>
+                            </div>
+                        </form>
+                        {% endif %}
+                        {% elif needs_regulation_selection %}
+                        <p class="text-warning mb-3">
+                            <i class="fas fa-exclamation-triangle mr-1"></i>
+                            Could not auto-detect regulation. Please select manually.
+                        </p>
+                        <form method="GET" action="{% url 'semester_course_assignment' %}" class="d-inline-block" style="min-width: 400px;">
+                            <input type="hidden" name="semester_id" value="{{ selected_semester }}">
+                            <input type="hidden" name="program_type" value="{{ selected_program }}">
+                            <input type="hidden" name="branch" value="{{ selected_branch }}">
+                            {% if selected_batch %}<input type="hidden" name="batch" value="{{ selected_batch }}">{% endif %}
+                            <div class="input-group">
+                                <select name="regulation_id" class="form-control" required>
+                                    <option value="">-- Select Regulation --</option>
+                                    {% for reg in all_regulations %}
+                                    <option value="{{ reg.id }}" {% if selected_regulation_id == reg.id|stringformat:"i" %}selected{% endif %}>
+                                        {{ reg.name }} ({{ reg.year }})
+                                    </option>
+                                    {% endfor %}
+                                </select>
+                                <div class="input-group-append">
+                                    <button type="submit" class="btn btn-primary">
+                                        <i class="fas fa-arrow-right mr-1"></i> Load Course Plan
+                                    </button>
+                                </div>
+                            </div>
+                        </form>
+                        {% else %}
+                        <p class="text-warning">No regulation assigned to students.</p>
+                        {% endif %}
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Existing Assignments Summary -->
+        {% if existing_assignments %}
+        <div class="row mt-3">
+            <div class="col-md-12">
+                <div class="card card-outline card-secondary collapsed-card">
+                    <div class="card-header">
+                        <h3 class="card-title">
+                            <i class="fas fa-check-double mr-2"></i>All Existing Assignments
+                        </h3>
+                        <div class="card-tools">
+                            <span class="badge badge-success mr-2">{{ existing_assignments|length }} assignments</span>
+                            <button type="button" class="btn btn-tool" data-card-widget="collapse">
+                                <i class="fas fa-plus"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="card-body p-0">
+                        <table class="table table-sm table-striped mb-0">
+                            <thead class="thead-light">
+                                <tr>
+                                    <th>Course</th>
+                                    <th>Title</th>
+                                    <th>Faculty</th>
+                                    <th>Section</th>
+                                    <th>Status</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for assignment in existing_assignments %}
+                                <tr>
+                                    <td><strong>{{ assignment.course.course_code }}</strong></td>
+                                    <td>{{ assignment.course.title|truncatechars:40 }}</td>
+                                    <td>{{ assignment.faculty.user.full_name }}</td>
+                                    <td><span class="badge badge-primary">{{ assignment.batch_label }}</span></td>
+                                    <td>
+                                        {% if assignment.is_active %}
+                                        <span class="badge badge-success">Active</span>
+                                        {% else %}
+                                        <span class="badge badge-secondary">Inactive</span>
+                                        {% endif %}
+                                        {% if assignment.practical_in_classroom %}
+                                        <br><span class="badge badge-info mt-1">Classroom Practical</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <a href="javascript:void(0);" 
+                                           class="btn btn-xs btn-danger delete-assignment-btn"
+                                           data-assignment-id="{{ assignment.id }}"
+                                           title="Delete this assignment">
+                                            <i class="fas fa-trash"></i>
+                                        </a>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
+        {% else %}
+        <!-- No Semester Selected -->
+        <div class="row">
+            <div class="col-md-12">
+                <div class="card">
+                    <div class="card-body text-center py-5">
+                        <i class="fas fa-hand-point-up fa-3x text-primary mb-3"></i>
+                        <h4>Select a Semester to Begin</h4>
+                        <p class="text-muted">Choose the academic semester above to view and manage course-faculty assignments.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</section>
+
+<div class="modal fade" id="assignModal" tabindex="-1" role="dialog">
+    <div class="modal-dialog modal-lg" role="document">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title"><i class="fas fa-user-plus mr-2"></i>Assign Faculty to Course</h5>
+                <button type="button" class="close text-white" data-dismiss="modal"><span>&times;</span></button>
+            </div>
+            <form method="POST" action="{% url 'create_course_assignments' %}" id="assignForm">
+                {% csrf_token %}
+                <input type="hidden" name="semester_id" value="{% if semester_obj %}{{ semester_obj.id }}{% endif %}">
+                <input type="hidden" name="academic_year_id" value="{% if academic_year %}{{ academic_year.id }}{% endif %}">
+                <input type="hidden" name="branch" value="{{ selected_branch }}">
+                <input type="hidden" name="program_type" value="{{ selected_program }}">
+                <input type="hidden" id="courseCodeFallback" name="course_code_fallback" value="">
+                
+                <div class="modal-body">
+                    <div class="form-group">
+                        <label>Course</label>
+                        <input type="text" class="form-control" id="modalCourseDisplay" readonly>
+                    </div>
+
+                    <div id="litSplitStaffSection" style="display: none;">
+                        <div class="alert alert-info py-2 mb-2">
+                            <i class="fas fa-random mr-1"></i>
+                            For LIT, enable <strong>Split staff</strong> per section when you want different theory and lab faculty.
+                        </div>
+                    </div>
+                    
+                    <div id="labAssistantSection" style="display: none;">
+                        <div class="alert alert-warning py-2">
+                            <i class="fas fa-flask mr-1"></i> This is a <strong>Lab/LIT course</strong>. You can optionally assign a Lab Assistant.
+                        </div>
+                    </div>
+
+                    <div id="classroomPracticalSection" style="display: none;">
+                        <div class="alert alert-secondary py-2 mb-2">
+                            <div class="form-check mb-1">
+                                <input class="form-check-input" type="checkbox" id="practicalInClassroomCheckbox" name="practical_in_classroom" value="1">
+                                <label class="form-check-label" for="practicalInClassroomCheckbox">
+                                    <strong>Practical in Classroom (No Lab Room)</strong>
+                                </label>
+                            </div>
+                            <small class="text-muted d-block">
+                                Enable this when practical sessions do not need a physical lab; timetable generation will not consume lab-room capacity.
+                            </small>
+                        </div>
+                    </div>
+
+                    <div id="iocLtpSection" style="display: none;">
+                        <div class="alert alert-info py-2">
+                            <i class="fas fa-ruler-combined mr-1"></i>
+                            IOC slot has no L-T-P yet. Enter L-T-P now for timetable generation.
+                        </div>
+                        <div class="row mb-2">
+                            <div class="col-md-4">
+                                <label class="small mb-1"><strong>L</strong> (Lecture)</label>
+                                <input type="number" class="form-control form-control-sm" id="iocLectureHours" name="ioc_lecture_hours" min="0" max="10" value="0">
+                            </div>
+                            <div class="col-md-4">
+                                <label class="small mb-1"><strong>T</strong> (Tutorial)</label>
+                                <input type="number" class="form-control form-control-sm" id="iocTutorialHours" name="ioc_tutorial_hours" min="0" max="10" value="0">
+                            </div>
+                            <div class="col-md-4">
+                                <label class="small mb-1"><strong>P</strong> (Practical)</label>
+                                <input type="number" class="form-control form-control-sm" id="iocPracticalHours" name="ioc_practical_hours" min="0" max="10" value="0">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="iocCourseSection" style="display: none;">
+                        <div class="alert alert-warning py-2">
+                            <i class="fas fa-bolt mr-1"></i> This is an <strong>IOC/EEC slot</strong>.
+                        </div>
+
+                        <div class="form-group">
+                            <label>Select Course to Assign (Optional)</label>
+                            <small class="text-muted d-block mb-2">If selected, this course is assigned for this semester. If left empty, the IOC slot remains and L-T-P is required.</small>
+                            <div class="searchable-entity-picker" data-role="ioc_course">
+                                <input type="text" class="form-control form-control-sm" id="iocCourseSearch" placeholder="Type to search courses..." autocomplete="off">
+                                <input type="hidden" id="iocCourseSelect" class="ioc-course-select" value="">
+                                <div class="dropdown-menu w-100 entity-search-dropdown" style="max-height:200px;overflow-y:auto;"></div>
+                            </div>
+                        </div>
+
+                        <div class="form-check mt-2 mb-3">
+                            <input class="form-check-input" type="checkbox" id="iocScheduleCheckbox" name="ioc_schedule_timetable" value="1" checked>
+                            <label class="form-check-label" for="iocScheduleCheckbox">
+                                <strong>Schedule in Timetable</strong>
+                                <small class="text-muted d-block">Uncheck to keep assignment but skip timetable scheduling for this IOC.</small>
+                            </label>
+                        </div>
+                    </div>
+                    
+                    <!-- SDC Course Selection Section -->
+                    <div id="sdcCourseSection" style="display: none;">
+                        <div class="alert alert-warning py-2">
+                            <i class="fas fa-flask-vial mr-1"></i> This is a <strong>Skill Development Course (SDC)</strong>.
+                        </div>
+                        
+                        <div class="form-group">
+                            <label>Select Course to Assign (Optional)</label>
+                            <small class="text-muted d-block mb-2">If you select a course, its L-T-P will be used. Leave empty to define L-T-P manually.</small>
+                            <div class="searchable-entity-picker" data-role="sdc_course">
+                                <input type="text" class="form-control form-control-sm" id="sdcCourseSearch" placeholder="Type to search courses..." autocomplete="off">
+                                <input type="hidden" id="sdcCourseSelect" class="sdc-course-select" value="">
+                                <div class="dropdown-menu w-100 entity-search-dropdown" style="max-height:200px;overflow-y:auto;"></div>
+                            </div>
+                        </div>
+                        
+                        <div id="sdcLtpSection" style="display: none;">
+                            <div class="alert alert-info py-2">
+                                <i class="fas fa-ruler-combined mr-1"></i>
+                                No L-T-P defined for this SDC. Please enter L-T-P.
+                            </div>
+                            <div class="row mb-2">
+                                <div class="col-md-4">
+                                    <label class="small mb-1"><strong>L</strong> (Lecture)</label>
+                                        <input type="number" class="form-control form-control-sm" id="sdcLectureHours" name="sdc_lecture_hours" min="0" max="10" value="0">
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="small mb-1"><strong>T</strong> (Tutorial)</label>
+                                    <input type="number" class="form-control form-control-sm" id="sdcTutorialHours" name="sdc_tutorial_hours" min="0" max="10" value="0">
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="small mb-1"><strong>P</strong> (Practical)</label>
+                                    <input type="number" class="form-control form-control-sm" id="sdcPracticalHours" name="sdc_practical_hours" min="0" max="10" value="0">
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="form-check mt-3">
+                            <input class="form-check-input" type="checkbox" id="sdcScheduleCheckbox" name="sdc_schedule_timetable" value="1" checked>
+                            <label class="form-check-label" for="sdcScheduleCheckbox">
+                                <strong>Schedule in Timetable</strong>
+                                <small class="text-muted d-block">Check this to include this SDC in timetable generation</small>
+                            </label>
+                        </div>
+                    </div>
+
+                    <div class="form-group mb-0">
+                        <label><i class="fas fa-users mr-1"></i>Assign Faculty to Each Section <span class="text-danger">*</span></label>
+                        <small class="text-muted d-block mb-2">Select faculty for each section. Same faculty can be assigned to multiple sections.</small>
+                        <div id="batchAssignmentRows">
+                            {% for code, name in batch_choices %}
+                            <div class="batch-assignment-row mb-2 p-2 border rounded" data-batch="{{ code }}">
+                                <div class="row align-items-center">
+                                    <div class="col-md-2">
+                                        <span class="font-weight-bold">{{ name }}</span>
+                                        <div class="form-check mt-1 batch-split-col" style="display: none;">
+                                            <input class="form-check-input batch-separate-toggle" type="checkbox" id="batch_split_{{ forloop.counter }}">
+                                            <label class="form-check-label small" for="batch_split_{{ forloop.counter }}">Split staff</label>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-4 theory-faculty-col">
+                                        <div class="searchable-entity-picker" data-role="faculty">
+                                            <input type="text" class="form-control form-control-sm entity-search-input" placeholder="Type to search faculty..." autocomplete="off">
+                                            <input type="hidden" id="batch_faculty_{{ forloop.counter }}" class="batch-faculty-select" data-batch="{{ code }}" name="faculty_id_fallback[]" value="">
+                                            <input type="hidden" name="batch_label_fallback[]" value="{{ code }}">
+                                            <div class="dropdown-menu w-100 entity-search-dropdown" style="max-height:180px;overflow-y:auto;"></div>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-3 lab-main-col" style="display: none;">
+                                        <div class="searchable-entity-picker" data-role="lab_main">
+                                            <input type="text" class="form-control form-control-sm entity-search-input" placeholder="Type to search lab main..." autocomplete="off">
+                                            <input type="hidden" id="batch_lab_main_{{ forloop.counter }}" class="batch-lab-main-faculty" data-batch="{{ code }}" name="lab_main_faculty_id_fallback[]" value="">
+                                            <div class="dropdown-menu w-100 entity-search-dropdown" style="max-height:180px;overflow-y:auto;"></div>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-3 lab-assistant-col" style="display: none;">
+                                        <div class="searchable-entity-picker" data-role="lab_assistant">
+                                            <input type="text" class="form-control form-control-sm entity-search-input" placeholder="Type to search lab assistant..." autocomplete="off">
+                                            <input type="hidden" id="batch_lab_asst_{{ forloop.counter }}" class="batch-lab-assistant" data-batch="{{ code }}" name="lab_assistant_id_fallback[]" value="">
+                                            <input type="hidden" class="batch-separate-lab-theory" name="separate_lab_theory_staff_fallback[]" value="0">
+                                            <div class="dropdown-menu w-100 entity-search-dropdown" style="max-height:180px;overflow-y:auto;"></div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+
+                        <div class="alert alert-info mt-3 mb-0">
+                            <i class="fas fa-info-circle mr-2"></i>
+                            Select faculty for at least one section to create assignment(s).
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary" id="submitAssignBtn" disabled>
+                        <i class="fas fa-save mr-1"></i> Create Assignment(s)
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Manage Elective Offerings Modal -->
+<div class="modal fade" id="manageOfferingsModal" tabindex="-1" role="dialog">
+    <div class="modal-dialog modal-xl" role="document">
+        <div class="modal-content">
+            <div class="modal-header bg-warning">
+                <h5 class="modal-title"><i class="fas fa-cogs mr-2"></i>Manage Elective Course Offerings</h5>
+                <button type="button" class="close" data-dismiss="modal"><span>&times;</span></button>
+            </div>
+            <div class="modal-body">
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <h6>Placeholder Slot: <strong id="offeringSlotName"></strong></h6>
+                        <p class="text-muted mb-0">Add actual courses that will be offered for this elective slot.</p>
+                    </div>
+                    <div class="col-md-6 text-right">
+                        <span class="badge badge-info" id="totalStudentsInfo">{{ student_count|default:0 }} students in this semester</span>
+                    </div>
+                </div>
+                
+                <!-- Add New Offering Form -->
+                <div class="card card-outline card-success mb-3">
+                    <div class="card-header py-2">
+                        <h6 class="mb-0"><i class="fas fa-plus mr-1"></i>Add Course Offering</h6>
+                    </div>
+                    <div class="card-body">
+                        <form id="addOfferingForm">
+                            <input type="hidden" id="offeringPlanId">
+                            <input type="hidden" id="offeringSemesterId" value="{% if semester_obj %}{{ semester_obj.id }}{% endif %}">
+                            <div class="row align-items-end">
+                                <div class="col-md-4">
+                                    <div class="form-group mb-0">
+                                        <label class="small">Search Course</label>
+                                        <input type="text" class="form-control form-control-sm" id="offeringCourseSearch" 
+                                               placeholder="Type course code or title..." autocomplete="off">
+                                        <input type="hidden" id="offeringCourseCode">
+                                        <div id="offeringCourseDropdown" class="dropdown-menu w-100" style="max-height:200px;overflow-y:auto;"></div>
+                                    </div>
+                                </div>
+                                <div class="col-md-3">
+                                    <div class="form-group mb-0">
+                                        <label class="small">Batches</label>
+                                        <input type="number" class="form-control form-control-sm" id="offeringBatchCount" 
+                                               value="1" min="1" max="10">
+                                    </div>
+                                </div>
+                                <div class="col-md-2">
+                                    <div class="form-group mb-0">
+                                        <label class="small">Capacity/Batch</label>
+                                        <input type="number" class="form-control form-control-sm" id="offeringCapacity" 
+                                               value="30" min="1" max="100">
+                                    </div>
+                                </div>
+                                <div class="col-md-2">
+                                    <button type="submit" class="btn btn-success btn-sm btn-block">
+                                        <i class="fas fa-plus"></i> Add
+                                    </button>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+                
+                <!-- Existing Offerings List -->
+                <div class="card card-outline card-info">
+                    <div class="card-header py-2">
+                        <h6 class="mb-0"><i class="fas fa-list mr-1"></i>Current Offerings & Faculty Assignment</h6>
+                    </div>
+                    <div class="card-body" id="offeringsContainer">
+                        <div class="text-center py-3 text-muted" id="offeringsPlaceholder">
+                            Select a placeholder to view offerings
+                        </div>
+                    </div>
+                    <div class="card-footer bg-light">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <span><strong>Total Capacity:</strong> <span id="totalCapacity">0</span></span>
+                            <span id="capacityStatus"></span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock content %}
+
+{% block custom_js %}
+<script>
+$(document).ready(function() {
+    const studentCount = {{ student_count|default:0 }};
+    const existingAssignmentsMap = {
+        {% for assignment in existing_assignments %}
+        "{{ assignment.course.course_code|escapejs }}::{{ assignment.batch_label|escapejs }}": {
+            faculty_id: "{{ assignment.faculty_id|default:'' }}",
+            faculty_name: "{{ assignment.faculty.user.full_name|default:''|escapejs }}",
+            lab_assistant_id: "{{ assignment.lab_assistant_id|default:'' }}",
+            lab_assistant_name: "{{ assignment.lab_assistant.user.full_name|default:''|escapejs }}",
+            lab_main_faculty_id: "{{ assignment.lab_main_faculty_id|default:'' }}",
+            lab_main_faculty_name: "{{ assignment.lab_main_faculty.user.full_name|default:''|escapejs }}",
+            separate_lab_theory_staff: {{ assignment.separate_lab_theory_staff|yesno:'true,false' }},
+            practical_in_classroom: {{ assignment.practical_in_classroom|yesno:'true,false' }}
+        }{% if not forloop.last %},{% endif %}
+        {% endfor %}
+    };
+
+    let currentCourseCode = '';
+    let currentCourseIsLab = false;
+    let currentCourseIsLIT = false;
+    let currentCourseIsIoc = false;
+    let currentCourseNeedsIocLtp = false;
+    let currentCourseIsSdc = false;
+    let currentSdcNeedsLtp = false;
+    let currentSdcSelectedCourse = null;
+    let currentIocSelectedCourse = null;
+    let quickIocAssignments = [];
+    
+    // ============= QUICK IOC ASSIGNMENT ===============
+    // Course search for IOC assignment
+    let iocSearchTimeout;
+    $('#ioc-course-search').on('input', function() {
+        const query = $(this).val().trim();
+        const $dropdown = $(this).siblings('.course-dropdown');
+        clearTimeout(iocSearchTimeout);
+        
+        if (query.length < 2) {
+            $dropdown.removeClass('show').empty();
+            return;
+        }
+        
+        iocSearchTimeout = setTimeout(function() {
+            $.get("{% url 'api_search_courses' %}", {q: query, limit: 10}, function(data) {
+                $dropdown.empty();
+                if (data.courses && data.courses.length > 0) {
+                    data.courses.forEach(function(course) {
+                        let displayHtml = `
+                            <a class="dropdown-item course-option" href="#" 
+                               data-code="${course.course_code}" data-title="${course.title}"
+                               data-ltp="${course.ltp}" data-credits="${course.credits}">
+                                <strong>${course.course_code}</strong> - ${course.title}
+                                <br><small class="text-muted">${course.ltp}, ${course.credits} cr</small>
+                            </a>
+                        `;
+                        $dropdown.append(displayHtml);
+                    });
+                } else {
+                    $dropdown.append('<span class="dropdown-item text-muted">No courses found</span>');
+                }
+                $dropdown.addClass('show');
+            });
+        }, 300);
+    });
+    
+    // Select course from IOC search
+    $(document).on('click', '.course-dropdown .course-option', function(e) {
+        e.preventDefault();
+        const $option = $(this);
+        $('#ioc-course-code').val($option.data('code'));
+        $('#ioc-course-search').val($option.data('code') + ' - ' + $option.data('title'));
+        $('#ioc-credits').val($option.data('credits'));
+        $option.closest('.course-dropdown').removeClass('show');
+    });
+    
+    // Faculty search for IOC
+    let iocFacultySearchTimeout;
+    $('#ioc-course-search').closest('form').on('input', '.ioc-faculty-search', function() {
+        const query = $(this).val().trim();
+        const $results = $(this).siblings('.entity-search-dropdown');
+        clearTimeout(iocFacultySearchTimeout);
+        
+        if (query.length < 2) {
+            $results.removeClass('show').empty();
+            return;
+        }
+        
+        iocFacultySearchTimeout = setTimeout(function() {
+            $.get("{% url 'get_all_faculty' %}", {search: query}, function(data) {
+                $results.empty();
+                if (data.faculty && data.faculty.length > 0) {
+                    data.faculty.forEach(function(faculty) {
+                        const displayName = faculty.staff_id ? `${faculty.name} (${faculty.staff_id})` : faculty.name;
+                        $results.append(`
+                            <a href="#" class="list-group-item list-group-item-action py-1 px-2 ioc-faculty-option" 
+                               data-id="${faculty.id}" data-name="${faculty.name}">
+                                <i class="fas fa-user-tie mr-1 text-primary"></i>
+                                <strong>${faculty.name}</strong> 
+                                <small class="text-muted">${faculty.staff_id || ''}</small>
+                            </a>
+                        `);
+                    });
+                } else {
+                    $results.append('<div class="list-group-item text-muted py-1">No faculty found</div>');
+                }
+                $results.addClass('show');
+            });
+        }, 300);
+    });
+    
+    // Select faculty for IOC
+    $(document).on('click', '.ioc-faculty-option', function(e) {
+        e.preventDefault();
+        const $option = $(this);
+        $('#ioc-faculty-id').val($option.data('id'));
+        $('.ioc-faculty-search').val($option.data('name'));
+        $('.ioc-faculty-display').show().find('.faculty-name').text($option.data('name'));
+        $(this).closest('.entity-search-dropdown').removeClass('show');
+    });
+    
+    // Submit quick IOC form
+    $('#quick-ioc-form').on('submit', function(e) {
+        e.preventDefault();
+        
+        const courseCode = $('#ioc-course-code').val();
+        const facultyId = $('#ioc-faculty-id').val();
+        
+        if (!courseCode) { alert('Please select a course'); return; }
+        if (!facultyId) { alert('Please select faculty'); return; }
+
+        // Only one IOC course is allowed for this semester/program context.
+        const hasOtherIoc = quickIocAssignments.some(function(assignment) {
+            return assignment.course_code !== courseCode;
+        });
+        if (hasOtherIoc) {
+            const existing = quickIocAssignments[0];
+            toastr.error('Only one IOC course is allowed. Already assigned: ' + existing.course_code);
+            return;
+        }
+        
+        $.post("{% url 'api_assign_catalog_course_as_ioc' %}", {
+            semester_id: $('input[name="semester_id"]').val(),
+            academic_year_id: $('input[name="academic_year_id"]').val(),
+            program_type: $('input[name="program_type"]').val(),
+            branch: $('input[name="branch"]').val(),
+            course_code: courseCode,
+            faculty_id: facultyId,
+            credits: $('#ioc-credits').val(),
+            csrfmiddlewaretoken: '{{ csrf_token }}'
+        }, function(data) {
+            if (data.success) {
+                toastr.success('IOC assigned: ' + courseCode);
+                $('#quick-ioc-form')[0].reset();
+                $('#ioc-course-code').val('');
+                $('#ioc-faculty-id').val('');
+                $('.ioc-faculty-display').hide();
+                loadQuickIOCAssignments();
+                // Refresh course list
+                if (typeof loadSemesterCourses === 'function') {
+                    const semester = $('input[name="semester_id"]').val();
+                    loadSemesterCourses(semester);
+                }
+            } else {
+                toastr.error('Error: ' + (data.error || 'Unknown error'));
+            }
+        }).fail(function() {
+            toastr.error('Error assigning IOC course');
+        });
+    });
+    
+    // Load quick IOC assignments
+    function loadQuickIOCAssignments() {
+        const semesterId = $('input[name="semester_id"]').val();
+        if (!semesterId) return;
+        
+        $.get("{% url 'api_get_quick_ioc_assignments' %}", {
+            semester_id: semesterId,
+            academic_year_id: $('input[name="academic_year_id"]').val(),
+            program_type: $('input[name="program_type"]').val(),
+            branch: $('input[name="branch"]').val(),
+            batch: $('input[name="batch"]').val()
+        }, function(data) {
+            quickIocAssignments = data.assignments || [];
+            if (data.assignments && data.assignments.length > 0) {
+                let html = '';
+                data.assignments.forEach(function(assignment) {
+                    html += `<div class="list-group-item" style="font-size:0.9rem;">
+                        <strong>${assignment.course_code}</strong> - ${assignment.course_title}
+                        <br><small>Faculty: ${assignment.faculty_name} | Credits: ${assignment.credits}</small>
+                        <button class="btn btn-xs btn-link text-danger float-right" 
+                                onclick="removeQuickIOC(${assignment.id})">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </div>`;
+                });
+                $('#quick-ioc-items').html(html);
+                $('#quick-ioc-list').show();
+            } else {
+                $('#quick-ioc-list').hide();
+            }
+        });
+    }
+    
+    // Remove quick IOC
+    window.removeQuickIOC = function(assignmentId) {
+        if (!confirm('Remove this IOC assignment?')) return;
+        $.post("{% url 'api_delete_quick_ioc_assignment' %}", {
+            assignment_id: assignmentId,
+            csrfmiddlewaretoken: '{{ csrf_token }}'
+        }, function(data) {
+            if (data.success) {
+                toastr.success('IOC assignment removed');
+                loadQuickIOCAssignments();
+            }
+        });
+    };
+    
+    // Load IOC assignments only when the Quick IOC panel exists and semester is selected
+    if ($('#quick-ioc-form').length && $('input[name="semester_id"]').val()) {
+        loadQuickIOCAssignments();
+    }
+    
+    // ========== END QUICK IOC ASSIGNMENT ==============
+    
+    // Faculty list for elective assignment dropdowns
+    const facultyListData = [
+        {% for faculty in faculty_list %}
+        {
+            id: {{ faculty.id }},
+            name: "{{ faculty.user.full_name|escapejs }}",
+            designation: "{{ faculty.designation|default_if_none:''|escapejs }}"
+        }{% if not forloop.last %},{% endif %}
+        {% endfor %}
+    ];
+
+    function getFacultyDisplay(faculty, role) {
+        if (!faculty) return '';
+        if (role === 'faculty' && faculty.designation) {
+            return faculty.name + ' (' + faculty.designation + ')';
+        }
+        return faculty.name;
+    }
+
+    function escapeHtml(text) {
+        return String(text || '')
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#039;');
+    }
+
+    function buildEntityPicker(hiddenId, hiddenClass, role, placeholder, selectedId, batchValue) {
+        const selectedFaculty = facultyListData.find(function(f) {
+            return String(f.id) === String(selectedId || '');
+        });
+        const selectedText = selectedFaculty ? getFacultyDisplay(selectedFaculty, role) : '';
+        return `
+            <div class="searchable-entity-picker" data-role="${role}">
+                <input type="text" class="form-control form-control-sm entity-search-input" placeholder="${escapeHtml(placeholder)}" autocomplete="off" value="${escapeHtml(selectedText)}">
+                <input type="hidden" id="${hiddenId}" class="${hiddenClass}" data-batch="${batchValue}" value="${selectedId || ''}">
+                <div class="dropdown-menu w-100 entity-search-dropdown" style="max-height:180px;overflow-y:auto;"></div>
+            </div>
+        `;
+    }
+
+    function closeEntityDropdowns() {
+        $('.entity-search-dropdown').removeClass('show').empty();
+    }
+
+    function clearLabMainSelections() {
+        $('.batch-lab-main-faculty').val('');
+        $('.batch-assignment-row .lab-main-col .entity-search-input').val('');
+    }
+
+    function clearLabAssistantSelections() {
+        $('.batch-lab-assistant').val('');
+        $('.batch-assignment-row .lab-assistant-col .entity-search-input').val('');
+    }
+
+    function setLabAssistantVisibility(visible) {
+        if (visible) {
+            $('#labAssistantSection').show();
+            $('.lab-assistant-col').show();
+        } else {
+            $('#labAssistantSection').hide();
+            $('.lab-assistant-col').hide();
+            clearLabAssistantSelections();
+        }
+    }
+
+    function setClassroomPracticalVisibility(visible) {
+        if (visible) {
+            $('#classroomPracticalSection').show();
+        } else {
+            $('#classroomPracticalSection').hide();
+            $('#practicalInClassroomCheckbox').prop('checked', false);
+        }
+    }
+
+    function refreshLitSplitStaffUi() {
+        const splitAllowed = currentCourseIsLIT && !currentCourseIsIoc && !currentCourseIsSdc;
+        $('#litSplitStaffSection').toggle(splitAllowed);
+        $('.batch-split-col').toggle(splitAllowed);
+
+        $('.batch-assignment-row').each(function() {
+            const $row = $(this);
+            const isSplit = splitAllowed && $row.find('.batch-separate-toggle').is(':checked');
+
+            $row.find('.batch-separate-lab-theory').val(isSplit ? '1' : '0');
+
+            if (isSplit) {
+                $row.find('.lab-main-col').show();
+            } else {
+                $row.find('.lab-main-col').hide();
+                $row.find('.batch-lab-main-faculty').val('');
+                $row.find('.lab-main-col .entity-search-input').val('');
+            }
+        });
+
+        if (currentCourseIsLab && !currentCourseIsSdc) {
+            setLabAssistantVisibility(true);
+        } else {
+            setLabAssistantVisibility(false);
+        }
+
+        updateSubmitButtonState();
+    }
+
+    function prefillAssignmentRows(courseCode) {
+        let practicalInClassroom = false;
+
+        $('.batch-assignment-row').each(function() {
+            const $row = $(this);
+            const batch = String($row.data('batch') || '').trim();
+            const key = `${courseCode}::${batch}`;
+            const record = existingAssignmentsMap[key];
+            if (!record) return;
+
+            if (record.practical_in_classroom) {
+                practicalInClassroom = true;
+            }
+
+            if (record.faculty_id) {
+                $row.find('.batch-faculty-select').val(record.faculty_id).trigger('change');
+                $row.find('.theory-faculty-col .entity-search-input').val(record.faculty_name || '');
+            }
+
+            if (record.lab_assistant_id) {
+                $row.find('.batch-lab-assistant').val(record.lab_assistant_id).trigger('change');
+                $row.find('.lab-assistant-col .entity-search-input').val(record.lab_assistant_name || '');
+            }
+
+            if (record.separate_lab_theory_staff) {
+                $row.find('.batch-separate-toggle').prop('checked', true);
+            }
+
+            if (record.lab_main_faculty_id) {
+                $row.find('.batch-lab-main-faculty').val(record.lab_main_faculty_id).trigger('change');
+                $row.find('.lab-main-col .entity-search-input').val(record.lab_main_faculty_name || '');
+            }
+        });
+
+        $('#practicalInClassroomCheckbox').prop('checked', currentCourseIsLab && practicalInClassroom);
+
+        refreshLitSplitStaffUi();
+        updateSubmitButtonState();
+    }
+
+    function renderEntityOptions($picker) {
+        const role = $picker.data('role');
+        const $input = $picker.find('.entity-search-input');
+        const $hidden = $picker.find('input[type="hidden"]');
+        const $dropdown = $picker.find('.entity-search-dropdown');
+        const query = ($input.val() || '').trim().toLowerCase();
+
+        const filtered = facultyListData.filter(function(f) {
+            const displayText = getFacultyDisplay(f, role).toLowerCase();
+            return !query || displayText.indexOf(query) !== -1;
+        });
+
+        let html = '<a href="#" class="dropdown-item entity-option text-danger" data-value=""><i class="fas fa-times mr-1"></i>Clear selection</a>';
+        if (filtered.length) {
+            filtered.forEach(function(f) {
+                html += `<a href="#" class="dropdown-item entity-option" data-value="${f.id}">${escapeHtml(getFacultyDisplay(f, role))}</a>`;
+            });
+        } else {
+            html += '<span class="dropdown-item text-muted">No matches found</span>';
+        }
+
+        $dropdown.html(html).addClass('show');
+
+        const selectedId = String($hidden.val() || '');
+        if (selectedId) {
+            $dropdown.find(`.entity-option[data-value="${selectedId}"]`).addClass('active');
+        }
+    }
+
+    $(document).on('focus input', '.entity-search-input', function() {
+        const $picker = $(this).closest('.searchable-entity-picker');
+        if (!$picker.length) return;
+
+        const $hidden = $picker.find('input[type="hidden"]');
+        const textVal = ($(this).val() || '').trim();
+        if (!textVal) {
+            $hidden.val('');
+        }
+        renderEntityOptions($picker);
+    });
+
+    $(document).on('click', '.entity-option', function(e) {
+        e.preventDefault();
+        const $option = $(this);
+        const $picker = $option.closest('.searchable-entity-picker');
+        const $input = $picker.find('.entity-search-input');
+        const $hidden = $picker.find('input[type="hidden"]');
+        const selectedValue = $option.data('value');
+
+        if (!selectedValue) {
+            $hidden.val('');
+            $input.val('');
+        } else {
+            $hidden.val(selectedValue);
+            $input.val($option.text().trim());
+        }
+
+        $hidden.trigger('change');
+        $picker.find('.entity-search-dropdown').removeClass('show');
+    });
+    
+    // Auto-submit on filter change
+    $('#semesterSelect, #programTypeFilter, #branchFilter').on('change', function() {
+        $('#filterForm').submit();
+    });
+    // Open assignment modal
+    $('.assign-btn').on('click', function() {
+        const code = $(this).data('course');
+        const title = $(this).data('title');
+        const courseType = $(this).data('course-type') || '';
+        const lectureHours = parseInt($(this).data('lecture-hours') || 0, 10);
+        const tutorialHours = parseInt($(this).data('tutorial-hours') || 0, 10);
+        const practicalHours = $(this).data('practical-hours') || 0;
+        const practicalHoursInt = parseInt(practicalHours || 0, 10);
+        const category = $(this).data('category') || '';
+        
+        currentCourseCode = code;
+        $('#courseCodeFallback').val(code || '');
+        currentCourseIsLab = (courseType === 'L' || courseType === 'LIT' || practicalHoursInt > 0);
+        currentCourseIsLIT = (courseType === 'LIT');
+        const isIocPlaceholder = (code || '').startsWith('IOC-') || (code || '').startsWith('EEC-');
+        const isSdcPlaceholder = (code || '').startsWith('SDC-') || (code || '').startsWith('SLC-');
+        currentCourseIsIoc = (category === 'IOC' || category === 'EEC' || isIocPlaceholder);
+        currentCourseNeedsIocLtp = isIocPlaceholder && (lectureHours + tutorialHours + practicalHoursInt <= 0);
+        currentCourseIsSdc = isSdcPlaceholder;
+        currentSdcNeedsLtp = isSdcPlaceholder && (lectureHours + tutorialHours + practicalHoursInt <= 0);
+        
+        $('#modalCourseDisplay').val(code + ' - ' + title);
+        
+        // Reset all selects
+        $('.batch-faculty-select').val('');
+        $('.batch-lab-main-faculty').val('');
+        $('.batch-lab-assistant').val('');
+        $('.batch-separate-toggle').prop('checked', false);
+        $('#batchAssignmentRows .entity-search-input').val('');
+        $('.batch-separate-lab-theory').val('0');
+        $('#litSplitStaffSection').hide();
+        $('.batch-split-col').hide();
+        $('.lab-main-col').hide();
+        $('#iocCourseSelect').val('');
+        $('#iocCourseSearch').val('');
+        $('#iocScheduleCheckbox').prop('checked', true);
+        currentIocSelectedCourse = null;
+        $('#sdcCourseSelect').val('');
+        $('#sdcCourseSearch').val('');
+        $('#sdcScheduleCheckbox').prop('checked', true);
+        $('#practicalInClassroomCheckbox').prop('checked', false);
+        closeEntityDropdowns();
+        $('#submitAssignBtn').prop('disabled', true);
+        
+        // Show/hide lab assistant section for regular courses
+        if (currentCourseIsLab && !currentCourseIsSdc) {
+            setLabAssistantVisibility(true);
+        } else {
+            setLabAssistantVisibility(false);
+        }
+        setClassroomPracticalVisibility(currentCourseIsLab);
+
+        if (currentCourseIsIoc) {
+            $('#iocCourseSection').show();
+            $('#iocLtpSection').show();
+            $('#iocLectureHours').val(Math.max(0, lectureHours));
+            $('#iocTutorialHours').val(Math.max(0, tutorialHours));
+            $('#iocPracticalHours').val(Math.max(0, practicalHoursInt));
+            $('#iocLectureHours, #iocTutorialHours, #iocPracticalHours').prop('required', true);
+            if (practicalHoursInt > 0) {
+                setLabAssistantVisibility(true);
+                setClassroomPracticalVisibility(true);
+            } else {
+                setLabAssistantVisibility(false);
+                setClassroomPracticalVisibility(false);
+            }
+        } else {
+            $('#iocCourseSection').hide();
+            $('#iocLtpSection').hide();
+            $('#iocLectureHours, #iocTutorialHours, #iocPracticalHours').prop('required', false);
+        }
+        
+        // Show/hide SDC course section
+        if (currentCourseIsSdc) {
+            $('#sdcCourseSection').show();
+            // Staff-only flow is allowed for SDC/SLC, so show manual LTP by default
+            // until a mapped course is selected.
+            $('#sdcLtpSection').show();
+            $('#sdcLectureHours').val(Math.max(0, lectureHours));
+            $('#sdcTutorialHours').val(Math.max(0, tutorialHours));
+            $('#sdcPracticalHours').val(Math.max(0, practicalHoursInt));
+            $('#sdcLectureHours, #sdcTutorialHours, #sdcPracticalHours').prop('required', true);
+            // SDC lab assistant is assigned per-section (same columns as normal lab flow).
+            setLabAssistantVisibility(false);
+        } else {
+            $('#sdcCourseSection').hide();
+            $('#sdcLtpSection').hide();
+        }
+
+        refreshLitSplitStaffUi();
+        prefillAssignmentRows(currentCourseCode);
+    });
+    
+    // Update submit button when faculty selection changes
+    $(document).on('change', '.batch-faculty-select', function() {
+        updateSubmitButtonState();
+    });
+
+    $(document).on('change', '.batch-separate-toggle', function() {
+        refreshLitSplitStaffUi();
+    });
+
+    $(document).on('change', '.batch-lab-main-faculty, .batch-lab-assistant', function() {
+        updateSubmitButtonState();
+    });
+
+    function applyIocCourseSelection(selected) {
+        if (!selected) {
+            currentIocSelectedCourse = null;
+            $('#iocLtpSection').show();
+            $('#iocLectureHours').val('0').prop('required', true);
+            $('#iocTutorialHours').val('0').prop('required', true);
+            $('#iocPracticalHours').val('0').prop('required', true);
+            setLabAssistantVisibility(false);
+            setClassroomPracticalVisibility(false);
+            return;
+        }
+
+        currentIocSelectedCourse = selected;
+        const l = parseInt(selected.lecture_hours || 0, 10);
+        const t = parseInt(selected.tutorial_hours || 0, 10);
+        const p = parseInt(selected.practical_hours || 0, 10);
+        const hasLtp = (l + t + p) > 0;
+
+        $('#iocLectureHours').val(l);
+        $('#iocTutorialHours').val(t);
+        $('#iocPracticalHours').val(p);
+
+        if (hasLtp) {
+            $('#iocLtpSection').hide();
+            $('#iocLectureHours, #iocTutorialHours, #iocPracticalHours').prop('required', false);
+            if (p > 0) {
+                setLabAssistantVisibility(true);
+                setClassroomPracticalVisibility(true);
+            } else {
+                setLabAssistantVisibility(false);
+                setClassroomPracticalVisibility(false);
+            }
+        } else {
+            $('#iocLtpSection').show();
+            $('#iocLectureHours, #iocTutorialHours, #iocPracticalHours').prop('required', true);
+            setLabAssistantVisibility(false);
+            setClassroomPracticalVisibility(false);
+        }
+    }
+
+    // Search IOC mapped course from catalog
+    $('#iocCourseSearch').on('focus input', function() {
+        if (!currentCourseIsIoc) return;
+        const query = ($(this).val() || '').trim();
+        const $picker = $(this).closest('.searchable-entity-picker');
+        const $dropdown = $picker.find('.entity-search-dropdown');
+
+        $.get("{% url 'api_search_courses' %}", {
+            q: query,
+            limit: 25,
+            include_placeholders: 'false'
+        }, function(data) {
+            const courses = (data.courses || []).filter(c => !(String(c.course_code || '').startsWith('IOC-') || String(c.course_code || '').startsWith('EEC-')));
+            let html = '<a href="#" class="dropdown-item ioc-course-option text-danger" data-code=""><i class="fas fa-times mr-1"></i>Clear selection</a>';
+
+            if (courses.length) {
+                courses.forEach(function(c) {
+                    const ltp = String(c.ltp || '').split('-');
+                    const l = parseInt(ltp[0] || '0', 10);
+                    const t = parseInt(ltp[1] || '0', 10);
+                    const p = parseInt(ltp[2] || '0', 10);
+                    html += `<a href="#" class="dropdown-item ioc-course-option"
+                        data-code="${escapeHtml(c.course_code)}"
+                        data-title="${escapeHtml(c.title || '')}"
+                        data-l="${isNaN(l) ? 0 : l}"
+                        data-t="${isNaN(t) ? 0 : t}"
+                        data-p="${isNaN(p) ? 0 : p}">
+                        <strong>${escapeHtml(c.course_code)}</strong><br>
+                        <small class="text-muted">${escapeHtml(c.title || '')} (${escapeHtml(c.ltp || '0-0-0')}, ${c.credits || 0} cr)</small>
+                    </a>`;
+                });
+            } else {
+                html += '<span class="dropdown-item text-muted">No courses found</span>';
+            }
+
+            $dropdown.html(html).addClass('show');
+        });
+    });
+
+    $(document).on('click', '.ioc-course-option', function(e) {
+        e.preventDefault();
+        const code = String($(this).data('code') || '');
+        if (!code) {
+            $('#iocCourseSelect').val('');
+            $('#iocCourseSearch').val('');
+            applyIocCourseSelection(null);
+        } else {
+            const title = String($(this).data('title') || '');
+            const selected = {
+                code: code,
+                lecture_hours: parseInt($(this).data('l') || 0, 10),
+                tutorial_hours: parseInt($(this).data('t') || 0, 10),
+                practical_hours: parseInt($(this).data('p') || 0, 10),
+            };
+            $('#iocCourseSelect').val(code);
+            $('#iocCourseSearch').val(code + (title ? (' - ' + title) : ''));
+            applyIocCourseSelection(selected);
+        }
+        $(this).closest('.entity-search-dropdown').removeClass('show');
+    });
+
+    // For manual IOC LTP entry, show optional per-section lab assistant when Practical > 0.
+    $('#iocPracticalHours').on('input change', function() {
+        if (!currentCourseIsIoc || $('#iocCourseSection').is(':hidden')) return;
+        const p = parseInt($(this).val() || '0', 10);
+        if (p > 0) {
+            setLabAssistantVisibility(true);
+            setClassroomPracticalVisibility(true);
+        } else {
+            setLabAssistantVisibility(false);
+            setClassroomPracticalVisibility(false);
+        }
+    });
+    
+    function applySdcCourseSelection(selected) {
+        if (!selected) {
+            currentSdcSelectedCourse = null;
+            $('#sdcLtpSection').show();
+            $('#sdcLectureHours').val('0').prop('required', true);
+            $('#sdcTutorialHours').val('0').prop('required', true);
+            $('#sdcPracticalHours').val('0').prop('required', true);
+            setLabAssistantVisibility(false);
+            setClassroomPracticalVisibility(false);
+            return;
+        }
+
+        currentSdcSelectedCourse = selected;
+        const l = parseInt(selected.lecture_hours || 0, 10);
+        const t = parseInt(selected.tutorial_hours || 0, 10);
+        const p = parseInt(selected.practical_hours || 0, 10);
+        const hasLtp = (l + t + p) > 0;
+
+        $('#sdcLectureHours').val(l);
+        $('#sdcTutorialHours').val(t);
+        $('#sdcPracticalHours').val(p);
+
+        if (hasLtp) {
+            $('#sdcLtpSection').hide();
+            $('#sdcLectureHours, #sdcTutorialHours, #sdcPracticalHours').prop('required', false);
+            if (p > 0) {
+                setLabAssistantVisibility(true);
+                setClassroomPracticalVisibility(true);
+            } else {
+                setLabAssistantVisibility(false);
+                setClassroomPracticalVisibility(false);
+            }
+        } else {
+            $('#sdcLtpSection').show();
+            $('#sdcLectureHours, #sdcTutorialHours, #sdcPracticalHours').prop('required', true);
+            setLabAssistantVisibility(false);
+            setClassroomPracticalVisibility(false);
+        }
+    }
+
+    // Search SDC mapped course from catalog
+    $('#sdcCourseSearch').on('focus input', function() {
+        const query = ($(this).val() || '').trim();
+        const $picker = $(this).closest('.searchable-entity-picker');
+        const $dropdown = $picker.find('.entity-search-dropdown');
+
+        $.get("{% url 'api_search_courses' %}", {
+            q: query,
+            limit: 25,
+            include_placeholders: 'true'
+        }, function(data) {
+            const courses = (data.courses || []).filter(function(c) {
+                const code = String(c.course_code || '');
+                const ptype = String(c.placeholder_type || '');
+                if (code.startsWith('SDC-') || code.startsWith('SLC-')) {
+                    return false;
+                }
+                // Keep all regular courses, and allow IOC/EEC placeholders explicitly.
+                return !c.is_placeholder || ptype === 'IOC' || ptype === 'EEC';
+            });
+            let html = '<a href="#" class="dropdown-item sdc-course-option text-danger" data-code=""><i class="fas fa-times mr-1"></i>Clear selection</a>';
+
+            if (courses.length) {
+                courses.forEach(function(c) {
+                    const ltp = String(c.ltp || '').split('-');
+                    const l = parseInt(ltp[0] || '0', 10);
+                    const t = parseInt(ltp[1] || '0', 10);
+                    const p = parseInt(ltp[2] || '0', 10);
+                    html += `<a href="#" class="dropdown-item sdc-course-option"
+                        data-code="${escapeHtml(c.course_code)}"
+                        data-title="${escapeHtml(c.title || '')}"
+                        data-l="${isNaN(l) ? 0 : l}"
+                        data-t="${isNaN(t) ? 0 : t}"
+                        data-p="${isNaN(p) ? 0 : p}">
+                        <strong>${escapeHtml(c.course_code)}</strong><br>
+                        <small class="text-muted">${escapeHtml(c.title || '')} (${escapeHtml(c.ltp || '0-0-0')}, ${c.credits || 0} cr)</small>
+                    </a>`;
+                });
+            } else {
+                html += '<span class="dropdown-item text-muted">No courses found</span>';
+            }
+
+            $dropdown.html(html).addClass('show');
+        });
+    });
+
+    $(document).on('click', '.sdc-course-option', function(e) {
+        e.preventDefault();
+        const code = String($(this).data('code') || '');
+        if (!code) {
+            $('#sdcCourseSelect').val('');
+            $('#sdcCourseSearch').val('');
+            applySdcCourseSelection(null);
+        } else {
+            const title = String($(this).data('title') || '');
+            const selected = {
+                code: code,
+                lecture_hours: parseInt($(this).data('l') || 0, 10),
+                tutorial_hours: parseInt($(this).data('t') || 0, 10),
+                practical_hours: parseInt($(this).data('p') || 0, 10),
+            };
+            $('#sdcCourseSelect').val(code);
+            $('#sdcCourseSearch').val(code + (title ? (' - ' + title) : ''));
+            applySdcCourseSelection(selected);
+        }
+        $(this).closest('.entity-search-dropdown').removeClass('show');
+    });
+
+    // For manual SDC LTP entry, show optional lab assistant when Practical > 0.
+    $('#sdcPracticalHours').on('input change', function() {
+        if (!currentCourseIsSdc || $('#sdcCourseSection').is(':hidden')) return;
+        const p = parseInt($(this).val() || '0', 10);
+        if (p > 0) {
+            setLabAssistantVisibility(true);
+            setClassroomPracticalVisibility(true);
+        } else {
+            setLabAssistantVisibility(false);
+            setClassroomPracticalVisibility(false);
+        }
+    });
+    
+    function updateSubmitButtonState() {
+        let canSubmit = false;
+        let splitRowsComplete = true;
+
+        $('.batch-assignment-row').each(function() {
+            const facultyVal = $(this).find('.batch-faculty-select').val();
+            if (facultyVal) {
+                canSubmit = true;
+                const rowSplit = $(this).find('.batch-separate-toggle').is(':checked');
+                if (rowSplit) {
+                    const labMainVal = $(this).find('.batch-lab-main-faculty').val();
+                    const labAsstVal = $(this).find('.batch-lab-assistant').val();
+                    if (!labMainVal || !labAsstVal) {
+                        splitRowsComplete = false;
+                    }
+                }
+            }
+        });
+
+        $('#submitAssignBtn').prop('disabled', !(canSubmit && splitRowsComplete));
+    }
+    
+    // Form submission - build hidden inputs dynamically
+    $('#assignForm').on('submit', function(e) {
+        // Remove any previously added hidden inputs
+        $(this).find('.dynamic-input').remove();
+        
+        // Handle SDC course assignments
+        if (currentCourseIsSdc) {
+            let hasAssignment = false;
+            const sdcCourseCode = $('#sdcCourseSelect').val();
+            const scheduleInTimetable = $('#sdcScheduleCheckbox').prop('checked') ? '1' : '0';
+            
+            // For SDC, we need L-T-P if manually entering or if no course selected
+            let sdcL = 0, sdcT = 0, sdcP = 0;
+            if (!sdcCourseCode || currentSdcNeedsLtp) {
+                sdcL = parseInt($('#sdcLectureHours').val() || '0', 10);
+                sdcT = parseInt($('#sdcTutorialHours').val() || '0', 10);
+                sdcP = parseInt($('#sdcPracticalHours').val() || '0', 10);
+                
+                if ((sdcL + sdcT + sdcP) <= 0) {
+                    e.preventDefault();
+                    alert('Please enter SDC L-T-P (minimum one total period).');
+                    return false;
+                }
+            }
+            
+            // Build assignments for each batch with faculty selected
+            $('.batch-assignment-row').each(function() {
+                const batch = $(this).data('batch');
+                const facultyVal = $(this).find('.batch-faculty-select').val();
+                const labMainVal = $(this).find('.batch-lab-main-faculty').val();
+                const labAsstVal = $(this).find('.batch-lab-assistant').val();
+                const separateLabTheory = '0';
+                
+                if (facultyVal) {
+                    hasAssignment = true;
+                    const form = $('#assignForm');
+                    form.append(`<input type="hidden" class="dynamic-input" name="course_code[]" value="${currentCourseCode}">`);
+                    form.append(`<input type="hidden" class="dynamic-input" name="batch_label[]" value="${batch}">`);
+                    form.append(`<input type="hidden" class="dynamic-input" name="faculty_id[]" value="${facultyVal}">`);
+                    form.append(`<input type="hidden" class="dynamic-input" name="lab_main_faculty_id[]" value="${labMainVal || ''}">`);
+                    form.append(`<input type="hidden" class="dynamic-input" name="lab_assistant_id[]" value="${labAsstVal || ''}">`);
+                    form.append(`<input type="hidden" class="dynamic-input" name="separate_lab_theory_staff[]" value="${separateLabTheory}">`);
+                    
+                    // SDC-specific fields
+                    form.append(`<input type="hidden" class="dynamic-input" name="sdc_course_code[]" value="${sdcCourseCode || ''}">`);
+                    form.append(`<input type="hidden" class="dynamic-input" name="sdc_lecture_hours[]" value="${sdcL}">`);
+                    form.append(`<input type="hidden" class="dynamic-input" name="sdc_tutorial_hours[]" value="${sdcT}">`);
+                    form.append(`<input type="hidden" class="dynamic-input" name="sdc_practical_hours[]" value="${sdcP}">`);
+                    form.append(`<input type="hidden" class="dynamic-input" name="sdc_lab_assistant_id[]" value="${labAsstVal || ''}">`);
+                    form.append(`<input type="hidden" class="dynamic-input" name="sdc_schedule_timetable[]" value="${scheduleInTimetable}">`);
+                }
+            });
+            
+            if (!hasAssignment) {
+                e.preventDefault();
+                alert('Please select faculty for at least one section');
+                return false;
+            }
+            
+            return true;
+        }
+
+        // Handle IOC/EEC course assignments (same flexible flow as SDC)
+        if (currentCourseIsIoc) {
+            let hasAssignment = false;
+            const iocCourseCode = $('#iocCourseSelect').val();
+            const scheduleInTimetable = $('#iocScheduleCheckbox').prop('checked') ? '1' : '0';
+
+            let iocL = parseInt($('#iocLectureHours').val() || '0', 10);
+            let iocT = parseInt($('#iocTutorialHours').val() || '0', 10);
+            let iocP = parseInt($('#iocPracticalHours').val() || '0', 10);
+            if ((iocL + iocT + iocP) <= 0) {
+                e.preventDefault();
+                alert('Please enter IOC L-T-P (minimum one total period).');
+                return false;
+            }
+
+            $('.batch-assignment-row').each(function() {
+                const batch = $(this).data('batch');
+                const facultyVal = $(this).find('.batch-faculty-select').val();
+                const labMainVal = $(this).find('.batch-lab-main-faculty').val();
+                const labAsstVal = $(this).find('.batch-lab-assistant').val();
+                const separateLabTheory = $(this).find('.batch-separate-toggle').is(':checked') ? '1' : '0';
+
+                if (facultyVal) {
+                    if (separateLabTheory === '1' && (!labMainVal || !labAsstVal)) {
+                        e.preventDefault();
+                        alert('For LIT split staff mode, select Lab Main Faculty and Lab Assistant for section ' + batch + '.');
+                        hasAssignment = false;
+                        return false;
+                    }
+                    hasAssignment = true;
+                    const form = $('#assignForm');
+                    form.append(`<input type="hidden" class="dynamic-input" name="course_code[]" value="${currentCourseCode}">`);
+                    form.append(`<input type="hidden" class="dynamic-input" name="batch_label[]" value="${batch}">`);
+                    form.append(`<input type="hidden" class="dynamic-input" name="faculty_id[]" value="${facultyVal}">`);
+                    form.append(`<input type="hidden" class="dynamic-input" name="lab_main_faculty_id[]" value="${labMainVal || ''}">`);
+                    form.append(`<input type="hidden" class="dynamic-input" name="lab_assistant_id[]" value="${labAsstVal || ''}">`);
+                    form.append(`<input type="hidden" class="dynamic-input" name="separate_lab_theory_staff[]" value="${separateLabTheory}">`);
+
+                    form.append(`<input type="hidden" class="dynamic-input" name="ioc_course_code[]" value="${iocCourseCode || ''}">`);
+                    form.append(`<input type="hidden" class="dynamic-input" name="ioc_lecture_hours[]" value="${iocL}">`);
+                    form.append(`<input type="hidden" class="dynamic-input" name="ioc_tutorial_hours[]" value="${iocT}">`);
+                    form.append(`<input type="hidden" class="dynamic-input" name="ioc_practical_hours[]" value="${iocP}">`);
+                    form.append(`<input type="hidden" class="dynamic-input" name="ioc_schedule_timetable[]" value="${scheduleInTimetable}">`);
+                }
+            });
+
+            if (!hasAssignment) {
+                e.preventDefault();
+                alert('Please select faculty for at least one section');
+                return false;
+            }
+
+            return true;
+        }
+        
+        // Handle regular and IOC course assignments
+        // Add hidden inputs for each batch with faculty selected
+        let hasAssignment = false;
+        $('.batch-assignment-row').each(function() {
+            const batch = $(this).data('batch');
+            const facultyVal = $(this).find('.batch-faculty-select').val();
+            const labMainVal = $(this).find('.batch-lab-main-faculty').val();
+            const labAsstVal = $(this).find('.batch-lab-assistant').val();
+            const separateLabTheory = $(this).find('.batch-separate-toggle').is(':checked') ? '1' : '0';
+            
+            if (facultyVal) {
+                if (separateLabTheory === '1' && (!labMainVal || !labAsstVal)) {
+                    e.preventDefault();
+                    alert('For LIT split staff mode, select Lab Main Faculty and Lab Assistant for section ' + batch + '.');
+                    hasAssignment = false;
+                    return false;
+                }
+                hasAssignment = true;
+                // Add course_code, batch_label, faculty_id for this assignment
+                const form = $('#assignForm');
+                form.append(`<input type="hidden" class="dynamic-input" name="course_code[]" value="${currentCourseCode}">`);
+                form.append(`<input type="hidden" class="dynamic-input" name="batch_label[]" value="${batch}">`);
+                form.append(`<input type="hidden" class="dynamic-input" name="faculty_id[]" value="${facultyVal}">`);
+                form.append(`<input type="hidden" class="dynamic-input" name="lab_main_faculty_id[]" value="${labMainVal || ''}">`);
+                form.append(`<input type="hidden" class="dynamic-input" name="lab_assistant_id[]" value="${labAsstVal || ''}">`);
+                form.append(`<input type="hidden" class="dynamic-input" name="separate_lab_theory_staff[]" value="${separateLabTheory}">`);
+            }
+        });
+        
+        // Validate at least one assignment
+        if (!hasAssignment) {
+            e.preventDefault();
+            alert('Please select faculty for at least one section');
+            return false;
+        }
+
+        if (currentCourseNeedsIocLtp) {
+            const l = parseInt($('#iocLectureHours').val() || '0', 10);
+            const t = parseInt($('#iocTutorialHours').val() || '0', 10);
+            const p = parseInt($('#iocPracticalHours').val() || '0', 10);
+            if ((l + t + p) <= 0) {
+                e.preventDefault();
+                alert('Please enter IOC L-T-P (minimum one total period).');
+                return false;
+            }
+        }
+        
+        return true;
+    });
+    
+    // Delete assignment with immediate in-place UI update
+    $(document).on('click', '.delete-assignment-btn', function(e) {
+        e.preventDefault();
+        const btn = $(this);
+        const row = btn.closest('tr');
+        const assignmentId = btn.data('assignment-id');
+        const courseCode = btn.closest('tr').find('td:first').text().trim();
+        
+        if (!confirm(`Delete this assignment for ${courseCode}?`)) {
+            return;
+        }
+        
+        btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i>');
+        
+        $.post("{% url 'api_delete_course_assignment' %}", {
+            assignment_id: assignmentId,
+            csrfmiddlewaretoken: '{{ csrf_token }}'
+        }, function(data) {
+            if (data.success) {
+                toastr.success(data.message || 'Assignment deleted successfully');
+
+                // Remove the deleted row immediately
+                row.fadeOut(180, function() {
+                    $(this).remove();
+
+                    // Update assignment count badge in the card header
+                    const $badge = $('.card-title:contains("All Existing Assignments")')
+                        .closest('.card-header')
+                        .find('.badge.badge-success')
+                        .first();
+                    const currentText = ($badge.text() || '').trim();
+                    const currentCount = parseInt(currentText, 10);
+                    if (!isNaN(currentCount)) {
+                        const nextCount = Math.max(0, currentCount - 1);
+                        $badge.text(nextCount + ' assignments');
+                    }
+
+                    // If no rows remain, show a small empty-state row
+                    const tbody = $('.card-title:contains("All Existing Assignments")')
+                        .closest('.card')
+                        .find('tbody')
+                        .first();
+                    if (tbody.length && tbody.find('tr').length === 0) {
+                        tbody.append(
+                            '<tr class="text-muted"><td colspan="6" class="text-center py-3">No assignments found</td></tr>'
+                        );
+                    }
+                });
+            } else {
+                toastr.error(data.error || 'Error deleting assignment');
+                btn.prop('disabled', false).html('<i class="fas fa-trash"></i>');
+            }
+        }).fail(function(xhr, status, error) {
+            const errorMsg = xhr.responseJSON && xhr.responseJSON.error ? xhr.responseJSON.error : error;
+            toastr.error('Error: ' + errorMsg);
+            btn.prop('disabled', false).html('<i class="fas fa-trash"></i>');
+        });
+    });
+    
+    // Manage offerings modal
+    $('.manage-offerings-btn').on('click', function() {
+        const planId = $(this).data('plan-id');
+        const courseCode = $(this).data('course');
+        const type = $(this).data('type');
+        
+        $('#offeringPlanId').val(planId);
+        $('#offeringSlotName').text(courseCode + ' (' + type + ')');
+        
+        loadOfferings(planId);
+    });
+    
+    function loadOfferings(planId) {
+        const semesterId = $('#offeringSemesterId').val();
+        const container = $('#offeringsContainer');
+        
+        $.get("{% url 'api_get_elective_offerings' %}", {plan_id: planId, semester_id: semesterId}, function(data) {
+            container.empty();
+            
+            let totalCap = 0;
+            if (data.offerings && data.offerings.length > 0) {
+                data.offerings.forEach(function(o) {
+                    const cap = o.batch_count * o.capacity_per_batch;
+                    totalCap += cap;
+                    
+                    // Build batch assignment rows
+                    let batchRows = '';
+                    for (let i = 1; i <= o.batch_count; i++) {
+                        const assignment = o.assignments[i] || {};
+                        const selectedFaculty = assignment.faculty_id || '';
+                        const selectedLabAsst = assignment.lab_assistant_id || '';
+                        
+                        const facultyPicker = buildEntityPicker(
+                            `elective_faculty_${o.id}_${i}`,
+                            'elective-faculty-select',
+                            'faculty',
+                            'Type to search faculty...',
+                            selectedFaculty,
+                            i
+                        );
+
+                        const labAsstPicker = buildEntityPicker(
+                            `elective_lab_asst_${o.id}_${i}`,
+                            'elective-lab-asst-select',
+                            'lab_assistant',
+                            'Type to search lab assistant...',
+                            selectedLabAsst,
+                            i
+                        );
+                        
+                        const labAsstCol = o.needs_lab_assistant ? `
+                            <td style="width:35%">
+                                ${labAsstPicker}
+                            </td>` : '<td></td>';
+                        
+                        batchRows += `
+                            <tr data-offering="${o.id}" data-batch="${i}">
+                                <td style="width:15%"><strong>Batch ${i}</strong></td>
+                                <td style="width:35%">
+                                    ${facultyPicker}
+                                </td>
+                                ${labAsstCol}
+                                <td style="width:15%">
+                                    <span class="badge ${assignment.faculty_id ? 'badge-success' : 'badge-warning'}">
+                                        ${assignment.faculty_id ? '<i class="fas fa-check"></i>' : '<i class="fas fa-exclamation"></i>'}
+                                    </span>
+                                </td>
+                            </tr>
+                        `;
+                    }
+                    
+                    const labHeader = o.needs_lab_assistant ? '<th style="width:35%">Lab Assistant</th>' : '<th></th>';
+                    
+                    container.append(`
+                        <div class="card card-outline card-secondary mb-2 offering-card" data-offering-id="${o.id}" data-plan-id="${o.regulation_course_plan_id}">
+                            <div class="card-header py-2 d-flex justify-content-between align-items-center">
+                                <div>
+                                    <strong>${o.course_code}</strong> - ${o.course_title}
+                                    ${o.needs_lab_assistant ? '<span class="badge badge-info ml-2">L/LIT</span>' : ''}
+                                </div>
+                                <div>
+                                    <span class="badge badge-secondary mr-2">${o.batch_count} batch(es) × ${o.capacity_per_batch} = ${cap}</span>
+                                    <button type="button" class="btn btn-xs btn-danger delete-offering" data-id="${o.id}" title="Remove">
+                                        <i class="fas fa-times"></i>
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="card-body p-2">
+                                <table class="table table-sm table-borderless mb-0">
+                                    <thead>
+                                        <tr class="text-muted">
+                                            <th style="width:15%">Batch</th>
+                                            <th style="width:35%">Faculty</th>
+                                            ${labHeader}
+                                            <th style="width:15%">Status</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        ${batchRows}
+                                    </tbody>
+                                </table>
+                            </div>
+                            <div class="card-footer py-1 text-right">
+                                <button type="button" class="btn btn-xs btn-primary save-offering-assignment" data-offering="${o.id}">
+                                    <i class="fas fa-save"></i> Save Assignment
+                                </button>
+                            </div>
+                        </div>
+                    `);
+                });
+                // If user requested highlighting of a specific offering, scroll to it
+                if (window.highlightOfferingId) {
+                    const sel = container.find('.offering-card[data-offering-id="' + window.highlightOfferingId + '"]');
+                    if (sel.length) {
+                        // scroll the modal body to the element
+                        const modalBody = $('#manageOfferingsModal .modal-body');
+                        const offset = sel.position().top + modalBody.scrollTop();
+                        modalBody.animate({scrollTop: offset - 20}, 300);
+                    }
+                    window.highlightOfferingId = null;
+                }
+            } else {
+                container.html('<div class="text-center py-3 text-muted">No courses offered yet. Add courses above.</div>');
+            }
+            
+            $('#totalCapacity').text(totalCap);
+            updateCapacityStatus(totalCap, studentCount);
+        });
+    }
+    
+    function updateCapacityStatus(capacity, students) {
+        const status = $('#capacityStatus');
+        if (students === 0) {
+            status.html('<span class="badge badge-secondary">No students</span>');
+        } else if (capacity >= students) {
+            status.html('<span class="badge badge-success"><i class="fas fa-check mr-1"></i>Sufficient (' + capacity + ' >= ' + students + ')</span>');
+        } else {
+            status.html('<span class="badge badge-danger"><i class="fas fa-exclamation mr-1"></i>Insufficient (' + capacity + ' < ' + students + ')</span>');
+        }
+    }
+    
+    // Course search for offerings
+    let offeringSearchTimeout = null;
+    $('#offeringCourseSearch').on('input', function() {
+        const query = $(this).val().trim();
+        const dropdown = $('#offeringCourseDropdown');
+        
+        if (offeringSearchTimeout) clearTimeout(offeringSearchTimeout);
+        
+        if (query.length < 2) {
+            dropdown.removeClass('show').empty();
+            return;
+        }
+        
+        offeringSearchTimeout = setTimeout(function() {
+            $.get("{% url 'api_search_courses' %}", {q: query, include_placeholders: 'false', limit: 10}, function(data) {
+                dropdown.empty();
+                if (data.courses && data.courses.length > 0) {
+                    data.courses.forEach(function(c) {
+                        dropdown.append(`
+                            <a class="dropdown-item offering-course-option" href="#" 
+                               data-code="${c.course_code}" data-title="${c.title}">
+                                <strong>${c.course_code}</strong> - ${c.title}
+                                <br><small class="text-muted">${c.credits} cr</small>
+                            </a>
+                        `);
+                    });
+                } else {
+                    dropdown.append('<span class="dropdown-item text-muted">No courses found</span>');
+                }
+                dropdown.addClass('show');
+            });
+        }, 300);
+    });
+    
+    $(document).on('click', '.offering-course-option', function(e) {
+        e.preventDefault();
+        $('#offeringCourseCode').val($(this).data('code'));
+        $('#offeringCourseSearch').val($(this).data('code') + ' - ' + $(this).data('title'));
+        $('#offeringCourseDropdown').removeClass('show');
+    });
+    
+    // Add offering
+    $('#addOfferingForm').on('submit', function(e) {
+        e.preventDefault();
+        
+        const planId = $('#offeringPlanId').val();
+        const courseCode = $('#offeringCourseCode').val();
+        const batchCount = $('#offeringBatchCount').val();
+        const capacity = $('#offeringCapacity').val();
+        const faculty = $('#offeringFaculty').val();
+        const semesterId = $('#offeringSemesterId').val();
+        
+        if (!courseCode) {
+            alert('Please select a course');
+            return;
+        }
+        
+        $.post("{% url 'api_add_elective_offering' %}", {
+            plan_id: planId,
+            course_code: courseCode,
+            batch_count: batchCount,
+            capacity_per_batch: capacity,
+            faculty_id: faculty,
+            semester_id: semesterId,
+            csrfmiddlewaretoken: '{{ csrf_token }}'
+        }, function(data) {
+            if (data.success) {
+                $('#offeringCourseSearch').val('');
+                $('#offeringCourseCode').val('');
+                $('#offeringBatchCount').val(1);
+                $('#offeringCapacity').val(30);
+                $('#offeringFaculty').val('');
+                loadOfferings(planId);
+            } else {
+                alert(data.error || 'Error adding offering');
+            }
+        });
+    });
+    
+    // Save elective offering faculty assignments
+    $(document).on('click', '.save-offering-assignment', function() {
+        const btn = $(this);
+        const offeringId = btn.data('offering');
+        const card = btn.closest('.offering-card');
+        // Use the plan id attached to this offering card if present (handles aggregated matrix flow)
+        const planId = card.data('plan-id') || $('#offeringPlanId').val();
+        
+        // Collect all batch assignments for this offering
+        const assignments = [];
+        card.find('tr[data-offering="' + offeringId + '"]').each(function() {
+            const batchNum = $(this).data('batch');
+            const facultyId = $(this).find('.elective-faculty-select').val();
+            const labAsstId = $(this).find('.elective-lab-asst-select').val() || null;
+            
+            assignments.push({
+                batch_number: batchNum,
+                faculty_id: facultyId || null,
+                lab_assistant_id: labAsstId
+            });
+        });
+        
+        btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i> Saving...');
+        
+        $.ajax({
+            url: "{% url 'api_save_elective_offering_assignment' %}",
+            type: 'POST',
+            contentType: 'application/json',
+            data: JSON.stringify({
+                offering_id: offeringId,
+                assignments: assignments
+            }),
+            headers: {
+                'X-CSRFToken': '{{ csrf_token }}'
+            },
+            success: function(data) {
+                btn.prop('disabled', false).html('<i class="fas fa-save"></i> Save Assignment');
+                if (data.success) {
+                    // Show success and reload
+                    loadOfferings(planId);
+                    toastr.success('Faculty assignment saved successfully');
+                } else {
+                    alert(data.error || 'Error saving assignment');
+                }
+            },
+            error: function() {
+                btn.prop('disabled', false).html('<i class="fas fa-save"></i> Save Assignment');
+                alert('Error saving assignment');
+            }
+        });
+    });
+    
+    // Delete offering from modal
+    $(document).on('click', '.delete-offering', function() {
+        const offeringId = $(this).data('id');
+        const planId = $('#offeringPlanId').val();
+        
+        if (!confirm('Remove this course offering?')) return;
+        
+        $.post("{% url 'api_remove_elective_offering' %}", {
+            offering_id: offeringId,
+            csrfmiddlewaretoken: '{{ csrf_token }}'
+        }, function(data) {
+            if (data.success) {
+                loadOfferings(planId);
+            } else {
+                alert(data.error || 'Error removing offering');
+            }
+        });
+    });
+
+    // ======================== PEC Scheduling Groups ========================
+    const pecMinGroups = {{ pec_min_groups|default:2 }};
+    const pecPlanIds = {{ pec_plan_ids_json|default:"[]"|safe }};
+    const semesterId = {% if semester_obj %}{{ semester_obj.id }}{% else %}null{% endif %};
+    const pecBranch = '{{ selected_branch|default:""|escapejs }}';
+    const pecProgramType = '{{ selected_program|default:"UG"|escapejs }}';
+    
+    // Group state: array of arrays of course objects
+    let pecGroups = {{ pec_groups_json|default:"[]"|safe }};
+    // PEC plan metadata for merged row manage dropdown
+    const pecSlots = {{ pec_slots_json|default:"[]"|safe }};
+    
+    // Ensure minimum groups
+    while (pecGroups.length < pecMinGroups) {
+        pecGroups.push([]);
+    }
+
+    // Populate merged PEC Manage menu (if present)
+    (function populatePecMergedManageMenu() {
+        const menu = $('#pec-merged-manage-menu');
+        if (!menu || menu.length === 0) return;
+        menu.empty();
+        if (!Array.isArray(pecSlots) || pecSlots.length === 0) {
+            menu.append('<span class="dropdown-item text-muted">No PEC slots</span>');
+            return;
+        }
+        pecSlots.forEach(function(s) {
+            menu.append(`<a class="dropdown-item pec-merged-manage-item" href="#" data-plan-id="${s.id}">${s.code}</a>`);
+        });
+    })();
+    
+    // Color palette for group columns
+    const groupColors = ['#6f42c1','#0d6efd','#198754','#fd7e14','#dc3545','#20c997','#6610f2','#e83e8c'];
+    
+    function getGroupColor(idx) { return groupColors[idx % groupColors.length]; }
+    function getGroupName(idx) { return 'Group ' + (idx + 1); }
+    
+    // ---- Render the full table ----
+    function renderPecMatrix() {
+        const numGroups = pecGroups.length;
+        
+        // Update badge
+        $('#pec-group-count-badge').text(numGroups + ' Groups');
+        
+        // Build labels
+        let labels = '';
+        pecGroups.forEach((g, i) => {
+            labels += `<span class="badge mr-1" style="background:${getGroupColor(i)};color:#fff;font-size:0.8rem;">${getGroupName(i)} (${g.length})</span>`;
+        });
+        $('#pec-group-labels').html(labels);
+        
+        // Build thead
+        let theadHtml = '<tr>';
+        theadHtml += '<th style="min-width:120px;">Course Code</th>';
+        theadHtml += '<th>Title</th>';
+        theadHtml += '<th style="width:60px;">Credits</th>';
+        theadHtml += '<th style="width:70px;">Type</th>';
+        theadHtml += '<th style="width:80px;">Batches</th>';
+        theadHtml += '<th style="width:90px;">Cap/Batch</th>';
+        pecGroups.forEach((g, i) => {
+            const canRemove = numGroups > pecMinGroups;
+            const removeBtn = canRemove
+                ? `<br><button class="btn btn-xs btn-outline-danger mt-1 pec-remove-group-btn" data-group="${i}" title="Remove group"><i class="fas fa-times fa-xs"></i></button>`
+                : '';
+            theadHtml += `<th class="text-center" style="min-width:100px;background:#f3f0ff;border-top:3px solid ${getGroupColor(i)};">
+                <strong>${getGroupName(i)}</strong>
+                <br><small class="text-muted">${g.length} course${g.length !== 1 ? 's' : ''}</small>
+                ${removeBtn}
+            </th>`;
+        });
+        theadHtml += '<th style="width:50px;"></th>';
+        theadHtml += '</tr>';
+        $('#pec-matrix-thead').html(theadHtml);
+        
+        // Build tbody - flatten all courses with their group index
+        let allCourses = [];
+        pecGroups.forEach((g, gi) => {
+            g.forEach(c => {
+                allCourses.push({...c, _groupIdx: gi});
+            });
+        });
+        
+        let tbodyHtml = '';
+        if (allCourses.length === 0) {
+            tbodyHtml = `<tr id="pec-empty-row"><td colspan="${6 + numGroups + 1}" class="text-center text-muted py-4">
+                <i class="fas fa-inbox fa-2x mb-2 d-block"></i>
+                No courses added yet. Use the search below to add courses.
+            </td></tr>`;
+        } else {
+            allCourses.forEach(c => {
+                const typeBadge = c.type ? `<span class="badge badge-info">${c.type}</span>` : '';
+                let radioCells = '';
+                pecGroups.forEach((g, gi) => {
+                    const checked = (gi === c._groupIdx) ? 'checked' : '';
+                    const rid = `pec-${c.code}-g${gi}`;
+                    radioCells += `<td class="text-center" style="vertical-align:middle;">
+                        <div class="custom-control custom-radio d-flex justify-content-center">
+                            <input type="radio" class="custom-control-input pec-slot-radio"
+                                   id="${rid}" name="pec-slot-${c.code}" value="${gi}" ${checked}>
+                            <label class="custom-control-label" for="${rid}"></label>
+                        </div>
+                    </td>`;
+                });
+                
+                tbodyHtml += `<tr data-course="${c.code}">
+                    <td><strong class="text-primary">${c.code}</strong></td>
+                    <td>${c.title || ''}</td>
+                    <td class="text-center">${c.credits || ''}</td>
+                    <td>${typeBadge}</td>
+                    <td><input type="number" class="form-control form-control-sm pec-batch-count" value="${c.batch_count || 1}" min="1" max="10" style="width:60px;"></td>
+                    <td><input type="number" class="form-control form-control-sm pec-capacity" value="${c.capacity || 30}" min="1" max="200" style="width:70px;"></td>
+                    ${radioCells}
+                    <td><button class="btn btn-xs btn-outline-danger pec-remove-row" title="Remove course"><i class="fas fa-times"></i></button></td>
+                </tr>`;
+            });
+        }
+        $('#pec-matrix-tbody').html(tbodyHtml);
+        
+        // Update group selector for "Add Course"
+        const sel = $('#pec-add-target-group');
+        const prevVal = sel.val();
+        sel.empty();
+        pecGroups.forEach((g, i) => {
+            sel.append(`<option value="${i}">${getGroupName(i)}</option>`);
+        });
+        if (prevVal !== null && prevVal < numGroups) sel.val(prevVal);
+        
+        updatePecSlotSummary();
+    }
+    
+    // ---- Read current state from DOM back into pecGroups ----
+    function syncGroupsFromDOM() {
+        const newGroups = [];
+        for (let i = 0; i < pecGroups.length; i++) newGroups.push([]);
+        
+        $('#pec-matrix-tbody tr[data-course]').each(function() {
+            const code = $(this).data('course');
+            const selectedGroup = parseInt($(this).find('.pec-slot-radio:checked').val());
+            const bc = parseInt($(this).find('.pec-batch-count').val()) || 1;
+            const cap = parseInt($(this).find('.pec-capacity').val()) || 30;
+            
+            // Find the course object
+            let courseObj = null;
+            for (const g of pecGroups) {
+                for (const c of g) {
+                    if (c.code === code) { courseObj = {...c}; break; }
+                }
+                if (courseObj) break;
+            }
+            if (!courseObj) courseObj = {code: code, title: '', credits: 0, type: ''};
+            courseObj.batch_count = bc;
+            courseObj.capacity = cap;
+            
+            if (selectedGroup >= 0 && selectedGroup < newGroups.length) {
+                newGroups[selectedGroup].push(courseObj);
+            }
+        });
+        
+        pecGroups = newGroups;
+    }
+    
+    // ---- Add Group ----
+    $('#pec-add-group-btn').on('click', function() {
+        syncGroupsFromDOM();
+        pecGroups.push([]);
+        renderPecMatrix();
+    });
+    
+    // ---- Remove Group ----
+    $(document).on('click', '.pec-remove-group-btn', function() {
+        const gi = parseInt($(this).data('group'));
+        syncGroupsFromDOM();
+        
+        if (pecGroups.length <= pecMinGroups) {
+            toastr.warning(`Minimum ${pecMinGroups} groups required.`);
+            return;
+        }
+        
+        // If group has courses, move them to group 0
+        if (pecGroups[gi] && pecGroups[gi].length > 0) {
+            if (!confirm(`Group ${gi+1} has ${pecGroups[gi].length} course(s). They will be moved to Group 1. Continue?`)) return;
+            pecGroups[0] = pecGroups[0].concat(pecGroups[gi]);
+        }
+        pecGroups.splice(gi, 1);
+        renderPecMatrix();
+    });
+    
+    // ---- Course search ----
+    let pecSearchTimeout = null;
+    $('#pec-add-course-search').on('input', function() {
+        const query = $(this).val().trim();
+        const dropdown = $('#pec-add-course-dropdown');
+        if (pecSearchTimeout) clearTimeout(pecSearchTimeout);
+        if (query.length < 2) { dropdown.removeClass('show').empty(); return; }
+
+        pecSearchTimeout = setTimeout(function() {
+            $.get("{% url 'api_search_courses' %}", {q: query, include_placeholders: 'false', limit: 10}, function(data) {
+                dropdown.empty();
+                if (data.courses && data.courses.length > 0) {
+                    const existingCodes = new Set();
+                    $('#pec-matrix-tbody tr[data-course]').each(function() {
+                        existingCodes.add($(this).data('course'));
+                    });
+                    const filtered = data.courses.filter(c => !existingCodes.has(c.course_code));
+                    if (filtered.length > 0) {
+                        filtered.forEach(function(c) {
+                            dropdown.append(`
+                                <a class="dropdown-item pec-course-option" href="#"
+                                   data-code="${c.course_code}" data-title="${c.title}"
+                                   data-credits="${c.credits}" data-type="${c.course_type || ''}">
+                                    <strong>${c.course_code}</strong> - ${c.title}
+                                    <br><small class="text-muted">${c.credits} cr | ${c.course_type || 'T'}</small>
+                                </a>
+                            `);
+                        });
+                    } else {
+                        dropdown.append('<span class="dropdown-item text-muted">All matching courses already in matrix</span>');
+                    }
+                } else {
+                    dropdown.append('<span class="dropdown-item text-muted">No courses found</span>');
+                }
+                dropdown.addClass('show');
+            });
+        }, 300);
+    });
+
+    $(document).on('click', '.pec-course-option', function(e) {
+        e.preventDefault();
+        $('#pec-add-course-code').val($(this).data('code'));
+        $('#pec-add-course-title').val($(this).data('title'));
+        $('#pec-add-course-credits').val($(this).data('credits'));
+        $('#pec-add-course-type').val($(this).data('type'));
+        $('#pec-add-course-search').val($(this).data('code') + ' - ' + $(this).data('title'));
+        $('#pec-add-course-dropdown').removeClass('show');
+        $('#pec-add-course-btn').prop('disabled', false);
+    });
+
+    // ---- Add course to matrix ----
+    $('#pec-add-course-btn').on('click', function() {
+        const code = $('#pec-add-course-code').val();
+        const title = $('#pec-add-course-title').val();
+        const credits = $('#pec-add-course-credits').val();
+        const ctype = $('#pec-add-course-type').val();
+        const targetGroup = parseInt($('#pec-add-target-group').val()) || 0;
+        const batchCount = parseInt($('#pec-add-batch').val()) || 1;
+        const capacity = parseInt($('#pec-add-capacity').val()) || 30;
+
+        if (!code) { alert('Select a course first'); return; }
+        
+        syncGroupsFromDOM();
+        pecGroups[targetGroup].push({
+            code: code,
+            title: title,
+            credits: parseFloat(credits) || 0,
+            type: ctype,
+            batch_count: batchCount,
+            capacity: capacity,
+        });
+        renderPecMatrix();
+
+        // Reset add form
+        $('#pec-add-course-search').val('');
+        $('#pec-add-course-code').val('');
+        $('#pec-add-course-btn').prop('disabled', true);
+    });
+
+    // Handle clicking a merged-PEC manage menu item
+    $(document).on('click', '.pec-merged-manage-item', function(e) {
+        e.preventDefault();
+        const planId = $(this).data('plan-id');
+        const label = $(this).text();
+        if (!planId) return;
+        $('#offeringPlanId').val(planId);
+        $('#offeringSlotName').text(label + ' (PEC)');
+        loadOfferings(planId);
+        $('#manageOfferingsModal').modal('show');
+    });
+
+    // Default Manage button: open modal for first PEC slot (no prompt)
+    $(document).on('click', '#pec-merged-manage-default', function(e) {
+        e.preventDefault();
+        // Instead of opening a single plan, request aggregated offerings for all matrix courses.
+        const allCodes = [];
+        pecGroups.forEach(g => {
+            g.forEach(c => { if (c && c.code) allCodes.push(c.code); });
+        });
+        if (allCodes.length === 0) {
+            // fallback: open dropdown
+            $('#pec-merged-manage-menu').dropdown();
+            return;
+        }
+
+        // Call server to get or create offerings for these matrix courses
+        $.ajax({
+            url: "{% url 'api_pec_manage_offerings' %}",
+            method: 'POST',
+            contentType: 'application/json',
+            data: JSON.stringify({
+                course_codes: allCodes,
+                plan_ids: pecPlanIds,
+                semester_id: semesterId
+            }),
+            headers: {'X-CSRFToken': '{{ csrf_token }}'},
+            success: function(resp) {
+                $('#offeringSlotName').text('PEC — Matrix');
+                const container = $('#offeringsContainer');
+                container.empty();
+                const data = resp;
+                let totalCap = 0;
+                if (data.offerings && data.offerings.length > 0) {
+                    data.offerings.forEach(function(o) {
+                        const cap = o.batch_count * o.capacity_per_batch;
+                        totalCap += cap;
+
+                        // Build batch assignment rows
+                        let batchRows = '';
+                        for (let i = 1; i <= o.batch_count; i++) {
+                            const assignment = o.assignments[i] || {};
+                            const selectedFaculty = assignment.faculty_id || '';
+                            const selectedLabAsst = assignment.lab_assistant_id || '';
+
+                            const facultyPicker = buildEntityPicker(
+                                `elective_faculty_${o.id}_${i}`,
+                                'elective-faculty-select',
+                                'faculty',
+                                'Type to search faculty...',
+                                selectedFaculty,
+                                i
+                            );
+
+                            const labAsstPicker = buildEntityPicker(
+                                `elective_lab_asst_${o.id}_${i}`,
+                                'elective-lab-asst-select',
+                                'lab_assistant',
+                                'Type to search lab assistant...',
+                                selectedLabAsst,
+                                i
+                            );
+
+                            const labAsstCol = o.needs_lab_assistant ? `
+                                <td style="width:35%">
+                                    ${labAsstPicker}
+                                </td>` : '<td></td>';
+
+                            batchRows += `
+                                <tr data-offering="${o.id}" data-batch="${i}">
+                                    <td style="width:15%"><strong>Batch ${i}</strong></td>
+                                    <td style="width:35%">
+                                        ${facultyPicker}
+                                    </td>
+                                    ${labAsstCol}
+                                    <td style="width:15%">
+                                        <span class="badge ${assignment.faculty_id ? 'badge-success' : 'badge-warning'}">
+                                            ${assignment.faculty_id ? '<i class="fas fa-check"></i>' : '<i class="fas fa-exclamation"></i>'}
+                                        </span>
+                                    </td>
+                                </tr>
+                            `;
+                        }
+
+                        const labHeader = o.needs_lab_assistant ? '<th style="width:35%">Lab Assistant</th>' : '<th></th>';
+
+                        container.append(`
+                            <div class="card card-outline card-secondary mb-2 offering-card" data-offering-id="${o.id}">
+                                <div class="card-header py-2 d-flex justify-content-between align-items-center">
+                                    <div>
+                                        <strong>${o.course_code}</strong> - ${o.course_title}
+                                        ${o.needs_lab_assistant ? '<span class="badge badge-info ml-2">L/LIT</span>' : ''}
+                                    </div>
+                                    <div>
+                                        <span class="badge badge-secondary mr-2">${o.batch_count} batch(es) × ${o.capacity_per_batch} = ${cap}</span>
+                                        <button type="button" class="btn btn-xs btn-danger delete-offering" data-id="${o.id}" title="Remove">
+                                            <i class="fas fa-times"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                                <div class="card-body p-2">
+                                    <table class="table table-sm table-borderless mb-0">
+                                        <thead>
+                                            <tr class="text-muted">
+                                                <th style="width:15%">Batch</th>
+                                                <th style="width:35%">Faculty</th>
+                                                ${labHeader}
+                                                <th style="width:15%">Status</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            ${batchRows}
+                                        </tbody>
+                                    </table>
+                                </div>
+                                <div class="card-footer py-1 text-right">
+                                    <button type="button" class="btn btn-xs btn-primary save-offering-assignment" data-offering="${o.id}">
+                                        <i class="fas fa-save"></i> Save Assignment
+                                    </button>
+                                </div>
+                            </div>
+                        `);
+                    });
+                } else {
+                    container.html('<div class="text-center py-3 text-muted">No courses offered yet. Add courses above.</div>');
+                }
+
+                $('#totalCapacity').text(totalCap);
+                updateCapacityStatus(totalCap, studentCount);
+                $('#manageOfferingsModal').modal('show');
+            },
+            error: function(xhr) {
+                toastr.error(xhr.responseJSON?.error || 'Error loading offerings');
+            }
+        });
+    });
+
+    // Clicking a merged offering item should open its offering in the modal directly
+    $(document).on('click', '.pec-offering-item', function(e) {
+        e.preventDefault();
+        const offeringId = $(this).data('offering-id');
+        const planId = $(this).data('plan-id');
+        if (!planId) return;
+        window.highlightOfferingId = offeringId;
+        $('#offeringPlanId').val(planId);
+        $('#offeringSlotName').text('PEC — Manage');
+        loadOfferings(planId);
+        $('#manageOfferingsModal').modal('show');
+    });
+
+    // ---- Remove course from matrix ----
+    $(document).on('click', '.pec-remove-row', function() {
+        const code = $(this).closest('tr').data('course');
+        syncGroupsFromDOM();
+        // Remove course from all groups
+        pecGroups = pecGroups.map(g => g.filter(c => c.code !== code));
+        renderPecMatrix();
+    });
+
+    // ---- Update summary on radio/input change ----
+    $(document).on('change', '.pec-slot-radio, .pec-batch-count, .pec-capacity', function() {
+        updatePecSlotSummary();
+    });
+
+    function updatePecSlotSummary() {
+        const counts = {};
+        const caps = {};
+        pecGroups.forEach((g, i) => { counts[i] = 0; caps[i] = 0; });
+
+        $('#pec-matrix-tbody tr[data-course]').each(function() {
+            const selectedGroup = parseInt($(this).find('.pec-slot-radio:checked').val());
+            const bc = parseInt($(this).find('.pec-batch-count').val()) || 1;
+            const cap = parseInt($(this).find('.pec-capacity').val()) || 30;
+            if (selectedGroup >= 0 && counts[selectedGroup] !== undefined) {
+                counts[selectedGroup]++;
+                caps[selectedGroup] += bc * cap;
+            }
+        });
+
+        let html = '';
+        pecGroups.forEach((g, i) => {
+            const capClass = (studentCount > 0 && caps[i] < studentCount) ? 'text-danger font-weight-bold' : 'text-success';
+            html += `<span class="mr-3"><strong style="color:${getGroupColor(i)}">${getGroupName(i)}:</strong> ${counts[i]} courses, <span class="${capClass}">${caps[i]} seats</span></span>`;
+        });
+        $('#pec-slot-summary').html(html);
+    }
+
+    // ---- Save configuration ----
+    $('#pec-save-arrangement-btn').on('click', function() {
+        const btn = $(this);
+        syncGroupsFromDOM();
+        
+        // Validate: every course must have a group selected
+        let valid = true;
+        $('#pec-matrix-tbody tr[data-course]').each(function() {
+            const code = $(this).data('course');
+            const selected = $(this).find('.pec-slot-radio:checked').val();
+            if (selected === undefined || selected === null) {
+                alert(`Please select a group for ${code}`);
+                valid = false;
+                return false;
+            }
+        });
+        if (!valid) return;
+
+        btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin mr-1"></i>Saving...');
+
+        $.ajax({
+            url: "{% url 'api_save_pec_arrangement' %}",
+            type: 'POST',
+            contentType: 'application/json',
+            data: JSON.stringify({
+                semester_id: semesterId,
+                branch: pecBranch,
+                program_type: pecProgramType,
+                plan_ids: pecPlanIds,
+                groups: pecGroups,
+                push_offerings: $('#pec-push-offerings').is(':checked')
+            }),
+            headers: { 'X-CSRFToken': '{{ csrf_token }}' },
+            success: function(resp) {
+                btn.prop('disabled', false).html('<i class="fas fa-save mr-1"></i>Save Configuration');
+                if (resp.success) {
+                    let msg = `Configuration saved! ${resp.group_count} groups.`;
+                    const parts = [];
+                    if (resp.created) parts.push(`${resp.created} offerings added`);
+                    if (resp.updated) parts.push(`${resp.updated} updated`);
+                    if (resp.removed) parts.push(`${resp.removed} removed`);
+                    if (parts.length) msg += ' (' + parts.join(', ') + ')';
+                    toastr.success(msg);
+                    setTimeout(() => location.reload(), 1000);
+                } else {
+                    toastr.error(resp.error || 'Error saving configuration');
+                }
+            },
+            error: function(xhr) {
+                btn.prop('disabled', false).html('<i class="fas fa-save mr-1"></i>Save Configuration');
+                toastr.error(xhr.responseJSON?.error || 'Error saving configuration');
+            }
+        });
+    });
+    
+    // Initial render
+    renderPecMatrix();
+
+    // When manage offerings modal closes, reload page
+    $('#manageOfferingsModal').on('hidden.bs.modal', function() {
+        {% if pec_has_matrix %}
+        location.reload();
+        {% endif %}
+    });
+    
+    // Close dropdowns on outside click
+    $(document).on('click', function(e) {
+        if (!$(e.target).closest('#offeringCourseSearch, #offeringCourseDropdown, #pec-add-course-search, #pec-add-course-dropdown, .searchable-entity-picker, #ioc-course-search, .ioc-course-dropdown, #ioc-faculty-search, .ioc-faculty-dropdown').length) {
+            $('#offeringCourseDropdown').removeClass('show');
+            $('#pec-add-course-dropdown').removeClass('show');
+            $('.ioc-course-dropdown').removeClass('show');
+            $('.ioc-faculty-dropdown').removeClass('show');
+            closeEntityDropdowns();
+        }
+    });
+});
+</script>
+{% endblock custom_js %}

@@ -1,0 +1,112 @@
+{% extends 'main_app/base.html' %}
+{% load static %}
+{% block page_title %}{{page_title}}{% endblock page_title %}
+
+{% block content %}
+<section class="content">
+    <div class="container-fluid">
+        <div class="row">
+            <div class="col-md-12">
+                <div class="card card-primary">
+                    <div class="card-header">
+                        <h3 class="card-title">
+                            <i class="fas fa-users"></i> {{page_title}}
+                        </h3>
+                    </div>
+                    <div class="card-body">
+                        {% if messages %}
+                            {% for message in messages %}
+                                <div class="alert alert-{% if message.tags %}{{ message.tags }}{% else %}info{% endif %} alert-dismissible fade show" role="alert">
+                                    {{ message }}
+                                    <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                                        <span aria-hidden="true">&times;</span>
+                                    </button>
+                                </div>
+                            {% endfor %}
+                        {% endif %}
+
+                        <!-- Course Assignments Summary -->
+                        {% if assignments %}
+                        <div class="mb-4">
+                            <h5>My Course Assignments:</h5>
+                            <div class="row">
+                                {% for assignment in assignments %}
+                                <div class="col-md-4 mb-2">
+                                    <div class="info-box bg-info">
+                                        <span class="info-box-icon"><i class="fas fa-book"></i></span>
+                                        <div class="info-box-content">
+                                            <span class="info-box-text">{{ assignment.course.course_code }}</span>
+                                            <span class="info-box-number">Batch {{ assignment.batch_label }}</span>
+                                        </div>
+                                    </div>
+                                </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                        {% endif %}
+
+                        {% if students %}
+                        <div class="table-responsive">
+                            <table class="table table-bordered table-striped" id="studentsTable">
+                                <thead class="bg-primary">
+                                    <tr>
+                                        <th>#</th>
+                                        <th>Photo</th>
+                                        <th>Register No</th>
+                                        <th>Name</th>
+                                        <th>Batch</th>
+                                        <th>Semester</th>
+                                        <th>Email</th>
+                                        <th>Phone</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for student in students %}
+                                    <tr>
+                                        <td>{{ forloop.counter }}</td>
+                                        <td>
+                                            {% if student.user.profile_pic %}
+                                                <img src="{{ student.user.profile_pic.url }}" alt="Profile" class="img-circle" style="width: 40px; height: 40px; object-fit: cover;">
+                                            {% else %}
+                                                <img src="{% static 'dist/img/user-placeholder.png' %}" alt="Profile" class="img-circle" style="width: 40px; height: 40px;">
+                                            {% endif %}
+                                        </td>
+                                        <td><strong>{{ student.register_no }}</strong></td>
+                                        <td>{{ student.user.full_name }}</td>
+                                        <td><span class="badge badge-primary">{{ student.batch_label }}</span></td>
+                                        <td>Sem {{ student.current_semester }}</td>
+                                        <td>{{ student.user.email }}</td>
+                                        <td>{{ student.user.phone|default:"-" }}</td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                        {% else %}
+                        <div class="alert alert-info">
+                            <i class="fas fa-info-circle"></i> No students found in your assigned courses.
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock content %}
+
+{% block custom_js %}
+<script>
+    $(document).ready(function() {
+        $('#studentsTable').DataTable({
+            "paging": true,
+            "lengthChange": true,
+            "searching": true,
+            "ordering": true,
+            "info": true,
+            "autoWidth": false,
+            "responsive": true
+        });
+    });
+</script>
+{% endblock custom_js %}

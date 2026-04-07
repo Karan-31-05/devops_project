@@ -1,0 +1,77 @@
+{% extends 'main_app/base.html' %}
+{% load static %}
+{% block page_title %}{{page_title}}{% endblock page_title %}
+
+{% block content %}
+<section class="content">
+    <div class="container-fluid">
+        <div class="row">
+            <div class="col-md-12">
+                <div class="card">
+                    <div class="card-header">
+                        <h3 class="card-title">{{page_title}}</h3>
+                    </div>
+                    <div class="card-body">
+                        <table id="example2" class="table table-bordered table-hover">
+                            <thead class="thead-dark">
+                                <tr>
+                                    <th>#</th>
+                                    <th>Lab</th>
+                                    <th>Location</th>
+                                    <th>Reported By</th>
+                                    <th>Category</th>
+                                    <th>Description</th>
+                                    <th>Priority</th>
+                                    <th>Status</th>
+                                    <th>Reported On</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for issue in issues %}
+                                <tr>
+                                    <td>{{ forloop.counter }}</td>
+                                    <td>{{ issue.get_lab_name_display }}</td>
+                                    <td>{{ issue.place_code }}</td>
+                                    <td>{{ issue.reported_by.full_name }}</td>
+                                    <td>{{ issue.get_issue_category_display }}</td>
+                                    <td>{{ issue.description|truncatewords:10 }}</td>
+                                    <td>
+                                        {% if issue.priority == 'CRITICAL' %}
+                                        <span class="badge badge-dark">Critical</span>
+                                        {% elif issue.priority == 'HIGH' %}
+                                        <span class="badge badge-danger">High</span>
+                                        {% elif issue.priority == 'MEDIUM' %}
+                                        <span class="badge badge-warning">Medium</span>
+                                        {% else %}
+                                        <span class="badge badge-info">Low</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if issue.status == 'PENDING' %}
+                                        <span class="badge badge-secondary">Pending</span>
+                                        {% elif issue.status == 'IN_PROGRESS' %}
+                                        <span class="badge badge-warning">In Progress</span>
+                                        {% elif issue.status == 'RESOLVED' %}
+                                        <span class="badge badge-success">Resolved</span>
+                                        {% elif issue.status == 'ESCALATED' %}
+                                        <span class="badge badge-danger">Escalated</span>
+                                        {% else %}
+                                        <span class="badge badge-dark">Closed</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>{{ issue.reported_at|date:"d M Y" }}</td>
+                                </tr>
+                                {% empty %}
+                                <tr>
+                                    <td colspan="9" class="text-center">No lab issues reported.</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock content %}

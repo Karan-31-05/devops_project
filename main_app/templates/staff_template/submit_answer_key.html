@@ -1,0 +1,118 @@
+{% extends 'main_app/base.html' %}
+{% load static %}
+
+{% block page_title %}{{ page_title }}{% endblock page_title %}
+
+{% block content %}
+<section class="content">
+    <div class="container-fluid">
+        <div class="row">
+            <div class="col-md-8 offset-md-2">
+                <!-- Header -->
+                <div class="mb-3">
+                    <a href="{% url 'staff_list_structured_qps' %}" class="btn btn-outline-secondary btn-sm">
+                        <i class="fas fa-arrow-left"></i> Back to Dashboard
+                    </a>
+                </div>
+
+                <div class="card card-outline card-primary">
+                    <div class="card-header">
+                        <h5 class="card-title mb-0">
+                            <i class="fas fa-key text-primary"></i> Submit Answer Key
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <!-- QP Info -->
+                        <div class="alert alert-info">
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <p class="mb-1"><strong>Course:</strong> {{ qp.course.course_code }} - {{ qp.course.title }}</p>
+                                    <p class="mb-1"><strong>Regulation:</strong> {{ qp.regulation }}</p>
+                                </div>
+                                <div class="col-md-6">
+                                    <p class="mb-1"><strong>Exam:</strong> {{ qp.exam_month_year }}</p>
+                                    <p class="mb-1"><strong>Status:</strong> 
+                                        <span class="badge badge-success">{{ qp.get_status_display }}</span>
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+
+                        {% if qp.answer_key_status == 'REJECTED' and qp.answer_key_comments %}
+                        <div class="alert alert-danger">
+                            <strong><i class="fas fa-exclamation-triangle"></i> Answer Key Rejected:</strong><br>
+                            {{ qp.answer_key_comments }}
+                        </div>
+                        {% endif %}
+
+                        {% if qp.answer_key_status == 'SUBMITTED' %}
+                        <div class="alert alert-warning">
+                            <i class="fas fa-clock"></i> Your answer key has been submitted and is pending HOD review.
+                            <br><small>Submitted on: {{ qp.answer_key_submitted_at|date:"d M Y, H:i" }}</small>
+                        </div>
+                        {% endif %}
+
+                        {% if qp.answer_key_status == 'APPROVED' %}
+                        <div class="alert alert-success">
+                            <i class="fas fa-check-circle"></i> Your answer key has been approved by the HOD.
+                        </div>
+                        {% endif %}
+
+                        {% if qp.answer_key_document %}
+                        <div class="mb-3">
+                            <strong>Current Answer Key:</strong> 
+                            <a href="{{ qp.answer_key_document.url }}" target="_blank" class="btn btn-sm btn-outline-primary">
+                                <i class="fas fa-download"></i> Download Current File
+                            </a>
+                        </div>
+                        <hr>
+                        {% endif %}
+
+                        <!-- Upload Form -->
+                        {% if qp.answer_key_status != 'APPROVED' %}
+                        <form method="post" enctype="multipart/form-data">
+                            {% csrf_token %}
+                            <div class="form-group">
+                                <label for="answer_key_document">
+                                    {% if qp.answer_key_status == 'REJECTED' %}
+                                    Upload Revised Answer Key <span class="text-danger">*</span>
+                                    {% elif qp.answer_key_document %}
+                                    Replace Answer Key <span class="text-danger">*</span>
+                                    {% else %}
+                                    Upload Answer Key Document <span class="text-danger">*</span>
+                                    {% endif %}
+                                </label>
+                                <div class="custom-file">
+                                    <input type="file" class="custom-file-input" id="answer_key_document" 
+                                           name="answer_key_document" accept=".pdf,.doc,.docx" required>
+                                    <label class="custom-file-label" for="answer_key_document">Choose file...</label>
+                                </div>
+                                <small class="form-text text-muted">Accepted formats: PDF, DOC, DOCX (Max 10MB)</small>
+                            </div>
+                            <button type="submit" class="btn btn-primary btn-block">
+                                <i class="fas fa-upload"></i> 
+                                {% if qp.answer_key_status == 'REJECTED' %}Resubmit Answer Key
+                                {% elif qp.answer_key_document %}Replace Answer Key
+                                {% else %}Submit Answer Key{% endif %}
+                            </button>
+                        </form>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock content %}
+
+{% block custom_js %}
+<script>
+$(document).ready(function() {
+    // Show selected filename
+    $('.custom-file-input').on('change', function() {
+        var fileName = $(this).val().split('\\').pop();
+        $(this).next('.custom-file-label').addClass("selected").html(fileName);
+    });
+});
+</script>
+{% endblock custom_js %}

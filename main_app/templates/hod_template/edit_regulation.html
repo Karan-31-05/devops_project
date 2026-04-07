@@ -1,0 +1,217 @@
+{% extends 'main_app/base.html' %}
+{% load static %}
+{% block page_title %}{{page_title}}{% endblock page_title %}
+
+{% block content %}
+<section class="content">
+    <div class="container-fluid">
+        <div class="row">
+            <div class="col-md-10 offset-md-1">
+                <div class="card card-primary">
+                    <div class="card-header">
+                        <h3 class="card-title">{{page_title}} - {{ regulation }}</h3>
+                    </div>
+                    <form method="POST">
+                        {% csrf_token %}
+                        <div class="card-body">
+                            {% if form.non_field_errors %}
+                            <div class="alert alert-danger">
+                                {{ form.non_field_errors }}
+                            </div>
+                            {% endif %}
+
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="form-group">
+                                        <label for="{{ form.year.id_for_label }}">Year</label>
+                                        {{ form.year }}
+                                        {% if form.year.errors %}
+                                            <div class="invalid-feedback d-block">{{ form.year.errors }}</div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="form-group">
+                                        <label for="{{ form.name.id_for_label }}">Name</label>
+                                        {{ form.name }}
+                                        {% if form.name.errors %}
+                                            <div class="invalid-feedback d-block">{{ form.name.errors }}</div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="{{ form.description.id_for_label }}">Description</label>
+                                {{ form.description }}
+                                {% if form.description.errors %}
+                                    <div class="invalid-feedback d-block">{{ form.description.errors }}</div>
+                                {% endif %}
+                            </div>
+
+                            <div class="form-group">
+                                <div class="checkbox-wrapper">
+                                    {{ form.is_active }}
+                                    <label for="{{ form.is_active.id_for_label }}">Active</label>
+                                </div>
+                            </div>
+
+                            <!-- Course Categories Section -->
+                            <hr>
+                            <h5 class="mb-3"><i class="fas fa-tags"></i> Course Categories</h5>
+                            <p class="text-muted small">Select the course categories available under this regulation:</p>
+                            
+                            <div class="mb-2">
+                                <button type="button" class="btn btn-sm btn-outline-primary" onclick="selectAllCategories()">
+                                    <i class="fas fa-check-double"></i> Select All
+                                </button>
+                                <button type="button" class="btn btn-sm btn-outline-secondary" onclick="deselectAllCategories()">
+                                    <i class="fas fa-times"></i> Deselect All
+                                </button>
+                            </div>
+                            
+                            <div class="row" id="categoryCheckboxes">
+                                {% for code, label in course_category_choices %}
+                                <div class="col-md-4 col-sm-6">
+                                    <div class="form-check mb-2">
+                                        <input class="form-check-input category-checkbox" type="checkbox" 
+                                               name="course_categories" value="{{ code }}" 
+                                               id="cat_{{ code }}"
+                                               {% if code in selected_categories %}checked{% endif %}>
+                                        <label class="form-check-label" for="cat_{{ code }}">
+                                            <strong>{{ code }}</strong> - {{ label }}
+                                        </label>
+                                    </div>
+                                </div>
+                                {% endfor %}
+                            </div>
+                            
+                            <!-- Existing Custom Categories -->
+                            {% if existing_custom_categories %}
+                            <div class="mt-3">
+                                <h6 class="text-info"><i class="fas fa-star"></i> Custom Categories (existing)</h6>
+                                <div class="row">
+                                    {% for cat in existing_custom_categories %}
+                                    <div class="col-md-4 col-sm-6">
+                                        <div class="form-check mb-2">
+                                            <input class="form-check-input category-checkbox" type="checkbox" 
+                                                   name="existing_custom_cats" value="{{ cat.id }}" 
+                                                   id="existing_cat_{{ cat.id }}" checked>
+                                            <label class="form-check-label" for="existing_cat_{{ cat.id }}">
+                                                <strong>{{ cat.code }}</strong> - {{ cat.description }}
+                                            </label>
+                                        </div>
+                                    </div>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                            {% endif %}
+                            
+                            <!-- Add Custom Category Section -->
+                            <div class="card card-outline card-info mt-3">
+                                <div class="card-header py-2">
+                                    <h6 class="mb-0"><i class="fas fa-plus-circle"></i> Add Custom Category</h6>
+                                </div>
+                                <div class="card-body py-2">
+                                    <div id="customCategories"></div>
+                                    <div class="row align-items-end">
+                                        <div class="col-md-3">
+                                            <label class="small">Code (e.g., NMC)</label>
+                                            <input type="text" class="form-control form-control-sm" id="newCatCode" 
+                                                   placeholder="Code" maxlength="10" style="text-transform: uppercase;">
+                                        </div>
+                                        <div class="col-md-6">
+                                            <label class="small">Description</label>
+                                            <input type="text" class="form-control form-control-sm" id="newCatDesc" 
+                                                   placeholder="e.g., Naan Mudhalvan Course">
+                                        </div>
+                                        <div class="col-md-3">
+                                            <button type="button" class="btn btn-info btn-sm" onclick="addCustomCategory()">
+                                                <i class="fas fa-plus"></i> Add Category
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="card-footer">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-save"></i> Update Regulation
+                            </button>
+                            <a href="{% url 'manage_regulation' %}" class="btn btn-secondary">
+                                <i class="fas fa-arrow-left"></i> Back
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock content %}
+
+{% block extra_js %}
+<script>
+    let customCatCount = 0;
+    
+    function selectAllCategories() {
+        document.querySelectorAll('.category-checkbox').forEach(cb => cb.checked = true);
+    }
+    
+    function deselectAllCategories() {
+        document.querySelectorAll('.category-checkbox').forEach(cb => cb.checked = false);
+    }
+    
+    function addCustomCategory() {
+        const code = document.getElementById('newCatCode').value.trim().toUpperCase();
+        const desc = document.getElementById('newCatDesc').value.trim();
+        
+        if (!code) {
+            alert('Please enter a category code');
+            return;
+        }
+        if (!desc) {
+            alert('Please enter a category description');
+            return;
+        }
+        
+        // Check if code already exists
+        if (document.getElementById('cat_' + code) || document.getElementById('custom_cat_' + code)) {
+            alert('This category code already exists!');
+            return;
+        }
+        
+        customCatCount++;
+        const container = document.getElementById('customCategories');
+        const div = document.createElement('div');
+        div.className = 'row mb-2 align-items-center custom-cat-row';
+        div.id = 'custom_row_' + customCatCount;
+        div.innerHTML = `
+            <div class="col-md-3">
+                <input type="hidden" name="custom_cat_codes" value="${code}">
+                <input type="text" class="form-control form-control-sm" value="${code}" readonly>
+            </div>
+            <div class="col-md-6">
+                <input type="hidden" name="custom_cat_descs" value="${desc}">
+                <input type="text" class="form-control form-control-sm" value="${desc}" readonly>
+            </div>
+            <div class="col-md-3">
+                <button type="button" class="btn btn-danger btn-sm" onclick="removeCustomCategory(${customCatCount})">
+                    <i class="fas fa-trash"></i> Remove
+                </button>
+            </div>
+        `;
+        container.appendChild(div);
+        
+        // Clear inputs
+        document.getElementById('newCatCode').value = '';
+        document.getElementById('newCatDesc').value = '';
+    }
+    
+    function removeCustomCategory(id) {
+        const row = document.getElementById('custom_row_' + id);
+        if (row) row.remove();
+    }
+</script>
+{% endblock extra_js %}

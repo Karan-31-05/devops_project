@@ -1,0 +1,583 @@
+{% extends 'main_app/base.html' %}
+{% load static %}
+{% block page_title %}{{page_title}}{% endblock page_title %}
+
+{% block content %}
+
+<section class="content">
+    <div class="container-fluid">
+        <!-- Year of Study Quick Filter Cards -->
+        <div class="row mb-3">
+            <div class="col-12">
+                <div class="btn-group w-100">
+                    <a href="?{% if selected_level %}level={{ selected_level }}&{% endif %}{% if selected_branch %}branch={{ selected_branch }}&{% endif %}{% if selected_batch %}batch={{ selected_batch }}{% endif %}"
+                        class="btn {% if not selected_year %}btn-primary{% else %}btn-outline-primary{% endif %}"
+                        style="flex: 1;">
+                        <i class="fas fa-users mr-1"></i> All Years
+                        <span class="badge {% if not selected_year %}badge-light{% else %}badge-primary{% endif %} ml-1">{{ total_all_years }}</span>
+                    </a>
+                    <a href="?year=1{% if selected_level %}&level={{ selected_level }}{% endif %}{% if selected_branch %}&branch={{ selected_branch }}{% endif %}{% if selected_batch %}&batch={{ selected_batch }}{% endif %}"
+                        class="btn {% if selected_year == '1' %}btn-info{% else %}btn-outline-info{% endif %}"
+                        style="flex: 1;">
+                        <i class="fas fa-seedling mr-1"></i> 1st Year
+                        <span
+                            class="badge {% if selected_year == '1' %}badge-light{% else %}badge-info{% endif %} ml-1">{{ year_1_count }}</span>
+                    </a>
+                    <a href="?year=2{% if selected_level %}&level={{ selected_level }}{% endif %}{% if selected_branch %}&branch={{ selected_branch }}{% endif %}{% if selected_batch %}&batch={{ selected_batch }}{% endif %}"
+                        class="btn {% if selected_year == '2' %}btn-success{% else %}btn-outline-success{% endif %}"
+                        style="flex: 1;">
+                        <i class="fas fa-leaf mr-1"></i> 2nd Year
+                        <span
+                            class="badge {% if selected_year == '2' %}badge-light{% else %}badge-success{% endif %} ml-1">{{ year_2_count }}</span>
+                    </a>
+                    <a href="?year=3{% if selected_level %}&level={{ selected_level }}{% endif %}{% if selected_branch %}&branch={{ selected_branch }}{% endif %}{% if selected_batch %}&batch={{ selected_batch }}{% endif %}"
+                        class="btn {% if selected_year == '3' %}btn-warning{% else %}btn-outline-warning{% endif %}"
+                        style="flex: 1;">
+                        <i class="fas fa-tree mr-1"></i> 3rd Year
+                        <span
+                            class="badge {% if selected_year == '3' %}badge-light{% else %}badge-warning{% endif %} ml-1">{{ year_3_count }}</span>
+                    </a>
+                    <a href="?year=4{% if selected_level %}&level={{ selected_level }}{% endif %}{% if selected_branch %}&branch={{ selected_branch }}{% endif %}{% if selected_batch %}&batch={{ selected_batch }}{% endif %}"
+                        class="btn {% if selected_year == '4' %}btn-danger{% else %}btn-outline-danger{% endif %}"
+                        style="flex: 1;">
+                        <i class="fas fa-graduation-cap mr-1"></i> 4th Year
+                        <span
+                            class="badge {% if selected_year == '4' %}badge-light{% else %}badge-danger{% endif %} ml-1">{{ year_4_count }}</span>
+                    </a>
+                </div>
+            </div>
+        </div>
+        <div class="row">
+            <div class="col-md-12">
+                <div class="card card-outline card-primary">
+                    <div class="card-header">
+                        <h3 class="card-title">
+                            <i class="fas fa-user-graduate mr-2"></i>{{page_title}}
+                            <span class="badge badge-primary ml-2">{{ total_students }} students</span>
+                        </h3>
+
+                        <!-- Filters -->
+                        <div class="card-tools d-flex align-items-center">
+                            <form method="GET" class="form-inline mr-2" id="filterForm">
+                                {% if selected_year %}
+                                <input type="hidden" name="year" value="{{ selected_year }}">
+                                {% endif %}
+
+                                <select name="level" class="form-control form-control-sm mr-2"
+                                    onchange="document.getElementById('filterForm').submit()">
+                                    <option value="">All (UG &amp; PG)</option>
+                                    <option value="UG" {% if selected_level == 'UG' %}selected{% endif %}>UG Only</option>
+                                    <option value="PG" {% if selected_level == 'PG' %}selected{% endif %}>PG Only</option>
+                                </select>
+
+                                <select name="branch" class="form-control form-control-sm mr-2"
+                                    onchange="document.getElementById('filterForm').submit()">
+                                    <option value="">All Branches</option>
+                                    {% for branch in branch_choices %}
+                                    <option value="{{ branch.code }}" {% if selected_branch == branch.code %}selected{% endif %}>{{ branch.code }} - {{ branch.name }}</option>
+                                    {% endfor %}
+                                </select>
+
+                                <select name="batch" class="form-control form-control-sm mr-2"
+                                    onchange="document.getElementById('filterForm').submit()">
+                                    <option value="">All Sections</option>
+                                    {% for batch_name in batch_choices %}
+                                    <option value="{{ batch_name }}" {% if selected_batch == batch_name %}selected{% endif %}>Section {{ batch_name }}</option>
+                                    {% endfor %}
+                                </select>
+
+                                {% if selected_branch or selected_batch or selected_year or selected_level %}
+                                <a href="{% url 'manage_student' %}" class="btn btn-sm btn-outline-secondary"
+                                    title="Clear Filters">
+                                    <i class="fas fa-times"></i>
+                                </a>
+                                {% endif %}
+                            </form>
+
+                            <div class="btn-group btn-group-sm" role="group" aria-label="Student actions">
+                                <button type="button" class="btn btn-success" data-toggle="modal"
+                                    data-target="#downloadExcelModal">
+                                    <i class="fas fa-file-excel mr-1"></i> Download Excel
+                                </button>
+                                <a href="{% url 'add_student' %}" class="btn btn-primary">
+                                    <i class="fas fa-plus mr-1"></i> Add Student
+                                </a>
+                                <a href="{% url 'bulk_upload_students' %}" class="btn btn-success">
+                                    <i class="fas fa-upload mr-1"></i> Bulk Upload
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- /.card-header -->
+                    <div class="card-body table-responsive p-0">
+                        <table id="studentsTable" class="table table-hover table-striped">
+                            <thead class="thead-dark">
+                                <tr>
+                                    <th style="width: 50px">#</th>
+                                    <th>Register No</th>
+                                    <th>Student Name</th>
+                                    <th>Email</th>
+                                    <th>Branch</th>
+                                    <th>Section</th>
+                                    <th>Year / Sem</th>
+                                    <th style="width: 60px">Photo</th>
+                                    <th style="width: 120px">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for student in students %}
+                                <tr>
+                                    <td>{{ forloop.counter }}</td>
+                                    <td><strong>{{ student.register_no }}</strong></td>
+                                    <td>
+                                        {{ student.user.full_name }}
+                                        {% if student.entry_type == 'LATERAL' %}
+                                        <span class="badge badge-info badge-sm" title="Lateral Entry">LE</span>
+                                        {% endif %}
+                                    </td>
+                                    <td><small>{{ student.user.email }}</small></td>
+                                    <td>
+                                        <span class="badge badge-secondary">{{ student.branch }}</span>
+                                    </td>
+                                    <td>
+                                        <span class="badge badge-primary">{{ student.batch_label }}</span>
+                                    </td>
+                                    <td>
+                                        <span class="badge
+                                            {% if student.year_of_study == 1 %}badge-info
+                                            {% elif student.year_of_study == 2 %}badge-success
+                                            {% elif student.year_of_study == 3 %}badge-warning
+                                            {% else %}badge-danger{% endif %}">
+                                            {{ student.year_of_study_display }}
+                                        </span>
+                                        <small class="text-muted">(Sem {{ student.current_sem }})</small>
+                                    </td>
+                                    <td class="text-center">
+                                        {% if student.user.profile_pic %}
+                                        <img class="img-circle elevation-1" height="35" width="35"
+                                            src="{{ student.user.profile_pic.url }}" alt="{{ student.user.full_name }}">
+                                        {% else %}
+                                        <span
+                                            class="img-circle bg-secondary text-white d-inline-flex align-items-center justify-content-center"
+                                            style="width: 35px; height: 35px; font-size: 14px;">
+                                            {{ student.user.full_name|slice:":1" }}
+                                        </span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <div class="btn-group btn-group-sm">
+                                            <a href="{% url 'edit_student' student.id %}" class="btn btn-info"
+                                                title="Edit">
+                                                <i class="fas fa-edit"></i>
+                                            </a>
+                                            <a href="{% url 'delete_student' student.id %}" class="btn btn-danger"
+                                                onclick="return confirm('Are you sure you want to delete {{ student.user.full_name }}?')"
+                                                title="Delete">
+                                                <i class="fas fa-trash"></i>
+                                            </a>
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% empty %}
+                                <tr>
+                                    <td colspan="9" class="text-center py-4">
+                                        <i class="fas fa-inbox fa-3x text-muted mb-3"></i>
+                                        <p class="text-muted mb-2">No students found matching your filters.</p>
+                                        <a href="{% url 'add_student' %}" class="btn btn-primary btn-sm">
+                                            <i class="fas fa-plus mr-1"></i> Add Student
+                                        </a>
+                                        <a href="{% url 'bulk_upload_students' %}" class="btn btn-success btn-sm">
+                                            <i class="fas fa-upload mr-1"></i> Bulk Upload
+                                        </a>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    <!-- /.card-body -->
+                    {% if students %}
+                    <div class="card-footer clearfix">
+                        <div class="float-left">
+                            <small class="text-muted">Showing {{ total_students }} active student(s)</small>
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Download Excel Modal -->
+<div class="modal fade" id="downloadExcelModal" tabindex="-1" role="dialog" aria-labelledby="downloadExcelModalLabel"
+    aria-hidden="true">
+    <div class="modal-dialog modal-lg" role="document">
+        <div class="modal-content">
+            <form method="POST" action="{% url 'download_students_excel' %}" id="downloadExcelForm">
+                {% csrf_token %}
+                <div class="modal-header bg-success text-white">
+                    <h5 class="modal-title" id="downloadExcelModalLabel">
+                        <i class="fas fa-file-excel mr-2"></i>Download Student List (Excel)
+                    </h5>
+                    <button type="button" class="close text-white" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body">
+
+                    <!-- Quick Presets -->
+                    <div class="mb-3">
+                        <label class="font-weight-bold"><i class="fas fa-magic mr-1"></i> Quick Presets</label>
+                        <div>
+                            <button type="button" class="btn btn-outline-primary btn-sm mr-1 mb-1"
+                                onclick="applyPreset('all_ug')">All UG</button>
+                            <button type="button" class="btn btn-outline-info btn-sm mr-1 mb-1"
+                                onclick="applyPreset('all_pg')">All PG</button>
+                            <button type="button" class="btn btn-outline-warning btn-sm mr-1 mb-1"
+                                onclick="applyPreset('lateral')">Lateral Only</button>
+                            <button type="button" class="btn btn-outline-secondary btn-sm mr-1 mb-1"
+                                onclick="applyPreset('current')">Current Page Filters</button>
+                            <button type="button" class="btn btn-outline-dark btn-sm mb-1"
+                                onclick="applyPreset('reset')">Reset All</button>
+                        </div>
+                    </div>
+                    <hr>
+
+                    <!-- Fields Selection -->
+                    <div class="mb-3">
+                        <label class="font-weight-bold">
+                            <i class="fas fa-columns mr-1"></i> Columns to Include
+                            <button type="button" class="btn btn-xs btn-outline-secondary ml-2"
+                                onclick="toggleAllFields(true)">Select All</button>
+                            <button type="button" class="btn btn-xs btn-outline-secondary ml-1"
+                                onclick="toggleAllFields(false)">Deselect All</button>
+                        </label>
+                        <div class="row">
+                            <!-- Identity -->
+                            <div class="col-md-4">
+                                <small class="text-muted font-weight-bold">Identity</small>
+                                <div class="custom-control custom-checkbox"><input type="checkbox"
+                                        class="custom-control-input field-cb" name="fields" value="sno" id="f_sno"
+                                        checked><label class="custom-control-label" for="f_sno">S.No</label></div>
+                                <div class="custom-control custom-checkbox"><input type="checkbox"
+                                        class="custom-control-input field-cb" name="fields" value="register_no"
+                                        id="f_register_no" checked><label class="custom-control-label"
+                                        for="f_register_no">Register No</label></div>
+                                <div class="custom-control custom-checkbox"><input type="checkbox"
+                                        class="custom-control-input field-cb" name="fields" value="name" id="f_name"
+                                        checked><label class="custom-control-label" for="f_name">Student Name</label>
+                                </div>
+                                <div class="custom-control custom-checkbox"><input type="checkbox"
+                                        class="custom-control-input field-cb" name="fields" value="gender"
+                                        id="f_gender"><label class="custom-control-label" for="f_gender">Gender</label>
+                                </div>
+                            </div>
+                            <!-- Academic -->
+                            <div class="col-md-4">
+                                <small class="text-muted font-weight-bold">Academic</small>
+                                <div class="custom-control custom-checkbox"><input type="checkbox"
+                                        class="custom-control-input field-cb" name="fields" value="branch" id="f_branch"
+                                        checked><label class="custom-control-label" for="f_branch">Branch</label></div>
+                                <div class="custom-control custom-checkbox"><input type="checkbox"
+                                        class="custom-control-input field-cb" name="fields" value="program_type"
+                                        id="f_program_type"><label class="custom-control-label"
+                                        for="f_program_type">Program Type</label></div>
+                                <div class="custom-control custom-checkbox"><input type="checkbox"
+                                        class="custom-control-input field-cb" name="fields" value="year_of_study"
+                                        id="f_year_of_study" checked><label class="custom-control-label"
+                                        for="f_year_of_study">Year of Study</label></div>
+                                <div class="custom-control custom-checkbox"><input type="checkbox"
+                                        class="custom-control-input field-cb" name="fields" value="current_sem"
+                                        id="f_current_sem"><label class="custom-control-label"
+                                        for="f_current_sem">Current Sem</label></div>
+                                <div class="custom-control custom-checkbox"><input type="checkbox"
+                                        class="custom-control-input field-cb" name="fields" value="section"
+                                        id="f_section" checked><label class="custom-control-label"
+                                        for="f_section">Section</label></div>
+                                <div class="custom-control custom-checkbox"><input type="checkbox"
+                                        class="custom-control-input field-cb" name="fields" value="entry_type"
+                                        id="f_entry_type"><label class="custom-control-label" for="f_entry_type">Entry
+                                        Type</label></div>
+                                <div class="custom-control custom-checkbox"><input type="checkbox"
+                                        class="custom-control-input field-cb" name="fields" value="admission_year"
+                                        id="f_admission_year"><label class="custom-control-label"
+                                        for="f_admission_year">Admission Year</label></div>
+                                <div class="custom-control custom-checkbox"><input type="checkbox"
+                                        class="custom-control-input field-cb" name="fields" value="regulation"
+                                        id="f_regulation"><label class="custom-control-label"
+                                        for="f_regulation">Regulation</label></div>
+                            </div>
+                            <!-- Contact -->
+                            <div class="col-md-4">
+                                <small class="text-muted font-weight-bold">Contact</small>
+                                <div class="custom-control custom-checkbox"><input type="checkbox"
+                                        class="custom-control-input field-cb" name="fields" value="email" id="f_email"
+                                        checked><label class="custom-control-label" for="f_email">Email</label></div>
+                                <div class="custom-control custom-checkbox"><input type="checkbox"
+                                        class="custom-control-input field-cb" name="fields" value="college_email"
+                                        id="f_college_email"><label class="custom-control-label"
+                                        for="f_college_email">College Email</label></div>
+                                <div class="custom-control custom-checkbox"><input type="checkbox"
+                                        class="custom-control-input field-cb" name="fields" value="phone"
+                                        id="f_phone"><label class="custom-control-label" for="f_phone">Phone</label>
+                                </div>
+                                <div class="custom-control custom-checkbox"><input type="checkbox"
+                                        class="custom-control-input field-cb" name="fields" value="parent_name"
+                                        id="f_parent_name"><label class="custom-control-label"
+                                        for="f_parent_name">Parent Name</label></div>
+                                <div class="custom-control custom-checkbox"><input type="checkbox"
+                                        class="custom-control-input field-cb" name="fields" value="parent_phone"
+                                        id="f_parent_phone"><label class="custom-control-label"
+                                        for="f_parent_phone">Parent Phone</label></div>
+                            </div>
+                        </div>
+                    </div>
+                    <hr>
+
+                    <!-- Filters -->
+                    <div class="mb-3">
+                        <label class="font-weight-bold"><i class="fas fa-filter mr-1"></i> Filters</label>
+                        <div class="row">
+                            <!-- Year of Study -->
+                            <div class="col-md-4 mb-2">
+                                <small class="text-muted font-weight-bold">Year of Study</small>
+                                <div class="custom-control custom-checkbox"><input type="checkbox"
+                                        class="custom-control-input year-cb" name="years" value="1" id="y_1"
+                                        checked><label class="custom-control-label" for="y_1">1st Year</label></div>
+                                <div class="custom-control custom-checkbox"><input type="checkbox"
+                                        class="custom-control-input year-cb" name="years" value="2" id="y_2"
+                                        checked><label class="custom-control-label" for="y_2">2nd Year</label></div>
+                                <div class="custom-control custom-checkbox"><input type="checkbox"
+                                        class="custom-control-input year-cb" name="years" value="3" id="y_3"
+                                        checked><label class="custom-control-label" for="y_3">3rd Year</label></div>
+                                <div class="custom-control custom-checkbox"><input type="checkbox"
+                                        class="custom-control-input year-cb" name="years" value="4" id="y_4"
+                                        checked><label class="custom-control-label" for="y_4">4th Year</label></div>
+                            </div>
+                            <!-- Level & Entry Type -->
+                            <div class="col-md-4 mb-2">
+                                <small class="text-muted font-weight-bold">Program Level</small>
+                                <div class="custom-control custom-checkbox"><input type="checkbox"
+                                        class="custom-control-input level-cb" name="levels" value="UG" id="l_ug"
+                                        checked><label class="custom-control-label" for="l_ug">UG</label></div>
+                                <div class="custom-control custom-checkbox"><input type="checkbox"
+                                        class="custom-control-input level-cb" name="levels" value="PG" id="l_pg"
+                                        checked><label class="custom-control-label" for="l_pg">PG</label></div>
+                                <div class="mt-2"><small class="text-muted font-weight-bold">Entry Type</small></div>
+                                <div class="custom-control custom-checkbox"><input type="checkbox"
+                                        class="custom-control-input entry-cb" name="entry_types" value="REGULAR"
+                                        id="e_regular" checked><label class="custom-control-label"
+                                        for="e_regular">Regular</label></div>
+                                <div class="custom-control custom-checkbox"><input type="checkbox"
+                                        class="custom-control-input entry-cb" name="entry_types" value="LATERAL"
+                                        id="e_lateral" checked><label class="custom-control-label"
+                                        for="e_lateral">Lateral</label></div>
+                            </div>
+                            <!-- Status -->
+                            <div class="col-md-4 mb-2">
+                                <small class="text-muted font-weight-bold">Status</small>
+                                <div class="custom-control custom-checkbox"><input type="checkbox"
+                                        class="custom-control-input status-cb" name="statuses" value="ACTIVE"
+                                        id="s_active" checked><label class="custom-control-label"
+                                        for="s_active">Active</label></div>
+                                <div class="custom-control custom-checkbox"><input type="checkbox"
+                                        class="custom-control-input status-cb" name="statuses" value="GRADUATED"
+                                        id="s_graduated"><label class="custom-control-label"
+                                        for="s_graduated">Graduated</label></div>
+                                <div class="custom-control custom-checkbox"><input type="checkbox"
+                                        class="custom-control-input status-cb" name="statuses" value="DROPPED"
+                                        id="s_dropped"><label class="custom-control-label"
+                                        for="s_dropped">Dropped</label></div>
+                                <div class="custom-control custom-checkbox"><input type="checkbox"
+                                        class="custom-control-input status-cb" name="statuses" value="SUSPENDED"
+                                        id="s_suspended"><label class="custom-control-label"
+                                        for="s_suspended">Suspended</label></div>
+                                <div class="custom-control custom-checkbox"><input type="checkbox"
+                                        class="custom-control-input status-cb" name="statuses" value="TRANSFERRED"
+                                        id="s_transferred"><label class="custom-control-label"
+                                        for="s_transferred">Transferred</label></div>
+                            </div>
+                        </div>
+
+                        <!-- Branch & Section -->
+                        <div class="row mt-2">
+                            <div class="col-md-6">
+                                <small class="text-muted font-weight-bold">Branch</small>
+                                <div class="border rounded p-2" style="max-height:120px; overflow-y:auto;">
+                                    {% for branch in branch_choices %}
+                                    <div class="custom-control custom-checkbox">
+                                        <input type="checkbox" class="custom-control-input branch-cb" name="branches"
+                                            value="{{ branch.code }}" id="br_{{ branch.code }}" checked>
+                                        <label class="custom-control-label" for="br_{{ branch.code }}">{{ branch.code }}
+                                            - {{ branch.name }}</label>
+                                    </div>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <small class="text-muted font-weight-bold">Section</small>
+                                <div class="border rounded p-2" style="max-height:120px; overflow-y:auto;">
+                                    {% for batch_name in batch_choices %}
+                                    <div class="custom-control custom-checkbox">
+                                        <input type="checkbox" class="custom-control-input section-cb" name="sections"
+                                            value="{{ batch_name }}" id="sec_{{ batch_name }}" checked>
+                                        <label class="custom-control-label" for="sec_{{ batch_name }}">Section {{ batch_name }}</label>
+                                    </div>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <hr>
+
+                    <!-- Sheet Layout -->
+                    <div class="mb-2">
+                        <label class="font-weight-bold"><i class="fas fa-layer-group mr-1"></i> Sheet Layout</label>
+                        <div class="row">
+                            <div class="col-md-4">
+                                <div class="custom-control custom-radio">
+                                    <input type="radio" class="custom-control-input" name="sheet_mode" value="single"
+                                        id="sm_single" checked>
+                                    <label class="custom-control-label" for="sm_single">
+                                        <strong>Single Sheet</strong><br>
+                                        <small class="text-muted">All students in one sheet</small>
+                                    </label>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="custom-control custom-radio">
+                                    <input type="radio" class="custom-control-input" name="sheet_mode" value="by_year"
+                                        id="sm_year">
+                                    <label class="custom-control-label" for="sm_year">
+                                        <strong>By Year</strong><br>
+                                        <small class="text-muted">Separate sheet per year</small>
+                                    </label>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="custom-control custom-radio">
+                                    <input type="radio" class="custom-control-input" name="sheet_mode" value="by_branch"
+                                        id="sm_branch">
+                                    <label class="custom-control-label" for="sm_branch">
+                                        <strong>By Branch</strong><br>
+                                        <small class="text-muted">Separate sheet per program</small>
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-success">
+                        <i class="fas fa-download mr-1"></i> Download Excel
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+{% endblock content %}
+
+{% block custom_js %}
+<script>
+    $(document).ready(function () {
+        $('#studentsTable').DataTable({
+            "paging": true,
+            "lengthChange": true,
+            "searching": true,
+            "ordering": true,
+            "info": true,
+            "autoWidth": false,
+            "responsive": true,
+            "pageLength": 25,
+            "lengthMenu": [[10, 25, 50, 100, -1], [10, 25, 50, 100, "All"]],
+            "order": [[1, "asc"]],
+            "language": {
+                "search": "<i class='fas fa-search'></i>",
+                "searchPlaceholder": "Search students..."
+            },
+            "dom": '<"row"<"col-sm-6"l><"col-sm-6"f>>rtip'
+        });
+    });
+
+    function toggleAllFields(checked) {
+        document.querySelectorAll('.field-cb').forEach(function (cb) { cb.checked = checked; });
+    }
+
+    function uncheckAllFilters() {
+        document.querySelectorAll('.year-cb, .level-cb, .entry-cb, .status-cb, .branch-cb, .section-cb').forEach(function (cb) { cb.checked = false; });
+    }
+
+    function checkAllFilters() {
+        document.querySelectorAll('.year-cb, .level-cb, .entry-cb, .branch-cb, .section-cb').forEach(function (cb) { cb.checked = true; });
+        document.querySelectorAll('.status-cb').forEach(function (cb) { cb.checked = (cb.value === 'ACTIVE'); });
+    }
+
+    function applyPreset(preset) {
+        if (preset === 'reset') {
+            toggleAllFields(false);
+            ['f_sno', 'f_register_no', 'f_name', 'f_email', 'f_branch', 'f_year_of_study', 'f_section'].forEach(function (id) {
+                var el = document.getElementById(id); if (el) el.checked = true;
+            });
+            checkAllFilters();
+            document.getElementById('sm_single').checked = true;
+            return;
+        }
+        if (preset === 'all_ug') {
+            checkAllFilters();
+            document.getElementById('l_pg').checked = false;
+            document.getElementById('l_ug').checked = true;
+            return;
+        }
+        if (preset === 'all_pg') {
+            checkAllFilters();
+            document.getElementById('l_ug').checked = false;
+            document.getElementById('l_pg').checked = true;
+            return;
+        }
+        if (preset === 'lateral') {
+            checkAllFilters();
+            document.getElementById('e_regular').checked = false;
+            document.getElementById('e_lateral').checked = true;
+            document.getElementById('f_entry_type').checked = true;
+            return;
+        }
+        if (preset === 'current') {
+            uncheckAllFilters();
+            var pageYear = '{{ selected_year }}';
+            var pageLevel = '{{ selected_level }}';
+            var pageBranch = '{{ selected_branch }}';
+            var pageBatch = '{{ selected_batch }}';
+            if (pageYear) {
+                var yEl = document.getElementById('y_' + pageYear);
+                if (yEl) yEl.checked = true;
+            } else {
+                document.querySelectorAll('.year-cb').forEach(function (cb) { cb.checked = true; });
+            }
+            if (pageLevel) {
+                if (pageLevel === 'UG') document.getElementById('l_ug').checked = true;
+                if (pageLevel === 'PG') document.getElementById('l_pg').checked = true;
+            } else {
+                document.querySelectorAll('.level-cb').forEach(function (cb) { cb.checked = true; });
+            }
+            document.querySelectorAll('.entry-cb').forEach(function (cb) { cb.checked = true; });
+            if (pageBranch) {
+                document.querySelectorAll('.branch-cb').forEach(function (cb) { cb.checked = (cb.value === pageBranch); });
+            } else {
+                document.querySelectorAll('.branch-cb').forEach(function (cb) { cb.checked = true; });
+            }
+            if (pageBatch) {
+                document.querySelectorAll('.section-cb').forEach(function (cb) { cb.checked = (cb.value === pageBatch); });
+            } else {
+                document.querySelectorAll('.section-cb').forEach(function (cb) { cb.checked = true; });
+            }
+            document.querySelectorAll('.status-cb').forEach(function (cb) { cb.checked = (cb.value === 'ACTIVE'); });
+            return;
+        }
+    }
+</script>
+{% endblock custom_js %}

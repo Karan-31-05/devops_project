@@ -1,0 +1,232 @@
+{% extends 'main_app/base.html' %}
+{% load static %}
+{% load custom_filters %}
+{% block page_title %}{{ page_title }}{% endblock page_title %}
+
+{% block custom_css %}
+<style>
+    .schedule-cell {
+        min-height: 60px;
+        vertical-align: middle;
+        text-align: center;
+        font-size: 12px;
+    }
+    .schedule-cell .course-code {
+        font-weight: bold;
+        color: #007bff;
+    }
+    .schedule-cell .batch-info {
+        font-size: 10px;
+        color: #666;
+    }
+    .time-slot-header {
+        font-size: 10px;
+        white-space: nowrap;
+    }
+    .day-header {
+        background-color: #343a40;
+        color: white;
+        font-weight: bold;
+    }
+    .slot-header {
+        background-color: #6c757d;
+        color: white;
+        font-weight: bold;
+        font-size: 11px;
+    }
+    .has-class {
+        background-color: #e8f4fd;
+    }
+    .multi-class {
+        background-color: #fff3cd;
+    }
+    .batch-badge {
+        font-size: 9px;
+    }
+    .lab-row {
+        background-color: #fff7ea;
+    }
+    .venue-badge {
+        font-size: 10px;
+    }
+    @media print {
+        .no-print { display: none !important; }
+        .card { border: none !important; box-shadow: none !important; }
+    }
+</style>
+{% endblock custom_css %}
+
+{% block content %}
+<section class="content">
+    <div class="container-fluid">
+        <!-- Header -->
+        <div class="row mb-3">
+            <div class="col-12">
+                <div class="card no-print">
+                    <div class="card-header">
+                        <h3 class="card-title">
+                            <i class="fas fa-calendar-alt mr-2"></i>{{ page_title }}
+                        </h3>
+                        <div class="card-tools">
+                            <button onclick="window.print()" class="btn btn-secondary btn-sm">
+                                <i class="fas fa-print mr-1"></i> Print
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        {% if consolidated_schedule %}
+        <!-- Consolidated Weekly Schedule -->
+        <div class="card">
+            <div class="card-header">
+                <h3 class="card-title">
+                    <i class="fas fa-table mr-2"></i>Weekly Teaching Schedule - {{ faculty.user.full_name }}
+                </h3>
+            </div>
+            <div class="card-body table-responsive p-0">
+                <table class="table table-bordered table-sm mb-0">
+                    <thead>
+                        <tr>
+                            <th class="day-header" style="width: 80px;">Day</th>
+                            {% for slot in time_slots %}
+                            <th class="slot-header text-center">
+                                <div>P{{ slot.slot_number }}</div>
+                                <div class="time-slot-header">{{ slot.start_time|time:"H:i" }}-{{ slot.end_time|time:"H:i" }}</div>
+                            </th>
+                            {% endfor %}
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for day_code, day_name in days %}
+                        <tr>
+                            <td class="day-header">{{ day_name }}</td>
+                            {% for slot in time_slots %}
+                            {% with slot_entries=consolidated_schedule|get_item:day_code|get_item:slot.slot_number %}
+                            <td class="schedule-cell {% if slot_entries %}{% if slot_entries|length > 1 %}multi-class{% else %}has-class{% endif %}{% endif %}">
+                                {% for entry in slot_entries %}
+                                <div class="mb-1">
+                                    {% if entry.course %}
+                                    <div class="course-code">{{ entry.display_code|default:entry.course.course_code }}</div>
+                                    {% elif entry.special_note %}
+                                    <div class="course-code">{{ entry.special_note }}</div>
+                                    {% endif %}
+                                    <div class="batch-info">
+                                        <span class="badge badge-sm badge-info batch-badge">
+                                            {% if entry.display_batch_label %}
+                                                {{ entry.display_batch_label }}
+                                            {% else %}
+                                                Y{{ entry.timetable.year }}-{{ entry.timetable.batch }}
+                                            {% endif %}
+                                        </span>
+                                    </div>
+                                    {% if entry.is_lab %}
+                                    <div class="batch-info mt-1">
+                                        {% if entry.lab_room %}
+                                        <span class="badge badge-sm badge-dark batch-badge venue-badge">
+                                            <i class="fas fa-map-marker-alt mr-1"></i>{{ entry.lab_room.room_code }}
+                                        </span>
+                                        {% elif entry.special_note and entry.special_note|upper == 'CLASSROOM LAB' %}
+                                        <span class="badge badge-sm badge-secondary batch-badge venue-badge">
+                                            <i class="fas fa-chalkboard-teacher mr-1"></i>Classroom
+                                        </span>
+                                        {% elif entry.special_note %}
+                                        <span class="badge badge-sm badge-dark batch-badge venue-badge">
+                                            <i class="fas fa-map-marker-alt mr-1"></i>{{ entry.special_note }}
+                                        </span>
+                                        {% else %}
+                                        <span class="badge badge-sm badge-secondary batch-badge venue-badge">Venue TBD</span>
+                                        {% endif %}
+                                    </div>
+                                    {% endif %}
+                                </div>
+                                {% empty %}
+                                <span class="text-muted">-</span>
+                                {% endfor %}
+                            </td>
+                            {% endwith %}
+                            {% endfor %}
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Detailed Batch-wise Schedule -->
+        {% if timetable_entries %}
+        <div class="card mt-4">
+            <div class="card-header">
+                <h3 class="card-title"><i class="fas fa-list mr-2"></i>Detailed Schedule by Batch</h3>
+            </div>
+            <div class="card-body">
+                {% for tt_id, tt_data in timetable_entries.items %}
+                <div class="mb-4">
+                    <h5>
+                        <span class="badge badge-primary">{{ tt_data.timetable.academic_year }}</span>
+                        <span class="badge badge-info">Sem {{ tt_data.timetable.semester.semester_number }}</span>
+                        <span class="badge badge-success">{{ tt_data.display_batch_header }}</span>
+                    </h5>
+                    <table class="table table-sm table-bordered">
+                        <thead class="thead-light">
+                            <tr>
+                                <th>Day</th>
+                                <th>Period</th>
+                                <th>Time</th>
+                                <th>Course</th>
+                                <th>Venue</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for entry in tt_data.entries %}
+                            <tr class="{% if entry.is_lab %}lab-row{% endif %}">
+                                <td>{{ entry.get_day_display }}</td>
+                                <td>Period {{ entry.time_slot.slot_number }}</td>
+                                <td>{{ entry.time_slot.start_time|time:"H:i" }} - {{ entry.time_slot.end_time|time:"H:i" }}</td>
+                                <td>
+                                    {% if entry.course %}
+                                    <strong>{{ entry.display_code|default:entry.course.course_code }}</strong> - {{ entry.display_title|default:entry.course.title }}
+                                    {% elif entry.special_note %}
+                                    {{ entry.special_note }}
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if entry.is_lab %}
+                                        {% if entry.lab_room %}
+                                        <span class="badge badge-dark venue-badge">
+                                            <i class="fas fa-map-marker-alt mr-1"></i>{{ entry.lab_room.room_code }}
+                                        </span>
+                                        {% elif entry.special_note and entry.special_note|upper == 'CLASSROOM LAB' %}
+                                        <span class="badge badge-secondary venue-badge">
+                                            <i class="fas fa-chalkboard-teacher mr-1"></i>Classroom
+                                        </span>
+                                        {% elif entry.special_note %}
+                                        <span class="badge badge-dark venue-badge">
+                                            <i class="fas fa-map-marker-alt mr-1"></i>{{ entry.special_note }}
+                                        </span>
+                                        {% else %}
+                                        <span class="text-muted">Venue TBD</span>
+                                        {% endif %}
+                                    {% else %}
+                                    <span class="text-muted">-</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+        {% else %}
+        <div class="alert alert-info">
+            <i class="fas fa-info-circle mr-2"></i>
+            No teaching schedule found. You have not been assigned to any classes yet.
+        </div>
+        {% endif %}
+    </div>
+</section>
+{% endblock content %}

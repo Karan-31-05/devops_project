@@ -1,0 +1,68 @@
+{% extends 'main_app/base.html' %}
+{% load static %}
+{% block page_title %}{{ page_title }}{% endblock page_title %}
+
+{% block content %}
+<section class="content">
+<div class="container-fluid">
+    <div class="card card-dark">
+        <div class="card-header">
+            <h3 class="card-title"><i class="fas fa-user-cog mr-2"></i>User → Moodle Mappings</h3>
+            <div class="card-tools">
+                <a href="{% url 'lms_dashboard' %}" class="btn btn-tool">
+                    <i class="fas fa-arrow-left"></i> Dashboard
+                </a>
+            </div>
+        </div>
+        <div class="card-body table-responsive p-0">
+            <table class="table table-hover table-striped text-nowrap">
+                <thead>
+                    <tr>
+                        <th>ERP User</th>
+                        <th>Role</th>
+                        <th>Email</th>
+                        <th>Moodle ID</th>
+                        <th>Moodle Username</th>
+                        <th>Status</th>
+                        <th>Last Synced</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for m in mappings %}
+                    <tr>
+                        <td>{{ m.user.full_name }}</td>
+                        <td>
+                            <span class="badge badge-{% if m.user.role == 'HOD' %}danger{% elif m.user.role == 'FACULTY' %}primary{% elif m.user.role == 'STUDENT' %}info{% else %}secondary{% endif %}">
+                                {{ m.user.get_role_display }}
+                            </span>
+                        </td>
+                        <td>{{ m.user.email }}</td>
+                        <td>
+                            {% if m.moodle_user_id %}
+                            <a href="{{ moodle_url }}/user/profile.php?id={{ m.moodle_user_id }}" target="_blank">
+                                #{{ m.moodle_user_id }}
+                            </a>
+                            {% else %}—{% endif %}
+                        </td>
+                        <td>{{ m.moodle_username }}</td>
+                        <td>
+                            {% if m.sync_status == 'SYNCED' %}
+                            <span class="badge badge-success">Synced</span>
+                            {% elif m.sync_status == 'ERROR' %}
+                            <span class="badge badge-danger" title="{{ m.error_message }}">Error</span>
+                            {% else %}
+                            <span class="badge badge-warning">Pending</span>
+                            {% endif %}
+                        </td>
+                        <td>{{ m.last_synced|date:"M d, H:i" }}</td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="7" class="text-center text-muted">No user mappings yet. Run "Sync All Users" from the dashboard.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+</section>
+{% endblock content %}

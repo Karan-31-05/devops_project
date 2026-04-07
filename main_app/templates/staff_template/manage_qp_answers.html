@@ -1,0 +1,544 @@
+{% extends 'main_app/base.html' %}
+{% load static %}
+
+{% block page_title %}{{ page_title }}{% endblock page_title %}
+
+{% block content %}
+<section class="content">
+    <div class="container-fluid">
+        <div class="row">
+            <div class="col-md-12">
+                <!-- Header Card -->
+                <div class="card">
+                    <div class="card-header bg-gradient-primary">
+                        <h3 class="card-title">
+                            <i class="fas fa-magic"></i> Manage Answers - {{ qp.course.course_code }}
+                        </h3>
+                        <div class="card-tools">
+                            <span class="badge badge-light">{{ qp.exam_month_year }}</span>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <p class="mb-3">
+                            <i class="fas fa-info-circle text-info"></i>
+                            Use AI to generate answer suggestions for each question. Click "Generate Answers" to get 4 different answer options, 
+                            then select the one that best fits your requirements. After selecting answers, you can download the Answer Key.
+                        </p>
+                        <div class="d-flex justify-content-between">
+                            <div>
+                                <a href="{% url 'staff_preview_structured_qp' qp.id %}" class="btn btn-secondary btn-sm">
+                                    <i class="fas fa-arrow-left"></i> Back to Preview
+                                </a>
+                            </div>
+                            <div>
+                                <span class="text-muted mr-3" id="answerProgress">
+                                    Answers filled: <strong><span id="answeredCount">{{ answered_count }}</span>/{{ total_questions }}</strong>
+                                </span>
+                                <a href="{% url 'staff_download_answer_key' qp.id %}" class="btn btn-success btn-sm" id="downloadAnswerKeyBtn"
+                                   {% if answered_count == 0 %}style="pointer-events: none; opacity: 0.5;"{% endif %}>
+                                    <i class="fas fa-download"></i> Download Answer Key
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Part A Questions -->
+                <div class="card mt-3">
+                    <div class="card-header bg-info">
+                        <h4 class="card-title mb-0">
+                            <i class="fas fa-list-ol"></i> Part A - Short Answer Questions (10 × 2 = 20 marks)
+                        </h4>
+                    </div>
+                    <div class="card-body">
+                        {% for q in part_a_questions %}
+                        <div class="question-card border rounded p-3 mb-3 {% if q.answer %}bg-light-success{% endif %}" data-question-id="{{ q.id }}">
+                            <div class="d-flex justify-content-between align-items-start">
+                                <div class="flex-grow-1">
+                                    <h5>
+                                        <span class="badge badge-secondary mr-2">Q{{ q.question_number }}</span>
+                                        {{ q.question_text }}
+                                    </h5>
+                                    <small class="text-muted">
+                                        <span class="mr-2"><i class="fas fa-tag"></i> {{ q.course_outcome }}</span>
+                                        <span><i class="fas fa-brain"></i> {{ q.bloom_level }}</span>
+                                    </small>
+                                </div>
+                                <div class="btn-group">
+                                    <button type="button" class="btn btn-primary btn-sm generate-answers-btn"
+                                            data-question-id="{{ q.id }}"
+                                            data-question-text="{{ q.question_text }}"
+                                            data-marks="{{ q.marks }}"
+                                            data-part="A">
+                                        <i class="fas fa-magic"></i> Generate Answers
+                                    </button>
+                                    {% if qp.status == 'DRAFT' %}
+                                    <button type="button" class="btn btn-danger btn-sm delete-question-btn"
+                                            data-question-id="{{ q.id }}"
+                                            data-question-num="{{ q.question_number }}"
+                                            data-part="A"
+                                            title="Delete Question">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            
+                            <!-- Current Answer Display -->
+                            <div class="current-answer mt-3 {% if not q.answer %}d-none{% endif %}">
+                                <div class="alert alert-success mb-0">
+                                    <strong><i class="fas fa-check-circle"></i> Selected Answer:</strong>
+                                    <p class="mb-0 mt-2 answer-text">{{ q.answer }}</p>
+                                </div>
+                            </div>
+                            
+                            <!-- AI Generated Options Container -->
+                            <div class="ai-options-container mt-3" style="display: none;">
+                                <div class="loading-spinner text-center py-3" style="display: none;">
+                                    <div class="spinner-border text-primary" role="status">
+                                        <span class="sr-only">Generating answers...</span>
+                                    </div>
+                                    <p class="mt-2 text-muted">AI is generating answer options...</p>
+                                </div>
+                                <div class="options-list"></div>
+                            </div>
+                        </div>
+                        {% empty %}
+                        <p class="text-muted">No Part A questions found.</p>
+                        {% endfor %}
+                    </div>
+                </div>
+
+                <!-- Part B Questions -->
+                <div class="card mt-3">
+                    <div class="card-header bg-warning">
+                        <h4 class="card-title mb-0">
+                            <i class="fas fa-list-ol"></i> Part B - Descriptive Questions (5 × 13 = 65 marks)
+                        </h4>
+                    </div>
+                    <div class="card-body">
+                        {% for pair_num, questions in part_b_pairs %}
+                        <div class="or-pair border rounded p-3 mb-3" style="background-color: #fff8e1;">
+                            <h5 class="text-center text-warning mb-3">Question {{ pair_num }}</h5>
+                            
+                            {% for q in questions %}
+                            <div class="question-card border-bottom {% if not forloop.last %}pb-3 mb-3{% endif %} {% if q.answer %}bg-light-success{% endif %}" data-question-id="{{ q.id }}">
+                                <div class="d-flex justify-content-between align-items-start">
+                                    <div class="flex-grow-1">
+                                        <h6>
+                                            <span class="badge badge-warning mr-2">{{ pair_num }} {{ q.option_label }}</span>
+                                            {{ q.question_text }}
+                                        </h6>
+                                        <small class="text-muted">
+                                            <span class="mr-2"><i class="fas fa-tag"></i> {{ q.course_outcome }}</span>
+                                            <span><i class="fas fa-brain"></i> {{ q.bloom_level }}</span>
+                                        </small>
+                                    </div>
+                                    <div class="btn-group">
+                                        <button type="button" class="btn btn-warning btn-sm generate-answers-btn"
+                                                data-question-id="{{ q.id }}"
+                                                data-question-text="{{ q.question_text }}"
+                                                data-marks="13"
+                                                data-part="B">
+                                            <i class="fas fa-magic"></i> Generate
+                                        </button>
+                                        {% if qp.status == 'DRAFT' %}
+                                        <button type="button" class="btn btn-danger btn-sm delete-question-btn"
+                                                data-question-id="{{ q.id }}"
+                                                data-question-num="{{ pair_num }} {{ q.option_label }}"
+                                                data-part="B"
+                                                title="Delete Question">
+                                            <i class="fas fa-trash"></i>
+                                        </button>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                                
+                                <!-- Current Answer Display -->
+                                <div class="current-answer mt-3 {% if not q.answer %}d-none{% endif %}">
+                                    <div class="alert alert-success mb-0">
+                                        <strong><i class="fas fa-check-circle"></i> Selected Answer:</strong>
+                                        <p class="mb-0 mt-2 answer-text">{{ q.answer }}</p>
+                                    </div>
+                                </div>
+                                
+                                <!-- AI Generated Options Container -->
+                                <div class="ai-options-container mt-3" style="display: none;">
+                                    <div class="loading-spinner text-center py-3" style="display: none;">
+                                        <div class="spinner-border text-warning" role="status">
+                                            <span class="sr-only">Generating answers...</span>
+                                        </div>
+                                        <p class="mt-2 text-muted">AI is generating answer options...</p>
+                                    </div>
+                                    <div class="options-list"></div>
+                                </div>
+                            </div>
+                            
+                            {% if not forloop.last %}
+                            <div class="text-center my-2">
+                                <span class="badge badge-secondary px-4">OR</span>
+                            </div>
+                            {% endif %}
+                            {% endfor %}
+                        </div>
+                        {% empty %}
+                        <p class="text-muted">No Part B questions found.</p>
+                        {% endfor %}
+                    </div>
+                </div>
+
+                <!-- Part C Questions -->
+                <div class="card mt-3">
+                    <div class="card-header bg-danger">
+                        <h4 class="card-title mb-0">
+                            <i class="fas fa-list-ol"></i> Part C - Case Study/Problem Solving (1 × 15 = 15 marks)
+                        </h4>
+                    </div>
+                    <div class="card-body">
+                        {% for q in part_c_questions %}
+                        <div class="question-card border rounded p-3 mb-3 {% if q.answer %}bg-light-success{% endif %}" data-question-id="{{ q.id }}" style="background-color: #ffebee;">
+                            <div class="d-flex justify-content-between align-items-start">
+                                <div class="flex-grow-1">
+                                    <h5>
+                                        <span class="badge badge-danger mr-2">Q16</span>
+                                        {{ q.question_text }}
+                                    </h5>
+                                    <small class="text-muted">
+                                        <span class="mr-2"><i class="fas fa-tag"></i> {{ q.course_outcome }}</span>
+                                        <span><i class="fas fa-brain"></i> {{ q.bloom_level }}</span>
+                                    </small>
+                                </div>
+                                <div class="btn-group">
+                                    <button type="button" class="btn btn-danger btn-sm generate-answers-btn"
+                                            data-question-id="{{ q.id }}"
+                                            data-question-text="{{ q.question_text }}"
+                                            data-marks="15"
+                                            data-part="C">
+                                        <i class="fas fa-magic"></i> Generate Answers
+                                    </button>
+                                    {% if qp.status == 'DRAFT' %}
+                                    <button type="button" class="btn btn-dark btn-sm delete-question-btn"
+                                            data-question-id="{{ q.id }}"
+                                            data-question-num="16"
+                                            data-part="C"
+                                            title="Delete Question">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            
+                            <!-- Current Answer Display -->
+                            <div class="current-answer mt-3 {% if not q.answer %}d-none{% endif %}">
+                                <div class="alert alert-success mb-0">
+                                    <strong><i class="fas fa-check-circle"></i> Selected Answer:</strong>
+                                    <p class="mb-0 mt-2 answer-text">{{ q.answer }}</p>
+                                </div>
+                            </div>
+                            
+                            <!-- AI Generated Options Container -->
+                            <div class="ai-options-container mt-3" style="display: none;">
+                                <div class="loading-spinner text-center py-3" style="display: none;">
+                                    <div class="spinner-border text-danger" role="status">
+                                        <span class="sr-only">Generating answers...</span>
+                                    </div>
+                                    <p class="mt-2 text-muted">AI is generating answer options...</p>
+                                </div>
+                                <div class="options-list"></div>
+                            </div>
+                        </div>
+                        {% empty %}
+                        <p class="text-muted">No Part C questions found.</p>
+                        {% endfor %}
+                    </div>
+                </div>
+
+                <!-- Bottom Actions -->
+                <div class="card mt-3">
+                    <div class="card-body d-flex justify-content-between">
+                        <a href="{% url 'staff_preview_structured_qp' qp.id %}" class="btn btn-secondary">
+                            <i class="fas fa-arrow-left"></i> Back to Preview
+                        </a>
+                        <a href="{% url 'staff_download_answer_key' qp.id %}" class="btn btn-success" id="downloadAnswerKeyBtn2"
+                           {% if answered_count == 0 %}style="pointer-events: none; opacity: 0.5;"{% endif %}>
+                            <i class="fas fa-download"></i> Download Answer Key
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Answer Option Modal -->
+<div class="modal fade" id="answerOptionsModal" tabindex="-1" role="dialog">
+    <div class="modal-dialog modal-lg" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Select an Answer</h5>
+                <button type="button" class="close" data-dismiss="modal">
+                    <span>&times;</span>
+                </button>
+            </div>
+            <div class="modal-body" id="modalOptionsContainer">
+                <!-- Options will be loaded here -->
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.bg-light-success {
+    background-color: #d4edda !important;
+}
+.question-card {
+    transition: all 0.3s ease;
+}
+.question-card:hover {
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+.option-card {
+    cursor: pointer;
+    transition: all 0.2s ease;
+    border: 2px solid #dee2e6 !important;
+}
+.option-card:hover {
+    border-color: #007bff !important;
+    background-color: #f8f9fa;
+}
+.option-card.selected {
+    border-color: #28a745 !important;
+    background-color: #d4edda;
+}
+.answer-text {
+    white-space: pre-wrap;
+}
+</style>
+{% endblock content %}
+
+{% block custom_js %}
+<script>
+$(document).ready(function() {
+    console.log('AI Answer Generator loaded');
+    const csrfToken = '{{ csrf_token }}';
+    const courseName = '{{ qp.course.course_name }}';
+    let answeredCount = {{ answered_count }};
+    const totalQuestions = {{ total_questions }};
+    
+    // Generate Answers button click
+    $('.generate-answers-btn').on('click', function() {
+        const btn = $(this);
+        const questionCard = btn.closest('.question-card');
+        const questionId = btn.data('question-id');
+        const questionText = btn.data('question-text');
+        const marks = btn.data('marks');
+        const part = btn.data('part');
+        
+        const optionsContainer = questionCard.find('.ai-options-container');
+        const loadingSpinner = optionsContainer.find('.loading-spinner');
+        const optionsList = optionsContainer.find('.options-list');
+        
+        // Show container and loading
+        optionsContainer.show();
+        loadingSpinner.show();
+        optionsList.empty();
+        btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i> Generating...');
+        
+        // Make AJAX call
+        $.ajax({
+            url: '{% url "staff_generate_answer_options" %}',
+            type: 'POST',
+            contentType: 'application/json',
+            data: JSON.stringify({
+                question: questionText,
+                marks: marks,
+                part: part,
+                course_name: courseName
+            }),
+            headers: {
+                'X-CSRFToken': csrfToken
+            },
+            success: function(response) {
+                loadingSpinner.hide();
+                btn.prop('disabled', false).html('<i class="fas fa-magic"></i> Regenerate');
+                
+                if (response.answers && response.answers.length > 0) {
+                    let optionsHtml = '<div class="row">';
+                    response.answers.forEach((answer, index) => {
+                        optionsHtml += `
+                            <div class="col-md-6 mb-3">
+                                <div class="card option-card h-100" data-question-id="${questionId}" data-answer="${escapeHtml(answer.answer)}">
+                                    <div class="card-header bg-light py-2">
+                                        <strong>Option ${index + 1}</strong>
+                                        <small class="text-muted float-right">${answer.brief || ''}</small>
+                                    </div>
+                                    <div class="card-body">
+                                        <p class="card-text" style="font-size: 0.9rem; white-space: pre-wrap;">${escapeHtml(answer.answer)}</p>
+                                    </div>
+                                    <div class="card-footer bg-transparent">
+                                        <button class="btn btn-success btn-sm btn-block select-answer-btn">
+                                            <i class="fas fa-check"></i> Select This Answer
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        `;
+                    });
+                    optionsHtml += '</div>';
+                    optionsList.html(optionsHtml);
+                } else {
+                    optionsList.html('<div class="alert alert-warning">No answers generated. Please try again.</div>');
+                }
+            },
+            error: function(xhr) {
+                loadingSpinner.hide();
+                btn.prop('disabled', false).html('<i class="fas fa-magic"></i> Generate Answers');
+                
+                let errorMsg = 'Error generating answers. Please try again.';
+                if (xhr.responseJSON && xhr.responseJSON.error) {
+                    errorMsg = xhr.responseJSON.error;
+                }
+                optionsList.html(`<div class="alert alert-danger">${errorMsg}</div>`);
+            }
+        });
+    });
+    
+    // Select Answer button click
+    $(document).on('click', '.select-answer-btn', function(e) {
+        e.stopPropagation();
+        const card = $(this).closest('.option-card');
+        const questionId = card.data('question-id');
+        const answer = card.data('answer');
+        const questionCard = card.closest('.question-card');
+        
+        // Save answer via AJAX
+        $.ajax({
+            url: '{% url "staff_save_question_answer" %}',
+            type: 'POST',
+            contentType: 'application/json',
+            data: JSON.stringify({
+                question_id: questionId,
+                answer: answer
+            }),
+            headers: {
+                'X-CSRFToken': csrfToken
+            },
+            success: function(response) {
+                if (response.success) {
+                    // Mark as selected
+                    card.addClass('selected');
+                    card.find('.select-answer-btn').html('<i class="fas fa-check"></i> Selected!').prop('disabled', true);
+                    
+                    // Update current answer display
+                    const currentAnswerDiv = questionCard.find('.current-answer');
+                    currentAnswerDiv.removeClass('d-none');
+                    currentAnswerDiv.find('.answer-text').text(answer);
+                    
+                    // Add success background
+                    questionCard.addClass('bg-light-success');
+                    
+                    // Hide options after short delay
+                    setTimeout(() => {
+                        questionCard.find('.ai-options-container').slideUp();
+                    }, 1000);
+                    
+                    // Update counter if this was a new answer
+                    if (!questionCard.data('had-answer')) {
+                        answeredCount++;
+                        questionCard.data('had-answer', true);
+                        updateAnswerProgress();
+                    }
+                    
+                    // Show success toast
+                    showToast('Answer saved successfully!', 'success');
+                }
+            },
+            error: function(xhr) {
+                let errorMsg = 'Error saving answer. Please try again.';
+                if (xhr.responseJSON && xhr.responseJSON.error) {
+                    errorMsg = xhr.responseJSON.error;
+                }
+                showToast(errorMsg, 'error');
+            }
+        });
+    });
+    
+    // Mark questions that already have answers
+    $('.question-card').each(function() {
+        if ($(this).find('.current-answer').not('.d-none').length > 0) {
+            $(this).data('had-answer', true);
+        }
+    });
+    
+    function updateAnswerProgress() {
+        $('#answeredCount').text(answeredCount);
+        const downloadBtn = $('#downloadAnswerKeyBtn, #downloadAnswerKeyBtn2');
+        if (answeredCount > 0) {
+            downloadBtn.css({'pointer-events': 'auto', 'opacity': '1'});
+        }
+    }
+    
+    function escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+    
+    function showToast(message, type) {
+        const bgClass = type === 'success' ? 'bg-success' : 'bg-danger';
+        const toast = $(`
+            <div class="toast ${bgClass} text-white" style="position: fixed; top: 20px; right: 20px; z-index: 9999;">
+                <div class="toast-body">
+                    <i class="fas fa-${type === 'success' ? 'check-circle' : 'exclamation-circle'}"></i>
+                    ${message}
+                </div>
+            </div>
+        `);
+        $('body').append(toast);
+        toast.toast({delay: 3000}).toast('show');
+        toast.on('hidden.bs.toast', function() {
+            $(this).remove();
+        });
+    }
+    
+    // Delete Question Handler
+    $(document).on('click', '.delete-question-btn', function() {
+        const questionId = $(this).data('question-id');
+        const questionNum = $(this).data('question-num');
+        const part = $(this).data('part');
+        const questionCard = $(this).closest('.question-card');
+        
+        if (confirm(`Are you sure you want to delete Question ${questionNum} from Part ${part}?\n\nThis action cannot be undone.`)) {
+            $.ajax({
+                url: '{% url "staff_delete_qp_question_ajax" %}',
+                method: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify({ question_id: questionId }),
+                headers: { 'X-CSRFToken': '{{ csrf_token }}' },
+                success: function(response) {
+                    if (response.success) {
+                        // Animate and remove the question card
+                        questionCard.fadeOut(300, function() {
+                            $(this).remove();
+                            // Update the count
+                            const totalQuestions = parseInt($('#answeredCount').text().split('/')[1]) - 1;
+                            showToast(response.message, 'success');
+                        });
+                    }
+                },
+                error: function(xhr) {
+                    let errorMsg = 'Error deleting question. Please try again.';
+                    if (xhr.responseJSON && xhr.responseJSON.error) {
+                        errorMsg = xhr.responseJSON.error;
+                    }
+                    showToast(errorMsg, 'error');
+                }
+            });
+        }
+    });
+});
+</script>
+{% endblock custom_js %}

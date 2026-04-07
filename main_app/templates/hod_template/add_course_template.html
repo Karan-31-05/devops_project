@@ -1,0 +1,349 @@
+{% extends 'main_app/base.html' %}
+{% load static %}
+{% block page_title %}{{ page_title }}{% endblock page_title %}
+
+{% block content %}
+<section class="content">
+    <div class="container-fluid">
+        <div class="row">
+            <div class="col-md-8 offset-md-2">
+                <!-- Info Card -->
+                <div class="card card-outline card-info mb-3">
+                    <div class="card-header">
+                        <h3 class="card-title"><i class="fas fa-info-circle mr-2"></i>Course Types (L-T-P)</h3>
+                    </div>
+                    <div class="card-body py-2">
+                        <table class="table table-sm table-borderless mb-0">
+                            <tr>
+                                <td><strong>LIT</strong> - Lecture with Integrated Tutorial</td>
+                                <td><span class="badge badge-primary">L-T-0</span></td>
+                                <td class="text-muted">Has Lecture & Tutorial hours</td>
+                            </tr>
+                            <tr>
+                                <td><strong>T</strong> - Theory</td>
+                                <td><span class="badge badge-success">L-0-0</span></td>
+                                <td class="text-muted">Has only Lecture hours</td>
+                            </tr>
+                            <tr>
+                                <td><strong>L</strong> - Lab/Practical</td>
+                                <td><span class="badge badge-warning">0-0-P</span></td>
+                                <td class="text-muted">Has only Practical hours</td>
+                            </tr>
+                            <tr>
+                                <td><strong>CDP</strong> - Course Development Project</td>
+                                <td><span class="badge badge-danger">0-0-P</span></td>
+                                <td class="text-muted">Has only Practical hours</td>
+                            </tr>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Form Card -->
+                <div class="card card-primary">
+                    <div class="card-header">
+                        <h3 class="card-title"><i class="fas fa-book mr-2"></i>{{ page_title }}</h3>
+                    </div>
+                    <form method="POST" enctype="multipart/form-data" id="courseForm">
+                        {% csrf_token %}
+                        <div class="card-body">
+                            <!-- Warning Alert (hidden by default) -->
+                            <div class="alert alert-warning alert-dismissible d-none" id="ltpWarning">
+                                <button type="button" class="close" data-dismiss="alert" aria-hidden="true">&times;</button>
+                                <i class="icon fas fa-exclamation-triangle"></i>
+                                <strong>Warning!</strong> <span id="ltpWarningText"></span>
+                            </div>
+                            
+                            <div class="row">
+                                <div class="col-md-4">
+                                    <div class="form-group">
+                                        <label for="course_code">Course Code <span class="text-danger">*</span></label>
+                                        <input type="text" class="form-control" id="course_code" name="course_code" 
+                                               placeholder="e.g., CS3401" required maxlength="10"
+                                               value="{{ form.course_code.value|default:'' }}">
+                                        {% if form.course_code.errors %}
+                                        <span class="text-danger">{{ form.course_code.errors.0 }}</span>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                                <div class="col-md-8">
+                                    <div class="form-group">
+                                        <label for="title">Title <span class="text-danger">*</span></label>
+                                        <input type="text" class="form-control" id="title" name="title" 
+                                               placeholder="e.g., Database Management Systems" required maxlength="200"
+                                               value="{{ form.title.value|default:'' }}">
+                                        {% if form.title.errors %}
+                                        <span class="text-danger">{{ form.title.errors.0 }}</span>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="form-group">
+                                        <label for="course_type">Course Type <span class="text-danger">*</span></label>
+                                        <select class="form-control" id="course_type" name="course_type" required>
+                                            <option value="T" {% if form.course_type.value == 'T' %}selected{% endif %}>T - Theory (L-0-0)</option>
+                                            <option value="LIT" {% if form.course_type.value == 'LIT' %}selected{% endif %}>LIT - Lecture with Integrated Tutorial (L-T-0)</option>
+                                            <option value="L" {% if form.course_type.value == 'L' %}selected{% endif %}>L - Lab/Practical (0-0-P)</option>
+                                            <option value="PW" {% if form.course_type.value == 'PW' %}selected{% endif %}>PW - Project Work (0-0-P)</option>
+                                            <option value="IPW" {% if form.course_type.value == 'IPW' %}selected{% endif %}>IPW - Internship cum Project Work (0-0-P)</option>
+                                            <option value="CDP" {% if form.course_type.value == 'CDP' %}selected{% endif %}>CDP - Capstone Design Project (0-0-P)</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="form-group">
+                                        <label for="credits">Credits <span class="text-danger">*</span></label>
+                                        <input type="number" class="form-control" id="credits" name="credits" 
+                                               value="{{ form.credits.value|default:3 }}" min="0" max="20" step="0.5" required>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="row">
+                                <div class="col-md-4">
+                                    <div class="form-group">
+                                        <label for="lecture_hours">Lecture Hours (L) <span class="text-danger">*</span></label>
+                                        <input type="number" class="form-control ltp-field" id="lecture_hours" name="lecture_hours" 
+                                               value="{{ form.lecture_hours.value|default:3 }}" min="0" max="20" required>
+                                        <small class="text-muted" id="lecture_hint"></small>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="form-group">
+                                        <label for="tutorial_hours">Tutorial Hours (T) <span class="text-danger">*</span></label>
+                                        <input type="number" class="form-control ltp-field" id="tutorial_hours" name="tutorial_hours" 
+                                               value="{{ form.tutorial_hours.value|default:0 }}" min="0" max="20" required>
+                                        <small class="text-muted" id="tutorial_hint"></small>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="form-group">
+                                        <label for="practical_hours">Practical Hours (P) <span class="text-danger">*</span></label>
+                                        <input type="number" class="form-control ltp-field" id="practical_hours" name="practical_hours" 
+                                               value="{{ form.practical_hours.value|default:0 }}" min="0" max="20" required>
+                                        <small class="text-muted" id="practical_hint"></small>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- L-T-P Preview -->
+                            <div class="row">
+                                <div class="col-md-12">
+                                    <div class="callout callout-info">
+                                        <h5><i class="fas fa-calculator mr-2"></i>L-T-P Preview</h5>
+                                        <p class="mb-0">
+                                            <strong>Format:</strong> 
+                                            <span id="ltpPreview" class="badge badge-lg badge-primary" style="font-size: 1.1em;">3-0-0</span>
+                                            <span class="ml-3"><strong>Credits:</strong> <span id="creditsPreview">3</span></span>
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label for="syllabus_file">Syllabus File (Optional)</label>
+                                <div class="custom-file">
+                                    <input type="file" class="custom-file-input" id="syllabus_file" name="syllabus_file">
+                                    <label class="custom-file-label" for="syllabus_file">Choose file...</label>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="card-footer">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-save mr-1"></i> Add Course
+                            </button>
+                            <a href="{% url 'manage_course' %}" class="btn btn-secondary">
+                                <i class="fas fa-list mr-1"></i> View All Courses
+                            </a>
+                        </div>
+                    </form>
+                </div>
+                
+                <!-- Placeholder Creation Card -->
+                <div class="card card-outline card-warning mt-3">
+                    <div class="card-header">
+                        <h3 class="card-title"><i class="fas fa-layer-group mr-2"></i>Create Placeholder Course</h3>
+                    </div>
+                    <form method="POST">
+                        {% csrf_token %}
+                        <input type="hidden" name="action" value="create_placeholder">
+                        <div class="card-body">
+                            <p class="text-muted small mb-3">
+                                Create a placeholder by entering its name and short alias (acronym).
+                            </p>
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="form-group">
+                                        <label>Placeholder Name <span class="text-danger">*</span></label>
+                                        <input type="text" class="form-control" name="placeholder_name" maxlength="200" placeholder="e.g., Skill Development Course" required>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="form-group">
+                                        <label>Alias (Acronym) <span class="text-danger">*</span></label>
+                                        <input type="text" class="form-control" name="placeholder_alias" maxlength="5" placeholder="e.g., SDC" required>
+                                        <small class="text-muted">2-5 uppercase letters/numbers</small>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="card-footer">
+                            <button type="submit" class="btn btn-warning">
+                                <i class="fas fa-plus-circle mr-1"></i> Create Placeholder
+                            </button>
+                        </div>
+                    </form>
+                </div>
+
+                <!-- Help Card -->
+                <div class="card card-outline card-secondary collapsed-card">
+                    <div class="card-header">
+                        <h3 class="card-title"><i class="fas fa-question-circle mr-2"></i>Help</h3>
+                        <div class="card-tools">
+                            <button type="button" class="btn btn-tool" data-card-widget="collapse">
+                                <i class="fas fa-plus"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <p><strong>What is L-T-P?</strong></p>
+                        <p>L-T-P stands for <strong>Lecture-Tutorial-Practical</strong> hours per week.</p>
+                        <ul>
+                            <li><strong>L (Lecture):</strong> Classroom lecture hours</li>
+                            <li><strong>T (Tutorial):</strong> Tutorial/problem-solving hours</li>
+                            <li><strong>P (Practical):</strong> Lab/practical hours</li>
+                        </ul>
+                        <p class="text-muted mb-0">
+                            <i class="fas fa-info-circle mr-1"></i>
+                            After adding a course, assign it to a regulation via <strong>Manage Regulations → Course Plan</strong>.
+                            The category (ESC, PCC, etc.) and semester are assigned in the course plan.
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock content %}
+
+{% block custom_js %}
+<script>
+$(document).ready(function() {
+    const courseTypeDefaults = {
+        'T':   { L: 3, T: 0, P: 0 },
+        'LIT': { L: 3, T: 1, P: 0 },
+        'L':   { L: 0, T: 0, P: 3 },
+        'PW':  { L: 0, T: 0, P: 16 },
+        'IPW': { L: 0, T: 0, P: 16 },
+        'CDP': { L: 0, T: 0, P: 3 }
+    };
+    
+    function updateLTPFields() {
+        const courseType = $('#course_type').val();
+        const defaults = courseTypeDefaults[courseType];
+        
+        // Set default values
+        $('#lecture_hours').val(defaults.L);
+        $('#tutorial_hours').val(defaults.T);
+        $('#practical_hours').val(defaults.P);
+        
+        // Update hints
+        updateHints(courseType);
+        updatePreview();
+        validateLTP();
+    }
+    
+    function updateHints(courseType) {
+        const hints = {
+            'T':   { L: 'Required', T: 'Should be 0', P: 'Should be 0' },
+            'LIT': { L: 'Required', T: 'Required',   P: 'Should be 0' },
+            'L':   { L: 'Should be 0', T: 'Should be 0', P: 'Required' },
+            'PW':  { L: 'Should be 0', T: 'Should be 0', P: 'Required' },
+            'IPW': { L: 'Should be 0', T: 'Should be 0', P: 'Required' },
+            'CDP': { L: 'Should be 0', T: 'Should be 0', P: 'Required' }
+        };
+        
+        const hint = hints[courseType];
+        $('#lecture_hint').text(hint.L);
+        $('#tutorial_hint').text(hint.T);
+        $('#practical_hint').text(hint.P);
+    }
+    
+    function updatePreview() {
+        const L = $('#lecture_hours').val() || 0;
+        const T = $('#tutorial_hours').val() || 0;
+        const P = $('#practical_hours').val() || 0;
+        const credits = $('#credits').val() || 0;
+        
+        $('#ltpPreview').text(`${L}-${T}-${P}`);
+        $('#creditsPreview').text(credits);
+    }
+    
+    function validateLTP() {
+        const courseType = $('#course_type').val();
+        const L = parseInt($('#lecture_hours').val()) || 0;
+        const T = parseInt($('#tutorial_hours').val()) || 0;
+        const P = parseInt($('#practical_hours').val()) || 0;
+        
+        let warnings = [];
+        
+        switch(courseType) {
+            case 'T':
+                if (L === 0) warnings.push('Theory course should have Lecture hours > 0');
+                if (T !== 0) warnings.push('Theory course typically has Tutorial hours = 0');
+                if (P !== 0) warnings.push('Theory course should have Practical hours = 0');
+                break;
+            case 'LIT':
+                if (L === 0) warnings.push('LIT course should have Lecture hours > 0');
+                if (T === 0) warnings.push('LIT course should have Tutorial hours > 0');
+                if (P !== 0) warnings.push('LIT course should have Practical hours = 0');
+                break;
+            case 'L':
+            case 'CDP':
+                if (L !== 0) warnings.push(`${courseType} course typically has Lecture hours = 0`);
+                if (T !== 0) warnings.push(`${courseType} course typically has Tutorial hours = 0`);
+                if (P === 0) warnings.push(`${courseType} course should have Practical hours > 0`);
+                break;
+        }
+        
+        if (warnings.length > 0) {
+            $('#ltpWarningText').html(warnings.join('<br>'));
+            $('#ltpWarning').removeClass('d-none');
+        } else {
+            $('#ltpWarning').addClass('d-none');
+        }
+    }
+    
+    // Event handlers
+    $('#course_type').on('change', updateLTPFields);
+    $('.ltp-field, #credits').on('input', function() {
+        updatePreview();
+        validateLTP();
+    });
+    
+    // Initialize
+    updateHints($('#course_type').val());
+    updatePreview();
+    
+    // File input label
+    $('.custom-file-input').on('change', function() {
+        var fileName = $(this).val().split('\\').pop();
+        $(this).next('.custom-file-label').html(fileName || 'Choose file...');
+    });
+    
+    // Form submit warning
+    $('#courseForm').on('submit', function(e) {
+        const warningVisible = !$('#ltpWarning').hasClass('d-none');
+        if (warningVisible) {
+            const warnings = $('#ltpWarningText').html().split('<br>');
+            if (!confirm('There are warnings about the L-T-P values:\n\n' + warnings.join('\n') + '\n\nDo you want to continue anyway?')) {
+                e.preventDefault();
+            }
+        }
+    });
+});
+</script>
+{% endblock custom_js %}

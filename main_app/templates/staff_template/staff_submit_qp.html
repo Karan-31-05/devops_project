@@ -1,0 +1,214 @@
+{% extends 'main_app/base.html' %}
+{% load static %}
+{% block page_title %}{{ page_title }}{% endblock page_title %}
+
+{% block content %}
+<section class="content">
+    <div class="container-fluid">
+        <div class="row">
+            <div class="col-md-8">
+                <div class="card card-primary">
+                    <div class="card-header">
+                        <h3 class="card-title"><i class="fas fa-upload mr-2"></i>{{ page_title }}</h3>
+                    </div>
+                    <form method="POST" enctype="multipart/form-data">
+                        {% csrf_token %}
+                        <div class="card-body">
+                            {% if form.non_field_errors %}
+                            <div class="alert alert-danger">
+                                {{ form.non_field_errors }}
+                            </div>
+                            {% endif %}
+
+                            <!-- Assignment Info -->
+                            <div class="callout callout-info">
+                                <h5><i class="fas fa-info-circle mr-2"></i>Assignment Details</h5>
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <p class="mb-1"><strong>Course:</strong> {{ qp_assignment.course.course_code }} - {{ qp_assignment.course.title }}</p>
+                                        <p class="mb-1"><strong>Exam Type:</strong> {{ qp_assignment.get_exam_type_display }}</p>
+                                        <p class="mb-0"><strong>Regulation:</strong> {{ qp_assignment.regulation.name|default:"N/A" }}</p>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <p class="mb-1"><strong>Academic Year:</strong> {{ qp_assignment.academic_year.year }}</p>
+                                        <p class="mb-1"><strong>Semester:</strong> {{ qp_assignment.semester.semester_number|default:"N/A" }}</p>
+                                        <p class="mb-0"><strong>Deadline:</strong> 
+                                            <span class="{% if qp_assignment.is_overdue %}text-danger{% elif qp_assignment.days_remaining <= 3 %}text-warning{% else %}text-success{% endif %}">
+                                                {{ qp_assignment.deadline|date:"d M Y" }}
+                                                {% if qp_assignment.is_overdue %}(Overdue!){% elif qp_assignment.days_remaining >= 0 %}({{ qp_assignment.days_remaining }} days left){% endif %}
+                                            </span>
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {% if qp_assignment.instructions %}
+                            <div class="callout callout-warning">
+                                <h5><i class="fas fa-clipboard-list mr-2"></i>Instructions from HOD</h5>
+                                <p class="mb-0">{{ qp_assignment.instructions }}</p>
+                            </div>
+                            {% endif %}
+
+                            {% if qp_assignment.status == 'REJECTED' and qp_assignment.review_comments %}
+                            <div class="alert alert-danger">
+                                <h5><i class="fas fa-exclamation-triangle mr-2"></i>Revision Required</h5>
+                                <p class="mb-0"><strong>Review Comments:</strong> {{ qp_assignment.review_comments }}</p>
+                            </div>
+                            {% endif %}
+
+                            <hr>
+
+                            <!-- File Upload Section -->
+                            <h5><i class="fas fa-file-upload mr-2"></i>Upload Question Paper</h5>
+                            
+                            <div class="form-group">
+                                <label for="{{ form.question_paper.id_for_label }}">Question Paper File <span class="text-danger">*</span></label>
+                                {{ form.question_paper }}
+                                {% if form.question_paper.errors %}
+                                    <div class="invalid-feedback d-block">{{ form.question_paper.errors }}</div>
+                                {% endif %}
+                                <small class="text-muted">
+                                    <i class="fas fa-info-circle mr-1"></i>
+                                    Accepted formats: .doc, .docx, .pdf | Max size: 10 MB
+                                </small>
+                                {% if qp_assignment.question_paper %}
+                                <div class="mt-2">
+                                    <span class="text-success">
+                                        <i class="fas fa-check-circle mr-1"></i>Current file: 
+                                        <a href="{{ qp_assignment.question_paper.url }}" target="_blank">
+                                            {{ qp_assignment.question_paper.name|truncatechars:40 }}
+                                        </a>
+                                    </span>
+                                </div>
+                                {% endif %}
+                            </div>
+
+                            <div class="form-group">
+                                <label for="{{ form.answer_key.id_for_label }}">Answer Key (Optional)</label>
+                                {{ form.answer_key }}
+                                {% if form.answer_key.errors %}
+                                    <div class="invalid-feedback d-block">{{ form.answer_key.errors }}</div>
+                                {% endif %}
+                                <small class="text-muted">
+                                    <i class="fas fa-info-circle mr-1"></i>
+                                    Upload answer key if required by HOD
+                                </small>
+                                {% if qp_assignment.answer_key %}
+                                <div class="mt-2">
+                                    <span class="text-success">
+                                        <i class="fas fa-check-circle mr-1"></i>Current file: 
+                                        <a href="{{ qp_assignment.answer_key.url }}" target="_blank">
+                                            {{ qp_assignment.answer_key.name|truncatechars:40 }}
+                                        </a>
+                                    </span>
+                                </div>
+                                {% endif %}
+                            </div>
+
+                            <div class="form-group">
+                                <label for="{{ form.faculty_notes.id_for_label }}">Notes for Reviewer</label>
+                                {{ form.faculty_notes }}
+                                {% if form.faculty_notes.errors %}
+                                    <div class="invalid-feedback d-block">{{ form.faculty_notes.errors }}</div>
+                                {% endif %}
+                                <small class="text-muted">Any additional information for the HOD reviewing this QP</small>
+                            </div>
+                        </div>
+                        <div class="card-footer">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-paper-plane mr-1"></i> Submit Question Paper
+                            </button>
+                            <a href="{% url 'staff_view_qp_assignments' %}" class="btn btn-secondary">
+                                <i class="fas fa-arrow-left mr-1"></i> Back
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Sidebar -->
+            <div class="col-md-4">
+                <!-- Status Card -->
+                <div class="card card-{% if qp_assignment.status == 'APPROVED' %}success{% elif qp_assignment.status == 'REJECTED' %}danger{% elif qp_assignment.status == 'SUBMITTED' %}info{% else %}warning{% endif %}">
+                    <div class="card-header">
+                        <h3 class="card-title"><i class="fas fa-clipboard-check mr-2"></i>Current Status</h3>
+                    </div>
+                    <div class="card-body text-center">
+                        <h3 class="mb-0">{{ qp_assignment.get_status_display }}</h3>
+                        {% if qp_assignment.submitted_at %}
+                        <small class="text-muted">Last submitted: {{ qp_assignment.submitted_at|date:"d M Y, h:i A" }}</small>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <!-- Guidelines Card -->
+                <div class="card card-info">
+                    <div class="card-header">
+                        <h3 class="card-title"><i class="fas fa-book mr-2"></i>QP Guidelines</h3>
+                    </div>
+                    <div class="card-body">
+                        <ul class="list-unstyled">
+                            <li class="mb-2">
+                                <i class="fas fa-check text-success mr-2"></i>
+                                Follow Anna University format
+                            </li>
+                            <li class="mb-2">
+                                <i class="fas fa-check text-success mr-2"></i>
+                                Cover all CO (Course Outcomes)
+                            </li>
+                            <li class="mb-2">
+                                <i class="fas fa-check text-success mr-2"></i>
+                                Include Bloom's taxonomy levels
+                            </li>
+                            <li class="mb-2">
+                                <i class="fas fa-check text-success mr-2"></i>
+                                Check for typos and errors
+                            </li>
+                            <li class="mb-2">
+                                <i class="fas fa-check text-success mr-2"></i>
+                                Ensure question clarity
+                            </li>
+                            <li class="mb-0">
+                                <i class="fas fa-check text-success mr-2"></i>
+                                Verify marks allocation
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- File Format Info -->
+                <div class="card card-secondary">
+                    <div class="card-header">
+                        <h3 class="card-title"><i class="fas fa-file mr-2"></i>File Requirements</h3>
+                    </div>
+                    <div class="card-body">
+                        <p class="mb-2"><strong>Accepted Formats:</strong></p>
+                        <p class="mb-1">
+                            <i class="fas fa-file-word text-primary mr-1"></i> Microsoft Word (.doc, .docx)
+                        </p>
+                        <p class="mb-3">
+                            <i class="fas fa-file-pdf text-danger mr-1"></i> PDF Document (.pdf)
+                        </p>
+                        <p class="mb-1"><strong>Maximum Size:</strong></p>
+                        <p class="mb-0">10 MB per file</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock content %}
+
+{% block custom_js %}
+<script>
+$(document).ready(function() {
+    // File input preview
+    $('input[type="file"]').on('change', function() {
+        var fileName = $(this).val().split('\\').pop();
+        if (fileName) {
+            $(this).next('.custom-file-label').html(fileName);
+        }
+    });
+});
+</script>
+{% endblock custom_js %}

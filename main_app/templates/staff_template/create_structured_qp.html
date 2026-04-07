@@ -1,0 +1,468 @@
+{% extends 'main_app/base.html' %}
+{% load static %}
+{% load custom_filters %}
+
+{% block page_title %}{{ page_title }}{% endblock page_title %}
+
+{% block content %}
+<section class="content">
+    <div class="container-fluid">
+        <div class="row">
+            <div class="col-md-12">
+                <!-- Wizard Steps -->
+                <div class="card">
+                    <div class="card-header bg-gradient-primary">
+                        <h3 class="card-title">
+                            <i class="fas fa-file-alt"></i> Create Structured Question Paper (Anna University R2023 Format)
+                        </h3>
+                    </div>
+                    <div class="card-body">
+                        {% if assignment %}
+                        <div class="alert alert-info">
+                            <i class="fas fa-info-circle"></i>
+                            <strong>Assignment:</strong> {{ assignment.course.course_code }} - {{ assignment.course.course_name }}
+                            | <strong>Due:</strong> {{ assignment.due_date|date:"d M Y" }}
+                        </div>
+                        {% endif %}
+
+                        {% if qp_form.course.field.queryset.exists == False or not qp_form.academic_year.field.queryset.exists %}
+                        <div class="alert alert-warning">
+                            <i class="fas fa-exclamation-circle"></i>
+                            <strong>Setup Required:</strong> Please ensure that Courses, Academic Years, Semesters, and Regulations are created in the system before creating question papers.
+                        </div>
+                        {% endif %}
+
+                        <!-- Instructions -->
+                        <div class="alert alert-warning">
+                            <h5><i class="icon fas fa-exclamation-triangle"></i> Anna University R2023 Format Requirements:</h5>
+                            <ul class="mb-0">
+                                <li><strong>Part A:</strong> 10 questions × 2 marks = 20 marks (All compulsory)</li>
+                                <li><strong>Part B:</strong> 5 OR pairs (10 questions) × 13 marks = 65 marks (Choose 1 from each OR, max 2 subdivisions)</li>
+                                <li><strong>Part C:</strong> 1 question × 15 marks = 15 marks (Compulsory case study)</li>
+                                <li><strong>CO Mapping:</strong> Each question must map to CO1-CO5</li>
+                                <li><strong>BL Mapping:</strong> Each question must map to Bloom's Level L1-L6</li>
+                                <li><strong>Mark Distribution:</strong> L1+L2: 20-35%, L3+L4: min 40%, L5+L6: 15-25%</li>
+                            </ul>
+                        </div>
+
+                        <!-- Form -->
+                        <form method="post" id="structuredQPForm" enctype="multipart/form-data">
+                            {% csrf_token %}
+
+                            <!-- Basic Details -->
+                            <div class="card">
+                                <div class="card-header bg-secondary">
+                                    <h4>Basic Details</h4>
+                                </div>
+                                <div class="card-body">
+                                    <div class="row">
+                                        <div class="col-md-6">
+                                            {{ qp_form.course.label_tag }}
+                                            {{ qp_form.course }}
+                                            {% if qp_form.course.errors %}
+                                                <span class="text-danger">{{ qp_form.course.errors }}</span>
+                                            {% endif %}
+                                        </div>
+                                        <div class="col-md-6">
+                                            {{ qp_form.regulation.label_tag }}
+                                            {{ qp_form.regulation }}
+                                            {% if qp_form.regulation.errors %}
+                                                <span class="text-danger">{{ qp_form.regulation.errors }}</span>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                    <div class="row mt-3">
+                                        <div class="col-md-4">
+                                            {{ qp_form.academic_year.label_tag }}
+                                            {{ qp_form.academic_year }}
+                                            {% if qp_form.academic_year.errors %}
+                                                <span class="text-danger">{{ qp_form.academic_year.errors }}</span>
+                                            {% endif %}
+                                        </div>
+                                        <div class="col-md-4">
+                                            {{ qp_form.semester.label_tag }}
+                                            {{ qp_form.semester }}
+                                            {% if qp_form.semester.errors %}
+                                                <span class="text-danger">{{ qp_form.semester.errors }}</span>
+                                            {% endif %}
+                                        </div>
+                                        <div class="col-md-4">
+                                            {{ qp_form.exam_month_year.label_tag }}
+                                            {{ qp_form.exam_month_year }}
+                                            {% if qp_form.exam_month_year.errors %}
+                                                <span class="text-danger">{{ qp_form.exam_month_year.errors }}</span>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+
+                                    <!-- Course Outcomes -->
+                                    <h5 class="mt-4">Course Outcomes (CO) Descriptions</h5>
+                                    <div class="row">
+                                        <div class="col-md-12">
+                                            {{ qp_form.co1_description.label_tag }}
+                                            {{ qp_form.co1_description }}
+                                        </div>
+                                    </div>
+                                    <div class="row mt-2">
+                                        <div class="col-md-12">
+                                            {{ qp_form.co2_description.label_tag }}
+                                            {{ qp_form.co2_description }}
+                                        </div>
+                                    </div>
+                                    <div class="row mt-2">
+                                        <div class="col-md-12">
+                                            {{ qp_form.co3_description.label_tag }}
+                                            {{ qp_form.co3_description }}
+                                        </div>
+                                    </div>
+                                    <div class="row mt-2">
+                                        <div class="col-md-12">
+                                            {{ qp_form.co4_description.label_tag }}
+                                            {{ qp_form.co4_description }}
+                                        </div>
+                                    </div>
+                                    <div class="row mt-2">
+                                        <div class="col-md-12">
+                                            {{ qp_form.co5_description.label_tag }}
+                                            {{ qp_form.co5_description }}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Part A: 10 Questions -->
+                            <div class="card mt-3">
+                                <div class="card-header bg-info">
+                                    <h4>Part A - Short Answer Questions (10 × 2 = 20 marks)</h4>
+                                    <small class="text-muted">All questions are compulsory</small>
+                                </div>
+                                <div class="card-body">
+                                    {{ part_a_formset.management_form }}
+                                    {% for form in part_a_formset %}
+                                    <div class="part-a-question border p-3 mb-3" style="background-color: #f8f9fa;">
+                                        {{ form.id }}
+                                        <h5 class="text-primary">Question {{ forloop.counter }}</h5>
+                                        <div class="row">
+                                            <div class="col-md-12">
+                                                {{ form.question_text.label_tag }}
+                                                {{ form.question_text }}
+                                                <small class="text-muted">Use $...$ for inline math, $$...$$ for block math formulas</small>
+                                                {% if form.question_text.errors %}
+                                                    <span class="text-danger">{{ form.question_text.errors }}</span>
+                                                {% endif %}
+                                            </div>
+                                        </div>
+                                        <div class="row mt-2">
+                                            <div class="col-md-12">
+                                                <label>Question Image (optional):</label>
+                                                {{ form.question_image }}
+                                                {% if form.instance.question_image %}
+                                                <small class="text-success">Current: {{ form.instance.question_image.name }}</small>
+                                                {% endif %}
+                                            </div>
+                                        </div>
+                                        <div class="row mt-2">
+                                            <div class="col-md-6">
+                                                {{ form.course_outcome.label_tag }}
+                                                {{ form.course_outcome }}
+                                                {% if form.course_outcome.errors %}
+                                                    <span class="text-danger">{{ form.course_outcome.errors }}</span>
+                                                {% endif %}
+                                            </div>
+                                            <div class="col-md-6">
+                                                {{ form.bloom_level.label_tag }}
+                                                {{ form.bloom_level }}
+                                                {% if form.bloom_level.errors %}
+                                                    <span class="text-danger">{{ form.bloom_level.errors }}</span>
+                                                {% endif %}
+                                            </div>
+                                        </div>
+                                    </div>
+                                    {% endfor %}
+                                </div>
+                            </div>
+
+                            <!-- Part B: 10 Questions (5 OR pairs) -->
+                            <div class="card mt-3">
+                                <div class="card-header bg-warning">
+                                    <h4>Part B - Descriptive Questions (5 × 13 = 65 marks)</h4>
+                                    <small class="text-muted">OR type questions. Answer any 5, choosing 1 from each OR pair. Max 2 subdivisions allowed.</small>
+                                </div>
+                                <div class="card-body">
+                                    {{ part_b_formset.management_form }}
+                                    {% for form in part_b_formset %}
+                                    {{ form.id }}
+                                    {% if forloop.counter0|divisibleby:2 %}
+                                    <div class="or-pair border p-3 mb-3" style="background-color: #fff3cd;">
+                                        <h5 class="text-dark">Question {{ forloop.counter0|add:11 }} - OR Pair</h5>
+                                    {% endif %}
+                                        
+                                        <div class="{% if forloop.counter0|divisibleby:2 %}mb-2{% else %}mt-2{% endif %}">
+                                            <h6 class="text-secondary">Option {% if forloop.counter0|divisibleby:2 %}(a){% else %}(b){% endif %}</h6>
+                                            <div class="row">
+                                                <div class="col-md-12">
+                                                    {{ form.question_text.label_tag }}
+                                                    {{ form.question_text }}
+                                                    <small class="text-muted">Use $...$ for inline math, $$...$$ for block math formulas</small>
+                                                    {% if form.question_text.errors %}
+                                                        <span class="text-danger">{{ form.question_text.errors }}</span>
+                                                    {% endif %}
+                                                </div>
+                                            </div>
+                                            <div class="row mt-1">
+                                                <div class="col-md-12">
+                                                    <label>Question Image (optional):</label>
+                                                    {{ form.question_image }}
+                                                </div>
+                                            </div>
+                                            <div class="row mt-2">
+                                                <div class="col-md-4">
+                                                    {{ form.has_subdivisions.label_tag }}
+                                                    {{ form.has_subdivisions }}
+                                                </div>
+                                                <div class="col-md-4">
+                                                    {{ form.course_outcome.label_tag }}
+                                                    {{ form.course_outcome }}
+                                                    {% if form.course_outcome.errors %}
+                                                        <span class="text-danger">{{ form.course_outcome.errors }}</span>
+                                                    {% endif %}
+                                                </div>
+                                                <div class="col-md-4">
+                                                    {{ form.bloom_level.label_tag }}
+                                                    {{ form.bloom_level }}
+                                                    {% if form.bloom_level.errors %}
+                                                        <span class="text-danger">{{ form.bloom_level.errors }}</span>
+                                                    {% endif %}
+                                                </div>
+                                            </div>
+                                            <div class="subdivision-fields" style="display:none;">
+                                                <div class="row mt-2">
+                                                    <div class="col-md-6">
+                                                        {{ form.subdivision_1_text.label_tag }}
+                                                        {{ form.subdivision_1_text }}
+                                                    </div>
+                                                    <div class="col-md-6">
+                                                        {{ form.subdivision_1_marks.label_tag }}
+                                                        {{ form.subdivision_1_marks }}
+                                                    </div>
+                                                </div>
+                                                <div class="row mt-2">
+                                                    <div class="col-md-6">
+                                                        {{ form.subdivision_2_text.label_tag }}
+                                                        {{ form.subdivision_2_text }}
+                                                    </div>
+                                                    <div class="col-md-6">
+                                                        {{ form.subdivision_2_marks.label_tag }}
+                                                        {{ form.subdivision_2_marks }}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    
+                                    {% if not forloop.counter0|divisibleby:2 or forloop.last %}
+                                    </div>
+                                    {% endif %}
+                                    {% endfor %}
+                                </div>
+                            </div>
+
+                            <!-- Part C: 1 Question -->
+                            <div class="card mt-3">
+                                <div class="card-header bg-danger">
+                                    <h4>Part C - Case Study / Problem Solving (1 × 15 = 15 marks)</h4>
+                                    <small class="text-muted">Compulsory question</small>
+                                </div>
+                                <div class="card-body">
+                                    {{ part_c_formset.management_form }}
+                                    {% for form in part_c_formset %}
+                                    <div class="part-c-question p-3" style="background-color: #f8d7da;">
+                                        {{ form.id }}
+                                        <h5 class="text-dark">Question 16</h5>
+                                        <div class="row">
+                                            <div class="col-md-12">
+                                                {{ form.question_text.label_tag }}
+                                                {{ form.question_text }}
+                                                <small class="text-muted">Use $...$ for inline math, $$...$$ for block math formulas</small>
+                                                {% if form.question_text.errors %}
+                                                    <span class="text-danger">{{ form.question_text.errors }}</span>
+                                                {% endif %}
+                                            </div>
+                                        </div>
+                                        <div class="row mt-2">
+                                            <div class="col-md-12">
+                                                <label>Question Image (optional):</label>
+                                                {{ form.question_image }}
+                                                {% if form.instance.question_image %}
+                                                <small class="text-success">Current: {{ form.instance.question_image.name }}</small>
+                                                {% endif %}
+                                            </div>
+                                        </div>
+                                        <div class="row mt-2">
+                                            <div class="col-md-6">
+                                                {{ form.course_outcome.label_tag }}
+                                                {{ form.course_outcome }}
+                                                {% if form.course_outcome.errors %}
+                                                    <span class="text-danger">{{ form.course_outcome.errors }}</span>
+                                                {% endif %}
+                                            </div>
+                                            <div class="col-md-6">
+                                                {{ form.bloom_level.label_tag }}
+                                                {{ form.bloom_level }}
+                                                {% if form.bloom_level.errors %}
+                                                    <span class="text-danger">{{ form.bloom_level.errors }}</span>
+                                                {% endif %}
+                                            </div>
+                                        </div>
+                                    </div>
+                                    {% endfor %}
+                                </div>
+                            </div>
+
+                            <!-- Submit Button -->
+                            <div class="card-footer">
+                                <button type="submit" class="btn btn-primary btn-lg">
+                                    <i class="fas fa-eye"></i> Create & Preview
+                                </button>
+                                <a href="{% url 'staff_list_structured_qps' %}" class="btn btn-secondary btn-lg">
+                                    <i class="fas fa-times"></i> Cancel
+                                </a>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<script>
+$(document).ready(function() {
+    // Show/hide subdivision fields
+    $('input[id$="-has_subdivisions"]').each(function() {
+        const checkbox = $(this);
+        const subdivisionDiv = checkbox.closest('.row').next('.subdivision-fields');
+        
+        checkbox.on('change', function() {
+            if (checkbox.is(':checked')) {
+                subdivisionDiv.show();
+            } else {
+                subdivisionDiv.hide();
+                // Clear subdivision fields
+                subdivisionDiv.find('input, textarea').val('');
+            }
+        });
+        
+        // Initialize on load
+        if (checkbox.is(':checked')) {
+            subdivisionDiv.show();
+        }
+    });
+
+    // ===== Client-side validation for Create & Preview =====
+    $('#structuredQPForm').on('submit', function(e) {
+        var errors = [];
+
+        // --- Basic Details ---
+        if (!$('#id_course').val()) errors.push('Course is required.');
+        if (!$('#id_regulation').val()) errors.push('Regulation is required.');
+        if (!$('#id_academic_year').val()) errors.push('Academic Year is required.');
+        if (!$('#id_semester').val()) errors.push('Semester is required.');
+        if (!$.trim($('#id_exam_month_year').val())) errors.push('Exam Month/Year is required.');
+
+        // Helper: count filled questions in a formset and check CO/BL present
+        function validatePart(prefix, totalForms, partLabel, minRequired) {
+            var filled = 0;
+            var count = parseInt($('#id_' + prefix + '-TOTAL_FORMS').val()) || totalForms;
+            for (var i = 0; i < count; i++) {
+                var txt = $.trim($('#id_' + prefix + '-' + i + '-question_text').val());
+                if (txt) {
+                    filled++;
+                    var co = $('#id_' + prefix + '-' + i + '-course_outcome').val();
+                    var bl = $('#id_' + prefix + '-' + i + '-bloom_level').val();
+                    if (!co) errors.push(partLabel + ' Q' + (i + 1) + ': Course Outcome is required.');
+                    if (!bl) errors.push(partLabel + ' Q' + (i + 1) + ": Bloom's Level is required.");
+                }
+            }
+            if (filled < minRequired) {
+                errors.push(partLabel + ': ' + filled + ' question(s) filled — ' + minRequired + ' required.');
+            }
+        }
+
+        validatePart('part_a', 10, 'Part A', 10);
+        validatePart('part_b', 10, 'Part B', 10);
+        validatePart('part_c', 1, 'Part C', 1);
+
+        // ===== Bloom's Level % Distribution Validation =====
+        // Collect BL marks: Part A=2, Part B=13 (only first of each OR pair), Part C=15
+        var blMarks = {'L1':0,'L2':0,'L3':0,'L4':0,'L5':0,'L6':0};
+        // Part A
+        var aCount = parseInt($('#id_part_a-TOTAL_FORMS').val()) || 10;
+        for (var i = 0; i < aCount; i++) {
+            if ($.trim($('#id_part_a-' + i + '-question_text').val())) {
+                var bl = $('#id_part_a-' + i + '-bloom_level').val();
+                if (bl && blMarks.hasOwnProperty(bl)) blMarks[bl] += 2;
+            }
+        }
+        // Part B — only count first option of each OR pair (even indices: 0,2,4,6,8)
+        var bCount = parseInt($('#id_part_b-TOTAL_FORMS').val()) || 10;
+        for (var i = 0; i < bCount; i += 2) {
+            if ($.trim($('#id_part_b-' + i + '-question_text').val())) {
+                var bl = $('#id_part_b-' + i + '-bloom_level').val();
+                if (bl && blMarks.hasOwnProperty(bl)) blMarks[bl] += 13;
+            }
+        }
+        // Part C
+        if ($.trim($('#id_part_c-0-question_text').val())) {
+            var bl = $('#id_part_c-0-bloom_level').val();
+            if (bl && blMarks.hasOwnProperty(bl)) blMarks[bl] += 15;
+        }
+
+        var totalMarks = 0;
+        for (var k in blMarks) totalMarks += blMarks[k];
+
+        if (totalMarks > 0) {
+            var l1l2 = blMarks['L1'] + blMarks['L2'];
+            var l3l4 = blMarks['L3'] + blMarks['L4'];
+            var l5l6 = blMarks['L5'] + blMarks['L6'];
+            var l1l2Pct = (l1l2 / totalMarks * 100).toFixed(1);
+            var l3l4Pct = (l3l4 / totalMarks * 100).toFixed(1);
+            var l5l6Pct = (l5l6 / totalMarks * 100).toFixed(1);
+
+            if (l1l2Pct < 20 || l1l2Pct > 35) {
+                errors.push('BL Distribution: L1+L2 = ' + l1l2 + ' marks (' + l1l2Pct + '%). Required: 20-35%.');
+            }
+            if (l3l4Pct < 40) {
+                errors.push('BL Distribution: L3+L4 = ' + l3l4 + ' marks (' + l3l4Pct + '%). Required: \u226540%.');
+            }
+            if (l5l6Pct < 15 || l5l6Pct > 25) {
+                errors.push('BL Distribution: L5+L6 = ' + l5l6 + ' marks (' + l5l6Pct + '%). Required: 15-25%.');
+            }
+        }
+
+        if (errors.length > 0) {
+            e.preventDefault();
+            // Remove old validation alert
+            $('#client-validation-errors').remove();
+
+            var html = '<div id="client-validation-errors" class="alert alert-danger alert-dismissible fade show mt-3">' +
+                       '<button type="button" class="close" data-dismiss="alert">&times;</button>' +
+                       '<h5><i class="icon fas fa-ban"></i> Please fix the following errors:</h5><ul>';
+            var maxShow = Math.min(errors.length, 15);
+            for (var i = 0; i < maxShow; i++) {
+                html += '<li>' + errors[i] + '</li>';
+            }
+            if (errors.length > 15) {
+                html += '<li>… and ' + (errors.length - 15) + ' more error(s).</li>';
+            }
+            html += '</ul></div>';
+
+            // Insert after the instructions alert
+            $(html).insertBefore('#structuredQPForm .card:first');
+
+            // Scroll to top so user sees errors
+            $('html, body').animate({ scrollTop: $('#client-validation-errors').offset().top - 80 }, 400);
+        }
+    });
+});
+</script>
+{% endblock content %}

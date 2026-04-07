@@ -1,0 +1,335 @@
+{% extends 'main_app/base.html' %}
+{% load static %}
+
+{% block page_title %}{{ page_title }}{% endblock page_title %}
+
+{% block content %}
+<section class="content">
+    <div class="container-fluid">
+        <div class="row">
+            <div class="col-md-12">
+                <div class="card">
+                    <div class="card-header bg-gradient-info">
+                        <h3 class="card-title">
+                            <i class="fas fa-clipboard-check"></i> Review Question Paper
+                        </h3>
+                        <div class="card-tools">
+                            <span class="badge badge-{{ qp.status|lower }}">
+                                {{ qp.get_status_display }}
+                            </span>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <!-- Faculty & Course Info -->
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="info-box bg-light">
+                                    <div class="info-box-content">
+                                        <h5>Faculty Details</h5>
+                                        <p class="mb-0">
+                                            <strong>Name:</strong> {{ qp.faculty.user.full_name }}<br>
+                                            <strong>Staff ID:</strong> {{ qp.faculty.staff_id }}<br>
+                                            <strong>Email:</strong> {{ qp.faculty.user.email }}
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="info-box bg-light">
+                                    <div class="info-box-content">
+                                        <h5>Course Details</h5>
+                                        <p class="mb-0">
+                                            <strong>Course:</strong> {{ qp.course.course_code }} - {{ qp.course.course_name }}<br>
+                                            <strong>Regulation:</strong> {{ qp.regulation.regulation_name }}<br>
+                                            <strong>Exam:</strong> {{ qp.exam_month_year }}
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Validation Status -->
+                        {% if validation_errors %}
+                        <div class="alert alert-danger">
+                            <h5><i class="icon fas fa-ban"></i> Validation Errors!</h5>
+                            <ul class="mb-0">
+                                {% for error in validation_errors %}
+                                <li>{{ error }}</li>
+                                {% endfor %}
+                            </ul>
+                            {% if validation_suggestions %}
+                            <hr>
+                            <h6><i class="fas fa-lightbulb"></i> Suggested Fixes:</h6>
+                            <ul class="mb-0">
+                                {% for suggestion in validation_suggestions %}
+                                <li{% if forloop.first or forloop.counter == 2 %} style="font-weight:bold; list-style:none;"{% endif %}>{{ suggestion }}</li>
+                                {% endfor %}
+                            </ul>
+                            {% endif %}
+                            <p class="mt-2 mb-0"><strong>Note:</strong> This question paper cannot be approved until these errors are fixed.</p>
+                        </div>
+                        {% else %}
+                        <div class="alert alert-success">
+                            <i class="fas fa-check-circle"></i> All validation checks passed! Question paper meets Anna University R2023 requirements.
+                        </div>
+                        {% endif %}
+                        
+                        {% if repetitions %}
+                        <div class="alert alert-warning">
+                            <h5><i class="fas fa-copy"></i> Repetition Detected</h5>
+                            <p>The following questions are similar to previously approved question papers:</p>
+                            <ul class="mb-0">
+                                {% for r in repetitions %}
+                                <li><strong>{{ r.question }}</strong> ({{ r.match_pct }}% match) — from <em>{{ r.from_exam }}</em><br>
+                                    <small class="text-muted">This Q: "{{ r.question_text }}"</small><br>
+                                    <small class="text-muted">Bank Q: "{{ r.matched_text }}"</small>
+                                </li>
+                                {% endfor %}
+                            </ul>
+                        </div>
+                        {% endif %}
+                        
+                        {% if qp.revision_number > 0 %}
+                        <div class="alert alert-info">
+                            <i class="fas fa-redo"></i> This is <strong>revision #{{ qp.revision_number }}</strong> (resubmitted after rejection).
+                        </div>
+                        {% endif %}
+
+                        <!-- Mark Distribution Summary -->
+                        <div class="card card-outline card-info">
+                            <div class="card-header">
+                                <h3 class="card-title">Mark Distribution Analysis</h3>
+                            </div>
+                            <div class="card-body">
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <h5>Bloom's Level Distribution</h5>
+                                        <table class="table table-sm table-bordered">
+                                            <thead class="bg-light">
+                                                <tr>
+                                                    <th>Category</th>
+                                                    <th>Marks</th>
+                                                    <th>%</th>
+                                                    <th>Required</th>
+                                                    <th>Status</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                <tr>
+                                                    <td>L1+L2 (Remember, Understand)</td>
+                                                    <td>{{ distribution.l1_l2_total }}</td>
+                                                    <td>{{ distribution.l1_l2_percentage|floatformat:1 }}%</td>
+                                                    <td>20-35%</td>
+                                                    <td>
+                                                        {% if distribution.l1_l2_percentage >= 20 and distribution.l1_l2_percentage <= 35 %}
+                                                        <span class="badge badge-success">✓</span>
+                                                        {% else %}
+                                                        <span class="badge badge-danger">✗</span>
+                                                        {% endif %}
+                                                    </td>
+                                                </tr>
+                                                <tr>
+                                                    <td>L3+L4 (Apply, Analyze)</td>
+                                                    <td>{{ distribution.l3_l4_total }}</td>
+                                                    <td>{{ distribution.l3_l4_percentage|floatformat:1 }}%</td>
+                                                    <td>≥40%</td>
+                                                    <td>
+                                                        {% if distribution.l3_l4_percentage >= 40 %}
+                                                        <span class="badge badge-success">✓</span>
+                                                        {% else %}
+                                                        <span class="badge badge-danger">✗</span>
+                                                        {% endif %}
+                                                    </td>
+                                                </tr>
+                                                <tr>
+                                                    <td>L5+L6 (Evaluate, Create)</td>
+                                                    <td>{{ distribution.l5_l6_total }}</td>
+                                                    <td>{{ distribution.l5_l6_percentage|floatformat:1 }}%</td>
+                                                    <td>15-25%</td>
+                                                    <td>
+                                                        {% if distribution.l5_l6_percentage >= 15 and distribution.l5_l6_percentage <= 25 %}
+                                                        <span class="badge badge-success">✓</span>
+                                                        {% else %}
+                                                        <span class="badge badge-danger">✗</span>
+                                                        {% endif %}
+                                                    </td>
+                                                </tr>
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <h5>Course Outcome Coverage</h5>
+                                        <table class="table table-sm table-bordered">
+                                            <thead class="bg-light">
+                                                <tr>
+                                                    <th>CO</th>
+                                                    <th>Marks</th>
+                                                    <th>Percentage</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {% for co, data in distribution.co_distribution.items %}
+                                                <tr>
+                                                    <td>{{ co }}</td>
+                                                    <td>{{ data.marks }}</td>
+                                                    <td>{{ data.percentage|floatformat:1 }}%</td>
+                                                </tr>
+                                                {% endfor %}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Question Preview (Simplified) -->
+                        <div class="card card-outline card-primary">
+                            <div class="card-header">
+                                <h3 class="card-title">Questions Summary</h3>
+                            </div>
+                            <div class="card-body">
+                                <p><strong>Part A:</strong> {{ part_a_questions|length }} questions (20 marks)</p>
+                                <p><strong>Part B:</strong> {{ part_b_pairs|length }} OR pairs (65 marks)</p>
+                                <p><strong>Part C:</strong> {{ part_c_questions|length }} question (15 marks)</p>
+                                <p class="mb-0"><strong>Total:</strong> 100 marks</p>
+                                
+                                          <a href="{% if qp.generated_document or qp.uploaded_document %}{% url 'hod_download_structured_qp' qp.id %}{% else %}#{% endif %}" 
+                                              class="btn btn-primary mt-3 {% if not qp.generated_document and not qp.uploaded_document %}disabled{% endif %}">
+                                    <i class="fas fa-file-word"></i> View Full Question Paper (.docx)
+                                </a>
+                            </div>
+                        </div>
+
+                        <!-- Answer Key -->
+                        <div class="card card-outline card-dark">
+                            <div class="card-header">
+                                <h3 class="card-title"><i class="fas fa-key"></i> Answer Key</h3>
+                            </div>
+                            <div class="card-body">
+                                {% if qp.answer_key_document %}
+                                <div class="d-flex align-items-center">
+                                    <span class="badge badge-{% if qp.answer_key_status == 'SUBMITTED' %}info{% elif qp.answer_key_status == 'APPROVED' %}success{% elif qp.answer_key_status == 'REJECTED' %}danger{% else %}secondary{% endif %} mr-2">
+                                        {{ qp.get_answer_key_status_display }}
+                                    </span>
+                                    <a href="{{ qp.answer_key_document.url }}" target="_blank" class="btn btn-outline-dark btn-sm">
+                                        <i class="fas fa-download"></i> Download Answer Key
+                                    </a>
+                                    {% if qp.answer_key_submitted_at %}
+                                    <small class="text-muted ml-3">
+                                        <i class="fas fa-clock"></i> Submitted: {{ qp.answer_key_submitted_at|date:"d M Y, H:i" }}
+                                    </small>
+                                    {% endif %}
+                                </div>
+                                {% else %}
+                                <p class="text-muted mb-0"><i class="fas fa-exclamation-triangle text-warning"></i> No answer key has been submitted.</p>
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        <!-- Review Actions -->
+                        <div class="card card-outline card-success">
+                            <div class="card-header">
+                                <h3 class="card-title">Review Actions</h3>
+                            </div>
+                            <div class="card-body">
+                                {% if qp.status != 'APPROVED' and qp.status != 'REJECTED' %}
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <!-- Approve -->
+                                        {% if can_approve %}
+                                        <div class="card border-success">
+                                            <div class="card-header bg-success">
+                                                <h5 class="mb-0">Approve Question Paper</h5>
+                                            </div>
+                                            <div class="card-body">
+                                                <form method="post" action="{% url 'hod_approve_structured_qp' qp.id %}">
+                                                    {% csrf_token %}
+                                                    <div class="form-group">
+                                                        <label>Release Date & Time <span class="text-danger">*</span></label>
+                                                        <input type="datetime-local" name="release_datetime" class="form-control" required
+                                                               title="QP becomes visible to students after this date/time">
+                                                        <small class="form-text text-muted">The question paper will become visible to students after this date and time.</small>
+                                                    </div>
+                                                    <div class="form-group">
+                                                        <label>Comments (Optional)</label>
+                                                        <textarea name="hod_comments" class="form-control" rows="3" placeholder="Any additional feedback..."></textarea>
+                                                    </div>
+                                                    <button type="submit" class="btn btn-success btn-block">
+                                                        <i class="fas fa-check-circle"></i> Approve
+                                                    </button>
+                                                </form>
+                                            </div>
+                                        </div>
+                                        {% else %}
+                                        <div class="alert alert-warning">
+                                            Cannot approve due to validation errors. Faculty must fix these first.
+                                        </div>
+                                        {% endif %}
+                                    </div>
+                                    <div class="col-md-6">
+                                        <!-- Reject -->
+                                        <div class="card border-danger">
+                                            <div class="card-header bg-danger">
+                                                <h5 class="mb-0">Reject Question Paper</h5>
+                                            </div>
+                                            <div class="card-body">
+                                                <form method="post" action="{% url 'hod_reject_structured_qp' qp.id %}">
+                                                    {% csrf_token %}
+                                                    <div class="form-group">
+                                                        <label>Rejection Reason <span class="text-danger">*</span></label>
+                                                        <textarea name="rejection_reason" class="form-control" rows="3" required placeholder="Explain why this needs revision..."></textarea>
+                                                    </div>
+                                                    <button type="submit" class="btn btn-danger btn-block">
+                                                        <i class="fas fa-times-circle"></i> Reject & Send for Revision
+                                                    </button>
+                                                </form>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                {% else %}
+                                <div class="alert alert-{{ qp.status|lower }}">
+                                    <h5><i class="fas fa-info-circle"></i> Review Completed</h5>
+                                    <p class="mb-0">
+                                        This question paper has been <strong>{{ qp.get_status_display }}</strong>
+                                        on {{ qp.reviewed_at|date:"d M Y H:i" }}.
+                                    </p>
+                                    {% if qp.hod_comments %}
+                                    <p class="mt-2 mb-0"><strong>Your Comments:</strong> {{ qp.hod_comments }}</p>
+                                    {% endif %}
+                                </div>
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        <a href="{% url 'hod_review_structured_qps' %}" class="btn btn-secondary">
+                            <i class="fas fa-arrow-left"></i> Back to List
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<style>
+.badge-draft { background-color: #6c757d; }
+.badge-submitted { background-color: #17a2b8; }
+.badge-under_review { background-color: #ffc107; color: #000; }
+.badge-approved { background-color: #28a745; }
+.badge-rejected { background-color: #dc3545; }
+.alert-approved { background-color: #d4edda; border-color: #c3e6cb; color: #155724; }
+.alert-rejected { background-color: #f8d7da; border-color: #f5c6cb; color: #721c24; }
+</style>
+
+<!-- MathJax for rendering LaTeX math formulas -->
+<script>
+MathJax = {
+  tex: {
+    inlineMath: [['$', '$'], ['\\(', '\\)']],
+    displayMath: [['$$', '$$'], ['\\[', '\\]']],
+  }
+};
+</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" async></script>
+{% endblock content %}

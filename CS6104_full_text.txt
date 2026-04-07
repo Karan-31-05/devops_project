@@ -1,0 +1,285 @@
+
+
+=== PAGE 1 ===
+DEPARTMENT OF COMPUTER TECHNOLOGY 
+Mid Term Test 
+cs6104 DATA STRUCTURES AND ALGORITHMS 
+Timo 1.30Hrs Marks 50 
+Part A (10x 2 20) 
+Answer All Questions 
+1Which is the exclusive property of any algorithm? Why is it regarded so? 
+How the tight bound time complexity of any algorithm is defined? Is it applicable for all 
+algorithms? Justify. 
+Assume a stack of integers is implemented in an array of integers named iStack. The top of the stack is stored in iStack[O]. Write the necessary lines of statements to find whether 
+the stack is empty or not and push an integer onto the stack. 
+A large integer is in a linked list with one digit per node and the least significant digit Occupies the first position in the linked list. Write a function that increments the integer epresented in the linked list. 
+A tree is said to be skewed if no node has left or no node has right. Write the necessary code segment to check whether the given tree is skewed or not. 
+Name any two data structures used for representing graphs. What are their respective advantages? 
+Write the recurrence relations representing the time complexities of conventional matrix 
+multiplication and Strassen's matrix multiplication of matrices of order nxn using divide 
+and conquer strategy. How much of overhead is added to Strassen's algorithm while 
+saving one multiplication? 
+8. Differentiate Greedy approach from Dynamic programming for algorithm designs. 
+What is memoization? Where is it used? What it contributes? 
+0. State the reasons for why and when Quick sort performs better than merge sort. 
+Part B (6 x 5 30) 
+Answer ANY SIX Questions 
+11. Analyze the following code segment and derive its worst case and best case time 
+complexities with appropriate justification. 
+forj = 2 to n do 
+X = a [j] 
+i =j-1 
+while i> 0 and a [i ]> x do 
+a[i+1]=a[ij 
+i=i-1 
+a[i+ 1]=x 
+Page 1 of 2 
+
+=== PAGE 2 ===
+12Write the necessary functions to insert, delete and search an element in a circular queue 
+whose implementation is in an array of size N. 
+3A list values is said to be palindrome list if the respective values from first to last and last 
+to first are same. Write a function that checks whether the given linked list is palindrome list or not. Does your algorithm incur space overhead and if so, how much? 
+14. Write a function that finds the smallest and largest values from the given linked list and 
+place them in the first and last nodes respectively using minimum number of 
+interchanges. What is the time and space complexity of your method? Is it optima? 
+Justify. 
+5Construct a binary search tree from the list of values (23, 40, 7o, 12, 50, 19, 15). Convert 
+the resulting tree into a threaded binary tree by replacing the NULL links. Write a non- 
+recursive routine that ill return the inorder successor of the given value. 
+j8. For the graph G given here with 8 vertices 
+and 13 edges, construct 
+V2 the spanning tree by using depth first 
+traversal starting from vertex v. Assume 10 1 6 
+8 4 the adjacent vertices are returned in the 
+increasing order of the cost to reach 
+those adjacent vertices without any
+ambiguity. Vs 
+9 
+the minimum cost spanning tree using 
+Prim's algorithm with starting vertex v, 
+7An instance of a Knapsack problem is given as [P = (P1. P2 P3 Pn). W = (wj, W2 
+w3.. W), n, m ], where P has the profits, W has the weights, n is the problem size and 
+m is the Knapsack size. Define a greedy strategy which is expected to give maximum 
+profit. Write an algorithm for your greedy strategy. 
+18. How many distinct possible ways are there to compute the product of a sequence of n 
+matrices A, A2, Ag. . An. Consider the list Po.4 = (15, 5, 10, 20, 25) denoting the 
+dimensions of 4 matrices, where the order of Aj is pi.-1x Pi, 1 sis4. Compute the optimal 
+order of the matrix multiplications and the number of scalar multiplications required for 
+the optimal order. 
+19. X = < X4, X2 X3 . Xm and Y= <y1, y2 Y3. Yn are any two sequences of values. 
+Define the optimal sub structure for finding the longest common sub sequence form X 
+and Y. Design an algorithm to compute only the length of the longest common sub 
+sequence. The algorithm has to compute the length in top-down and should take 
+advantage of the overlapped sub structure of this problem. 
+
+=== PAGE 3 ===
+Roll Number: 203S0337| 
+ANNA UNIVERSITY -UNIVERSITY DEPARTMENT 
+B.E. (FULL-TIME) DEGREE EXAMINATION, NOV/DEC 2019 
+R2018 (RUSA) 
+Branch: Computer Science & EngineeringThird Semester 
+CS6104 DATA STRUCTURES& ALGORITHMS 
+(End-Semester Examnination) 
+Time: Three Hours Max.Marks: 100 
+Part A (10 x2 20 Marks) 3 
+Answer ALL Questions 
+1. Answer the following questions with either true or false. Assume there are n ele- 
+ments in the data structure. No explanation necessary. 
+a One can implement a stack based on a linked list so that each individual 
+push/pop operation time is O(1). 
+(b) The core data structure of Depth-First Search is a queue. It is possible to append two linkedlists in time O(1). 
+Adding an element to a heap has worst-case time complexity O(logn). 
+You have 2You have an array with 10,00,000 distinct elements in random order. 
+to search the array 100 times. 
+with merge sort and then doing the searches using binary search OR just doing the 
+searches with linear search (without sorting). Justify your answer with calculations. 
+Tip: loga(1, 000, 000) 20, which is the complexity of one binary search.] What will result in less work? Sorting the array 
+2 
+OOne. 
+Why? 3One can convert an algorithm to a program, but the reverse is not always true. 
+AWhat is the asymptotic time-complexity of the following pseudo-code fragment in 
+terms of n? 
+for i = 1 to n do 
+2 for j = i to n do 
+for k = 1 to 3 do 
+Countt+; 
+5What characteristics of a problem would suggest that backtracking is a good ap- 
+proach to solve that problem? 
+How many links have to be updated to insert a node in a doubly linked list. Which 2 are they? 
+
+=== PAGE 4 ===
+.Find the post-order sequence for the following tree. 
+9) 
+20 
+812) 
+2131) 
+11) 30 2 
+LSuppose you have the following hash table, implemented using linear probing. The 
+hash function we are using is the identity function, h{z) = r. 
+2 0 1 2 3.4 5 6 7 8 91 2 3 14 2 
+In which order could the elements have been added to the hash table? 
+Choice-A 12,.3, 14, 18, 4, 9, 21 
+Choice-B 12, 14, 3, 9, 4, 18, 21 
+Choice-C 9, 12, 14, 3, 4, 21, 18 
+Choice-D 12, 9, 18, 3, 14, 21, 4 
+There are several correct answers, and you should give all of them. Assume that 
+the hash table has never been resized, and no elements have been deleted yet. 
+O 9. State principle of optimality. 
+. When do you say a problem is NP-hard? 
+Part B (8 x 8 = 64 Marks) 
+Answer ANY EIGHT Questions 30 
+1 Describe a linear time algorithm to find the ith smallest item from a set of n values. 
+Prove that algorithmtakes only linear time. 
+12. A bank has 15 million Euro, which can be invested into stocks of four companies 
+(1, 2, 3, and 4) to get more profits. The table reports, for each company, the net 
+revenue and the amount of money (in million) that must be invested into it. Solve 
+the problem with a branch and bound algorithm. Note that partial investment is 
+not possible. 
+Company 1 2 3 4 
+10 10 12 18 
+4 69 Revenue 
+Money 2 
+The n-queens problem (also known as the peaceful queens problem) is the problem 
+of determining the number of ways that n queens can be placed on an n x n chess 
+board so that no queen threatens any other. Device a backtracking algorithm that 
+solves the n-queens problemn. 3 
+
+=== PAGE 5 ===
+L4. Five products are to be manufactured weekly on the same machine from Monday to 
+Friday. The table below gives the cost of switching the machine from one product 
+to another product. Assume that initially the machine is programmed to start producing product A, and that starts on Monday. Also, it has to produce all the 
+products every week with one product per day, and set to get ready to start for 
+thenextweek, at theendof theweek. Ouraimis to produce alltheproducts 
+in a weck with minimum switching time. You are now advised to use a branch 
+and bound algorithm technique to find what order the machine suppose to switch 
+between products, and find the minimum switch cost for a week.
+from/to |A BCD E 
+oo 3 67 5 
+1 B 3 oo 2 8 
+C 5 3 6 2 
+D 1 3 5 0 1 
+E 4 1 3 8 
+15. There is a river which flows through a country. There are 8 cities on one side (say 
+left side) of the river and 9 cities on the other side (say right side) of the tiver. 
+The sequence of 8 cities on the left side of the river are 2,4,6,7,6,5,4,6 and the 
+sequence of 9 cities on the right side of the river are 4,7,5,6,2,7,5,4,3. Assume that 
+we can only build bridges between cities with the same number from both sides. 
+In this problem, you have to determine the maximum number of bridges we can 
+build without any bridges crossing with each other. Desîgn an algorithm for this 
+problem, and illustrate with the given example. 
+16. A genius student of your class claimed that she has proved P = NP. The proof is 
+as follows: It is known that 3-SAT is NP-Complete. Given a Boolean formula in 
+conjunctive normal form with at most three literals per clause, use the distributive 
+law to construct an equivalent formula in disjunctive normal form. For example, 
+(1 V a VT) A (TVT) = (*1 A T) V (T2 A Ti) V ( AT1) V (T5 AT 
+Since DNF-SAT E P, a satisfying assignment for the new formula, and hence for 
+the old formula, can be found in polynomial time. This shows that 3-SAT E P, 
+and hence P = NP. What is wrong in the proof? 
+17. In the knapsack problem, we have a knapsack of volume V and a collection of n 
+objects whose volumes are U1,U2,*,Un and whose costs are C1, C2, *, Cas respec- 
+tively. Your task is to select items, either fully or partially, to pack in your knapsack 
+so that the total cost of those items is maximized, subject to the constraint that 
+the total volume of the selected items does not exceed V . Provide a greedy based 
+algorithm to get maximum profit, and prove that this algorithm always yields the 
+optimal solution.7 
+(1 Provide the structural definition for Queue,and implement same using arrays and 
+linked lists. 
+
+=== PAGE 6 ===
+X9. Ilustrate, algorithmically, how to insert a node as a right child of its parent in 
+inorder threaded binary tree. 
+20. In what order does Prim's algorithm add edges to the MST? Whenever there is a 
+choice of nodes, choose the one that comes alphabetically first. Whenever there 
+is a choice of edges, choose the one with the alphabetically first endpoint (if both 
+share an alphabetically first endpoint, use the alphabetical ordering on the other 
+end point). 
+2 A E G 
+3 H B F 
+2X. Explain KMP string matching algorithm for finding aà pattern on a text, and analyze the the algorithm. 
+22. Prove that the Hamiltonian cycle problem is in NP-Complete. 
+Part C (2 x8= 16 Marks) 7 Answer ALL Questions 
+23. At the annual meeting of the knights, King Arthur notes that several of knights have started to developconflicts. Sending his undercover agents, he has managedto find out a list of all possibleduellingpairs. He now wishes to exile a small set of 
+knights away so that no duelling pair remains at the annual meeting. Merlin is now 
+set with this task of finding out which knights to send away. Being a perfctionist, Merlin wishes to find the smallest set she couldsend into exile.However, aftermuch thought, she is unable to find the optimal solution using any efficient algorithm. Explain why? (i.e How did Merlin model the problem? What problem is Merlin 
+trying to solve and why is she unable to do it.) 3 
+24 Rithika has a string S and its starting index is 1. The string S consists of characters 
+from 1 to 9. As she is very intelligent, she wants to test her brother Vinay. She asked her brother Vinay to count the number of even numbered characters, for 
+every index i. For an index i, the résult should be calculated from i to the end of 
+the string. As Vinay doesn't know about programming, he wants you to help him 
+to find the solution. 
+SAMPLE INPUT 
+574674546476 
+SAMPLE OUTPUT 
+7 7 7 6 5 5 4 4 3 2 1 1 
+Explanation: For index 1, number of even numbers from 5 to end of the string is 7 
+so the result of index 1 is 7. Similarly, for index 4, number of even numbers from 6 to end of the string is 6 so the result of index 4 is 6. 
+***** 
+
+=== PAGE 7 ===
+ 
+RollNo.  
+ 
+B.E(FT)ENDSEMESTEREXAMINATIONS –APR / MAY 2021 
+ComputerScienceandEngineering  
+Semester  III 
+CS6104  DATA STRUCTURES AND ALGORITHMS  
+(Regulation 2018 -RUSA)  
+Time:3Hours  AnswerALLQuestions  Max.Marks100  
+PART -A(10x2=20Marks)  
+ 
+1. Define data abstraction with an example  
+2. State why queue  is termed as linear data structure?  
+3. What is the minimum and maximum number of nodes in a binary tree of height k?  
+4. For what type of problems divide and conquer strategy is not suitable? Give an example.  
+5. How many d ifferent spanning trees can be formed fo r a complete graph with 5 nodes?  
+6. Differentiate Divide and conquer and Dynamic programming paradigms  
+7. State the role of bounding function in backtracking strategy for solving problems.  
+8. Define heap stating its properties  
+9. What is the time complexity of Na ïve string matching algorithm?  
+10. Characterize NP problems  
+ 
+PART – B ( 8 x 8 = 64 
+marks )(Answerany8 
+questions)  
+ 
+11. Define the asymptotic notations corresponding to best case, worst case and average case 
+analysis of an algorithm.  Write the following equation using the three asymptotic notations.  
+F(n) = 100 n2+log n  
+12. Write an algorithm to insert a node X after a given node Y in a doubly linked list having a 
+pointer p to the first node.  
+13. Write the algorithm to convert infix to postfix expression using stack and illustrate with an 
+example.  
+14. Write recursive algorithms to perform in -order and preorder traversal on a binary tree. Perform 
+in-order and preorder traversal on the follow ing tree and output the sequence  
+ 
+ 
+          
+ 
+
+=== PAGE 8 ===
+  
+15. Write the algorithm to choose the kth smallest element from a list of n elements. Analyse the 
+time complexity for the same.  
+ 
+16. Solve the Knapsack problem using Greedy strategy.  
+Knapsack capacity:  50 
+Weight of objects : { 20, 30, 10, 40}  
+Corresponding Profit earned : {100, 80, 110, 95}  
+17. Determine the longest common subsequence between the given sequences A and B using 
+Dynamic programming approach:  A: “acdbce”  B: “abcbfe” 
+18.  Compare and contrast Backtracking and Branch and bound methods for solving optimizat ion 
+problems. Draw and explain the state space tree structure involved  
+19.  Sort the following list using Heap sort  in ascending order.  Show the heap at each step of 
+processing  
+              9, 2, 5, 10, 7, 3, 8, 4, 1, 6  
+20.  When will collision occur du ring hashing? Explain any one collision resolution method in detail.  
+21.  Explai n KMP string matching algorithm in brief.  
+22.  Differentiate between NP Hard and NP complete problems. Explain theory of reducibility.  
+ 
+PART–C(2x8=16marks)  
+ 
+23.  Solve the recurrence relation using substitution method  and verify using Master ’s method  
+T(n) = 4T(n/2) + n, n >1 and T(n) =1, n=1  
+24. Construct the MST for the given graph using Kruskal ’s method explaining the method . 
+ 

@@ -1,0 +1,207 @@
+{% extends 'main_app/base.html' %}
+{% load static %}
+{% block page_title %}{{page_title}}{% endblock page_title %}
+
+{% block content %}
+<section class="content">
+    <div class="container-fluid">
+        <!-- Header Card -->
+        <div class="card card-outline card-primary mb-3">
+            <div class="card-header">
+                <h3 class="card-title"><i class="fas fa-calendar-alt"></i> {{page_title}}</h3>
+                <div class="card-tools">
+                    <a href="{% url 'add_academic_year' %}" class="btn btn-primary btn-sm">
+                        <i class="fas fa-plus"></i> Add Academic Year
+                    </a>
+                </div>
+            </div>
+            <div class="card-body py-2">
+                <div class="row">
+                    <div class="col-12">
+                        <small>
+                            <strong>Status:</strong>
+                            <span class="badge badge-info ml-1">Upcoming</span> No semesters started
+                            <span class="badge badge-success ml-2">Active</span> Semesters running
+                            <span class="badge badge-secondary ml-2">Archived</span> All semesters ended
+                        </small>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Academic Years Accordion -->
+        <div class="accordion" id="academicYearsAccordion">
+            {% for year in academic_years %}
+            <div class="card card-outline {% if year.status == 'ACTIVE' %}card-success{% elif year.status == 'UPCOMING' %}card-info{% else %}card-secondary{% endif %} mb-2">
+                <div class="card-header p-0" id="heading{{ year.id }}">
+                    <div class="d-flex justify-content-between align-items-center p-2">
+                        <button class="btn btn-link text-left flex-grow-1" type="button" 
+                                data-toggle="collapse" data-target="#collapse{{ year.id }}" 
+                                aria-expanded="{% if year.status == 'ACTIVE' %}true{% else %}false{% endif %}">
+                            <h5 class="mb-0">
+                                <i class="fas fa-chevron-down mr-2"></i>
+                                <strong>{{ year.year }}</strong>
+                                {% with year.status_display as status %}
+                                <span class="badge badge-{{ status.1 }} ml-2">{{ status.0 }}</span>
+                                {% endwith %}
+                                {% if year.is_current %}
+                                <span class="badge badge-primary ml-1"><i class="fas fa-clock"></i> Currently Running</span>
+                                {% endif %}
+                                <span class="badge badge-light ml-2">{{ year.semesters.count }} semesters</span>
+                            </h5>
+                        </button>
+                        <div class="btn-group">
+                            <a href="{% url 'add_semester_for_year' year.id %}" class="btn btn-success btn-sm" title="Add Semester">
+                                <i class="fas fa-plus"></i> Add Semester
+                            </a>
+                            <a href="{% url 'edit_academic_year' year.id %}" class="btn btn-warning btn-sm" title="Edit Year">
+                                <i class="fas fa-edit"></i>
+                            </a>
+                            <a href="{% url 'delete_academic_year' year.id %}" 
+                               onclick="return confirm('Are you sure you want to delete the academic year {{ year.year }}? This will permanently delete the academic year AND all its semesters.')" 
+                               class="btn btn-danger btn-sm" title="Delete Year">
+                                <i class="fas fa-trash"></i>
+                            </a>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="collapse{{ year.id }}" 
+                     class="collapse {% if year.status == 'ACTIVE' %}show{% endif %}" 
+                     aria-labelledby="heading{{ year.id }}" 
+                     data-parent="#academicYearsAccordion">
+                    <div class="card-body p-2">
+                        {% if year.semesters.count > 0 %}
+                        <div class="table-responsive">
+                            <table class="table table-sm table-bordered table-hover mb-0">
+                                <thead class="thead-light">
+                                    <tr>
+                                        <th style="width: 18%">Semester</th>
+                                        <th style="width: 15%">Year of Study</th>
+                                        <th style="width: 12%">Type</th>
+                                        <th style="width: 18%">Start Date</th>
+                                        <th style="width: 18%">End Date</th>
+                                        <th style="width: 12%">Status</th>
+                                        <th style="width: 7%">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for semester in year.semesters.all %}
+                                    <tr class="{% if semester.is_current %}table-success{% endif %}">
+                                            <td>
+                                                <strong>Semester {{ semester.semester_number }}</strong>
+                                                {% if semester.id in semesters_with_overrides %}
+                                                <span class="badge badge-warning ml-1" title="Has program-specific date overrides"><i class="fas fa-layer-group"></i> Per-Program</span>
+                                                {% endif %}
+                                            </td>
+                                        <td>
+                                            <span class="badge badge-primary">{{ semester.year_of_study_display }}</span>
+                                        </td>
+                                        <td>
+                                            {% if semester.semester_type == 'ODD' %}
+                                            <span class="badge badge-info">Odd</span>
+                                            {% else %}
+                                            <span class="badge badge-warning">Even</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>{{ semester.start_date|date:"d M Y" }}</td>
+                                        <td>{{ semester.end_date|date:"d M Y" }}</td>
+                                        <td>
+                                            {% with semester.status_display as status %}
+                                            <span class="badge badge-{{ status.1 }}">
+                                                {% if status.0 == 'Current' %}<i class="fas fa-check"></i> {% endif %}
+                                                {{ status.0 }}
+                                            </span>
+                                            {% endwith %}
+                                        </td>
+                                        <td>
+                                            <a href="{% url 'edit_semester' semester.id %}" 
+                                               class="btn btn-warning btn-xs" title="Edit">
+                                               <i class="fas fa-edit"></i>
+                                            </a>
+                                            <a href="{% url 'delete_semester' semester.id %}" 
+                                               onclick="return confirm('Delete this semester?')" 
+                                               class="btn btn-danger btn-xs" title="Delete">
+                                               <i class="fas fa-trash"></i>
+                                            </a>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                        {% else %}
+                        <div class="alert alert-warning mb-0">
+                            <i class="fas fa-exclamation-triangle"></i>
+                            No semesters added yet. 
+                            <a href="{% url 'add_semester_for_year' year.id %}" class="alert-link">
+                                Add semesters now
+                            </a> to set dates for 1st, 2nd, 3rd, and 4th year students.
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            {% empty %}
+            <div class="card">
+                <div class="card-body text-center py-5">
+                    <i class="fas fa-calendar-plus fa-3x text-muted mb-3"></i>
+                    <h5>No Academic Years Found</h5>
+                    <p class="text-muted">Start by creating an academic year, then add semesters for each year of study.</p>
+                    <a href="{% url 'add_academic_year' %}" class="btn btn-primary">
+                        <i class="fas fa-plus"></i> Add Academic Year
+                    </a>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+
+        <!-- Quick Reference -->
+        {% if academic_years %}
+        <div class="card card-outline card-secondary mt-3">
+            <div class="card-header py-2">
+                <h6 class="card-title mb-0"><i class="fas fa-lightbulb"></i> Quick Reference</h6>
+            </div>
+            <div class="card-body py-2">
+                <div class="row">
+                    <div class="col-md-4">
+                        <small><strong>Odd Semesters:</strong> 1, 3, 5, 7 (typically July-December)</small>
+                    </div>
+                    <div class="col-md-4">
+                        <small><strong>Even Semesters:</strong> 2, 4, 6, 8 (typically January-June)</small>
+                    </div>
+                    <div class="col-md-4">
+                        <small><strong>Grace Period:</strong> 15 days after last even semester ends</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</section>
+{% endblock content %}
+
+{% block extra_css %}
+<style>
+.card-header .btn-link {
+    color: inherit;
+    text-decoration: none;
+}
+.card-header .btn-link:hover {
+    text-decoration: none;
+}
+.card-header .btn-link .fa-chevron-down {
+    transition: transform 0.3s;
+}
+.card-header .btn-link.collapsed .fa-chevron-down {
+    transform: rotate(-90deg);
+}
+.table-success {
+    background-color: rgba(40, 167, 69, 0.15) !important;
+}
+.btn-xs {
+    padding: 0.125rem 0.375rem;
+    font-size: 0.75rem;
+}
+</style>
+{% endblock extra_css %}

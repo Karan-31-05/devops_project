@@ -1,0 +1,153 @@
+{% extends 'main_app/base.html' %}
+{% load static %}
+{% block page_title %}Add Academic Program{% endblock page_title %}
+
+{% block content %}
+<section class="content">
+    <div class="container-fluid">
+        <div class="row">
+            <div class="col-md-8">
+                <div class="card card-primary">
+                    <div class="card-header">
+                        <h3 class="card-title">Add New Academic Program</h3>
+                    </div>
+                    <form method="POST">
+                        {% csrf_token %}
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-md-4">
+                                    <div class="form-group">
+                                        <label>Program Code *</label>
+                                        {{ form.code }}
+                                        <small class="text-muted">e.g., CSE, CSE-OR, SE</small>
+                                    </div>
+                                </div>
+                                <div class="col-md-8">
+                                    <div class="form-group">
+                                        <label>Program Name *</label>
+                                        {{ form.name }}
+                                        <small class="text-muted">e.g., Computer Science and Engineering</small>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="row">
+                                <div class="col-md-4">
+                                    <div class="form-group">
+                                        <label>Degree *</label>
+                                        {{ form.degree }}
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="form-group">
+                                        <label>Program Type *</label>
+                                        {{ form.level }}
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="form-group">
+                                        <label>Duration (Years) *</label>
+                                        {{ form.duration_years }}
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="row">
+                                <div class="col-md-8">
+                                    <div class="form-group">
+                                        <label>Specialization</label>
+                                        {{ form.specialization }}
+                                        <small class="text-muted">Leave blank if none. e.g., Operations Research, Big Data Analytics</small>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="form-group">
+                                        <label>Total Semesters *</label>
+                                        {{ form.total_semesters }}
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label>Applicable Regulation *</label>
+                                {{ form.regulation }}
+                                <small class="text-muted">Used only to create the initial ProgramRegulation mapping for new incoming batches.</small>
+                            </div>
+                        </div>
+                        <div class="card-footer">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-save mr-1"></i> Save Program
+                            </button>
+                            <a href="{% url 'manage_programs' %}" class="btn btn-secondary">
+                                <i class="fas fa-arrow-left mr-1"></i> Back to List
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+            
+            <div class="col-md-4">
+                <div class="card card-info">
+                    <div class="card-header">
+                        <h3 class="card-title"><i class="fas fa-info-circle mr-1"></i> Programs Offered</h3>
+                    </div>
+                    <div class="card-body">
+                        <h6><strong>UG Programs:</strong></h6>
+                        <ul class="list-unstyled">
+                            <li><i class="fas fa-graduation-cap text-primary mr-1"></i> B.E. Computer Science and Engineering</li>
+                        </ul>
+                        
+                        <h6 class="mt-3"><strong>PG Programs:</strong></h6>
+                        <ul class="list-unstyled">
+                            <li><i class="fas fa-graduation-cap text-success mr-1"></i> M.E. Computer Science and Engineering</li>
+                            <li><i class="fas fa-graduation-cap text-success mr-1"></i> M.E. CSE Spl. in Operations Research</li>
+                            <li><i class="fas fa-graduation-cap text-success mr-1"></i> M.E. CSE Spl. in Big Data Analytics</li>
+                            <li><i class="fas fa-graduation-cap text-success mr-1"></i> M.E. Software Engineering</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock content %}
+
+{% block custom_css %}
+<style>
+    .custom-control-input:checked ~ .custom-control-label::before {
+        background-color: #007bff;
+        border-color: #007bff;
+    }
+</style>
+{% endblock custom_css %}
+
+{% block custom_js %}
+<script>
+$(document).ready(function() {
+    // Auto-select level based on degree
+    $('#id_degree').on('change', function() {
+        var degree = $(this).val();
+        var levelSelect = $('#id_level');
+        var durationInput = $('#id_duration_years');
+        var semestersInput = $('#id_total_semesters');
+        
+        if (degree === 'BE' || degree === 'BTECH') {
+            // Undergraduate
+            levelSelect.val('UG');
+            durationInput.val(4);
+            semestersInput.val(8);
+        } else if (degree === 'ME' || degree === 'MTECH' || degree === 'MS') {
+            // Postgraduate
+            levelSelect.val('PG');
+            durationInput.val(2);
+            semestersInput.val(4);
+        }
+    });
+    
+    // Trigger on page load if degree is already selected
+    if ($('#id_degree').val()) {
+        $('#id_degree').trigger('change');
+    }
+});
+</script>
+{% endblock custom_js %}

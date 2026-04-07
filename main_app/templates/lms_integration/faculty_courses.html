@@ -1,0 +1,85 @@
+{% extends 'main_app/base.html' %}
+{% load static %}
+{% block page_title %}{{ page_title }}{% endblock page_title %}
+
+{% block content %}
+<section class="content">
+<div class="container-fluid">
+
+    {% if moodle_url %}
+    <div class="mb-3">
+        <a href="{{ moodle_url }}" target="_blank" class="btn btn-outline-primary">
+            <i class="fas fa-external-link-alt mr-1"></i> Open Moodle Dashboard
+        </a>
+    </div>
+    {% endif %}
+
+    <div class="card card-dark">
+        <div class="card-header">
+            <h3 class="card-title"><i class="fas fa-chalkboard-teacher mr-2"></i>My Moodle Courses</h3>
+        </div>
+        <div class="card-body">
+            {% if courses_data %}
+            <div class="row">
+                {% for cd in courses_data %}
+                <div class="col-md-6 col-lg-4">
+                    <div class="card {% if cd.mapping and cd.mapping.sync_status == 'SYNCED' %}card-outline card-success{% else %}card-outline card-secondary{% endif %}">
+                        <div class="card-header">
+                            <h3 class="card-title">
+                                <strong>{{ cd.assignment.course.course_code }}</strong>
+                            </h3>
+                            <div class="card-tools">
+                                {% if cd.mapping and cd.mapping.sync_status == 'SYNCED' %}
+                                <span class="badge badge-success">Synced</span>
+                                {% else %}
+                                <span class="badge badge-secondary">Not Synced</span>
+                                {% endif %}
+                            </div>
+                        </div>
+                        <div class="card-body">
+                            <p><strong>{{ cd.assignment.course.title }}</strong></p>
+                            <p class="text-muted mb-1">
+                                <i class="fas fa-calendar mr-1"></i> {{ cd.assignment.semester }} | {{ cd.assignment.academic_year }}
+                            </p>
+                            <p class="text-muted mb-1">
+                                <i class="fas fa-users mr-1"></i> {{ cd.enrolled_students }} student{{ cd.enrolled_students|pluralize }} enrolled in Moodle
+                            </p>
+                            <p class="text-muted">
+                                <i class="fas fa-tag mr-1"></i> Batch: {{ cd.assignment.batch_label }}
+                                | Credits: {{ cd.assignment.course.credits }}
+                                | {{ cd.assignment.course.ltp_display }}
+                            </p>
+                        </div>
+                        <div class="card-footer">
+                            {% if cd.moodle_link %}
+                            <a href="{{ cd.moodle_link }}" target="_blank" class="btn btn-sm btn-primary">
+                                <i class="fas fa-external-link-alt mr-1"></i> Open in Moodle
+                            </a>
+                            <a href="{% url 'lms_faculty_course_grades' cd.assignment.id %}" class="btn btn-sm btn-outline-info">
+                                <i class="fas fa-chart-bar mr-1"></i> Grades
+                            </a>
+                            {% else %}
+                            <form method="post" action="{% url 'lms_faculty_sync_course' cd.assignment.id %}" class="d-inline">
+                                {% csrf_token %}
+                                <button type="submit" class="btn btn-sm btn-warning">
+                                    <i class="fas fa-sync mr-1"></i> Sync to Moodle
+                                </button>
+                            </form>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <div class="text-center text-muted py-5">
+                <i class="fas fa-book fa-3x mb-3"></i>
+                <p>No course assignments found. Courses will appear here once the HOD creates course assignments.</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+</div>
+</section>
+{% endblock content %}

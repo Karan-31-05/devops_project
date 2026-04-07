@@ -1,0 +1,70 @@
+{% extends 'main_app/base.html' %}
+{% load static %}
+{% block page_title %}{{ page_title }}{% endblock page_title %}
+
+{% block content %}
+<section class="content">
+<div class="container-fluid">
+    <div class="card card-dark">
+        <div class="card-header">
+            <h3 class="card-title">
+                <i class="fas fa-chart-bar mr-2"></i>
+                Grades – {{ assignment.course.course_code }} {{ assignment.course.title }}
+            </h3>
+            <div class="card-tools">
+                <a href="{% url 'lms_faculty_courses' %}" class="btn btn-tool">
+                    <i class="fas fa-arrow-left"></i> Back
+                </a>
+                {% if mapping %}
+                <a href="{{ moodle_url }}/grade/report/grader/index.php?id={{ mapping.moodle_course_id }}" 
+                   target="_blank" class="btn btn-tool" title="Open gradebook in Moodle">
+                    <i class="fas fa-external-link-alt"></i>
+                </a>
+                {% endif %}
+            </div>
+        </div>
+        <div class="card-body table-responsive p-0">
+            {% if grades %}
+            <table class="table table-hover table-striped text-nowrap">
+                <thead>
+                    <tr>
+                        <th>Student</th>
+                        <th>Email</th>
+                        <th>Grade Item</th>
+                        <th>Grade</th>
+                        <th>Max</th>
+                        <th>%</th>
+                        <th>Feedback</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for g in grades %}
+                    <tr>
+                        <td>{{ g.student.full_name }}</td>
+                        <td>{{ g.student.email }}</td>
+                        <td>{{ g.item_name }}</td>
+                        <td><strong>{{ g.grade|default:"—" }}</strong></td>
+                        <td>{{ g.grade_max|default:"—" }}</td>
+                        <td>
+                            {% if g.percentage %}
+                            <span class="badge badge-{% if g.percentage >= 60 %}success{% elif g.percentage >= 40 %}warning{% else %}danger{% endif %}">
+                                {{ g.percentage }}%
+                            </span>
+                            {% else %}—{% endif %}
+                        </td>
+                        <td>{{ g.feedback|truncatewords:8|default:"—" }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% else %}
+            <div class="text-center text-muted py-5">
+                <i class="fas fa-chart-bar fa-3x mb-3"></i>
+                <p>No grade data cached for this course. Ask the HOD to pull grades from Moodle.</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+</section>
+{% endblock content %}

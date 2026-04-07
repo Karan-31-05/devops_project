@@ -1,0 +1,65 @@
+{% extends 'main_app/base.html' %}
+{% load static %}
+{% block page_title %}{{page_title}}{% endblock page_title %}
+
+{% block content %}
+
+<section class="content">
+    <div class="container-fluid">
+        <div class="row">
+            <div class="col-md-12">
+                <div class="card">
+                    <div class="card-header">
+                        <h3 class="card-title">{{page_title}}</h3>
+                    </div>
+                    <!-- /.card-header -->
+                    <div class="card-body">
+                        {% if messages %}
+                            {% for message in messages %}
+                                <div class="alert alert-{% if message.tags %}{{ message.tags }}{% else %}info{% endif %} alert-dismissible fade show" role="alert">
+                                    {{ message }}
+                                    <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                                        <span aria-hidden="true">&times;</span>
+                                    </button>
+                                </div>
+                            {% endfor %}
+                        {% endif %}
+
+                        {% if events %}
+                            <div class="row">
+                                {% for event in events %}
+                                <div class="col-md-6 col-lg-4 mb-3">
+                                    <div class="card card-primary">
+                                        <div class="card-header">
+                                            <h5 class="card-title">{{ event.title }}</h5>
+                                        </div>
+                                        <div class="card-body">
+                                            <p><strong>Date & Time:</strong> {{ event.start_datetime|date:"d-m-Y H:i" }}</p>
+                                            <p><strong>Location:</strong> {{ event.venue }}</p>
+                                            <p><strong>Description:</strong></p>
+                                            <p>{{ event.description|truncatewords:30 }}</p>
+                                        </div>
+                                        <div class="card-footer">
+                                            {% if event.id in registered_event_ids %}
+                                                <a href="{% url 'unregister_event' event.id %}" class="btn btn-danger btn-sm">Unregister</a>
+                                                <span class="badge badge-success">Registered</span>
+                                            {% else %}
+                                                <a href="{% url 'register_event' event.id %}" class="btn btn-primary btn-sm">Register</a>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                </div>
+                                {% endfor %}
+                            </div>
+                        {% else %}
+                            <div class="alert alert-info" role="alert">
+                                No events available at the moment.
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock content %}

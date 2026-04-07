@@ -1,0 +1,92 @@
+{% extends 'main_app/base.html' %}
+{% load static %}
+{% block page_title %}{{ page_title }}{% endblock page_title %}
+
+{% block content %}
+<section class="content">
+    <div class="container-fluid">
+        <div class="row">
+            <div class="col-md-8 offset-md-2">
+                <div class="card card-primary">
+                    <div class="card-header">
+                        <h3 class="card-title"><i class="fas fa-plus-circle mr-2"></i>{{ page_title }}</h3>
+                    </div>
+                    <form method="POST">
+                        {% csrf_token %}
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="form-group">
+                                        <label for="id_academic_year">Academic Year <span class="text-danger">*</span></label>
+                                        {{ form.academic_year }}
+                                        {% if form.academic_year.errors %}
+                                        <div class="text-danger">{{ form.academic_year.errors }}</div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="form-group">
+                                        <label for="id_semester">Semester <span class="text-danger">*</span></label>
+                                        {{ form.semester }}
+                                        {% if form.semester.errors %}
+                                        <div class="text-danger">{{ form.semester.errors }}</div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="form-group">
+                                        <label for="id_year">Year (1-4) <span class="text-danger">*</span></label>
+                                        {{ form.year }}
+                                        {% if form.year.errors %}
+                                        <div class="text-danger">{{ form.year.errors }}</div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="form-group">
+                                        <label for="id_batch">Batch <span class="text-danger">*</span></label>
+                                        {{ form.batch }}
+                                        {% if form.batch.errors %}
+                                        <div class="text-danger">{{ form.batch.errors }}</div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="form-group">
+                                        <label for="id_regulation">Regulation</label>
+                                        {{ form.regulation }}
+                                        {% if form.regulation.errors %}
+                                        <div class="text-danger">{{ form.regulation.errors }}</div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="form-group">
+                                        <label for="id_effective_from">Effective From <span class="text-danger">*</span></label>
+                                        {{ form.effective_from }}
+                                        {% if form.effective_from.errors %}
+                                        <div class="text-danger">{{ form.effective_from.errors }}</div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="card-footer">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-save mr-1"></i> Create Timetable
+                            </button>
+                            <a href="{% url 'manage_timetables' %}" class="btn btn-secondary">
+                                <i class="fas fa-times mr-1"></i> Cancel
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock content %}

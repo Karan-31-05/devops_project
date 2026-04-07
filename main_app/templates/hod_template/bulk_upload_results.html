@@ -1,0 +1,95 @@
+{% extends 'main_app/base.html' %}
+{% load static %}
+{% block page_title %}{{ page_title }}{% endblock page_title %}
+
+{% block content %}
+<section class="content">
+    <div class="container-fluid">
+        <div class="row">
+            <div class="col-md-8 offset-md-2">
+                <!-- Summary Card -->
+                <div class="card">
+                    <div class="card-header">
+                        <h3 class="card-title"><i class="fas fa-chart-bar mr-2"></i>Upload Summary</h3>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-4">
+                                <div class="info-box bg-success">
+                                    <span class="info-box-icon"><i class="fas fa-check"></i></span>
+                                    <div class="info-box-content">
+                                        <span class="info-box-text">Successful</span>
+                                        <span class="info-box-number">{{ success_count }}</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="info-box bg-danger">
+                                    <span class="info-box-icon"><i class="fas fa-times"></i></span>
+                                    <div class="info-box-content">
+                                        <span class="info-box-text">Failed</span>
+                                        <span class="info-box-number">{{ error_count }}</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="info-box bg-info">
+                                    <span class="info-box-icon"><i class="fas fa-envelope"></i></span>
+                                    <div class="info-box-content">
+                                        <span class="info-box-text">Emails Sent</span>
+                                        <span class="info-box-number">{{ email_success }}</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                {% if errors %}
+                <!-- Errors Card -->
+                <div class="card card-danger">
+                    <div class="card-header">
+                        <h3 class="card-title"><i class="fas fa-exclamation-circle mr-2"></i>Errors ({{ total_errors }} total)</h3>
+                    </div>
+                    <div class="card-body">
+                        <ul class="list-group">
+                            {% for error in errors %}
+                            <li class="list-group-item list-group-item-danger">
+                                <i class="fas fa-times-circle mr-2"></i>{{ error }}
+                            </li>
+                            {% endfor %}
+                        </ul>
+                        {% if total_errors > 20 %}
+                        <p class="mt-2 text-muted">Showing first 20 errors. {{ total_errors|add:"-20" }} more errors not shown.</p>
+                        {% endif %}
+                    </div>
+                </div>
+                {% endif %}
+
+                {% if email_failed > 0 %}
+                <div class="alert alert-warning">
+                    <i class="fas fa-exclamation-triangle mr-2"></i>
+                    <strong>{{ email_failed }} emails failed to send.</strong> 
+                    You can resend emails from the Manage Students page.
+                </div>
+                {% endif %}
+
+                <!-- Actions -->
+                <div class="card">
+                    <div class="card-body">
+                        <a href="{% url 'bulk_upload_students' %}" class="btn btn-primary">
+                            <i class="fas fa-upload mr-1"></i> Upload More
+                        </a>
+                        <a href="{% url 'manage_student' %}" class="btn btn-info">
+                            <i class="fas fa-users mr-1"></i> View Students
+                        </a>
+                        <a href="{% url 'admin_home' %}" class="btn btn-secondary">
+                            <i class="fas fa-home mr-1"></i> Dashboard
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock content %}

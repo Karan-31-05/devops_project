@@ -1,0 +1,342 @@
+{% extends 'main_app/base.html' %}
+{% load static %}
+{% block page_title %}{{page_title}}{% endblock page_title %}
+
+{% block content %}
+
+<section class="content">
+    <div class="container-fluid">
+        <div class="row">
+            <div class="col-md-12">
+                <div class="card">
+                    <div class="card-header">
+                        <h3 class="card-title">{{page_title}}</h3>
+                        <div class="card-tools">
+                            <button
+                                type="button"
+                                class="btn btn-warning btn-sm"
+                                data-toggle="modal"
+                                data-target="#changeHodModal"
+                                {% if not hod_candidates %}disabled{% endif %}
+                            >
+                                <i class="fas fa-exchange-alt"></i> Change HOD
+                            </button>
+                        </div>
+                    </div>
+                    <!-- /.card-header -->
+                    <div class="card-body">
+                        {% if current_hod %}
+                        <p class="mb-3"><strong>Current HOD:</strong> {{ current_hod.user.full_name }} ({{ current_hod.staff_id }})</p>
+                        {% endif %}
+                        <table id="example2" class="table table-bordered table-hover">
+                            <thead class="thead-dark">
+                                <tr>
+                                    <th>#</th>
+                                    <th>Staff ID</th>
+                                    <th>Full Name</th>
+                                    <th>Email</th>
+                                    <th>Designation</th>
+                                    <th>Type</th>
+                                    <th>Avatar</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for faculty in faculty_list %}
+                                <tr id="faculty-row-{{ faculty.id }}">
+                                    <td>{{ forloop.counter }}</td>
+                                    <td>{{faculty.staff_id}}</td>
+                                    <td>{{faculty.user.full_name}}</td>
+                                    <td>{{faculty.user.email}}</td>
+                                    <td>{{faculty.get_designation_display}}</td>
+                                    <td>
+                                        {% if faculty.is_external %}
+                                        <span class="badge badge-warning">Guest</span>
+                                        {% elif faculty.user.is_hod %}
+                                        <span class="badge badge-primary">Current HOD</span>
+                                        {% else %}
+                                        <span class="badge badge-success">Regular</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if faculty.user.profile_pic %}
+                                        <img class="img img-fluid mb-2" height="40" width="40"
+                                            src="{{faculty.user.profile_pic.url}}" alt="">
+                                        {% else %}
+                                        <i class="fas fa-user-circle fa-2x"></i>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <a href="{% url 'edit_faculty' faculty.id %}" class="btn btn-info btn-sm">Edit</a>
+                                        <form method="POST" action="{% url 'delete_faculty' faculty.id %}" class="d-inline delete-faculty-form" data-row-id="faculty-row-{{ faculty.id }}" data-staff-id="{{ faculty.staff_id }}" data-faculty-name="{{ faculty.user.full_name|escapejs }}">
+                                            {% csrf_token %}
+                                            <input type="hidden" name="force" value="0">
+                                            <input type="hidden" name="confirm_staff_id" value="">
+                                            <button type="submit" class="btn btn-danger btn-sm">Delete</button>
+                                        </form>
+                                    </td>
+                                </tr>
+                                {% empty %}
+                                <tr>
+                                    <td colspan="8" class="text-center">No faculty found. <a href="{% url 'add_faculty' %}">Add one</a></td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<div class="modal fade" id="changeHodModal" tabindex="-1" role="dialog" aria-labelledby="changeHodModalLabel" aria-hidden="true">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <form method="POST" action="{% url 'change_hod' %}" id="changeHodForm">
+                {% csrf_token %}
+                <div class="modal-header">
+                    <h5 class="modal-title" id="changeHodModalLabel">Change HOD</h5>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    {% if current_hod %}
+                    <div class="alert alert-info py-2">
+                        Current HOD: <strong>{{ current_hod.user.full_name }}</strong> ({{ current_hod.staff_id }})
+                    </div>
+                    {% endif %}
+
+                    <div class="form-group">
+                        <label for="hodFacultySearch">Search Faculty by Name or Staff ID</label>
+                        <input
+                            type="text"
+                            class="form-control"
+                            id="hodFacultySearch"
+                            placeholder="Type faculty name or staff ID"
+                            autocomplete="off"
+                        >
+                    </div>
+
+                    <div class="form-group">
+                        <label for="hodFacultySelect">Select New HOD</label>
+                        <select class="form-control" id="hodFacultySelect" name="faculty_id" size="8" required>
+                            {% for faculty in hod_candidates %}
+                            <option value="{{ faculty.id }}">{{ faculty.staff_id }} - {{ faculty.user.full_name }}</option>
+                            {% empty %}
+                            <option value="" disabled>No eligible faculty available</option>
+                            {% endfor %}
+                        </select>
+                        <small class="form-text text-muted">Results are re-sorted as you type.</small>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="current_hod_password">Current HOD Password (Required)</label>
+                        <input
+                            type="password"
+                            class="form-control"
+                            id="current_hod_password"
+                            name="current_hod_password"
+                            required
+                            autocomplete="current-password"
+                        >
+                        <small class="form-text text-muted">For confirmation, enter the current HOD login password before transfer.</small>
+                    </div>
+
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" id="reassign_pending" name="reassign_pending" value="1" checked>
+                        <label class="form-check-label" for="reassign_pending">
+                            Reassign pending question paper workflow records
+                        </label>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-warning">Confirm HOD Transfer</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock content %}
+
+{% block custom_js %}
+<script>
+    (function () {
+        function removeTableRow(rowId) {
+            var row = document.getElementById(rowId);
+            if (!row) return;
+
+            if (window.jQuery && $.fn.DataTable && $.fn.DataTable.isDataTable('#example2')) {
+                var dt = $('#example2').DataTable();
+                dt.row($(row)).remove().draw(false);
+            } else {
+                row.remove();
+            }
+        }
+
+        function submitDelete(form, forceDelete, confirmStaffId) {
+            var csrfInput = form.querySelector('input[name="csrfmiddlewaretoken"]');
+            var formData = new FormData(form);
+            formData.set('force', forceDelete ? '1' : '0');
+            formData.set('confirm_staff_id', confirmStaffId || '');
+
+            return fetch(form.action, {
+                method: 'POST',
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'X-CSRFToken': csrfInput ? csrfInput.value : ''
+                },
+                credentials: 'same-origin',
+                body: formData
+            }).then(function (response) {
+                return response.json();
+            });
+        }
+
+        document.querySelectorAll('.delete-faculty-form').forEach(function (form) {
+            form.addEventListener('submit', function (e) {
+                e.preventDefault();
+
+                var facultyName = form.getAttribute('data-faculty-name') || 'this faculty member';
+                if (!confirm('Are you sure you want to delete ' + facultyName + '?')) {
+                    return;
+                }
+
+                var rowId = form.getAttribute('data-row-id');
+                var staffId = (form.getAttribute('data-staff-id') || '').toUpperCase();
+
+                submitDelete(form, false, '').then(function (data) {
+                    if (data.success) {
+                        removeTableRow(rowId);
+                        return;
+                    }
+
+                    if (data.requires_force) {
+                        var deps = Array.isArray(data.dependencies) ? data.dependencies : [];
+                        var depLines = deps.length
+                            ? '\n\nLinked records:\n- ' + deps.map(function (item) {
+                                return item.model + ' (' + item.count + ')';
+                            }).join('\n- ')
+                            : '';
+
+                        var expectedStaffId = (data.staff_id || staffId || '').toUpperCase();
+                        var typed = prompt(
+                            'Delete is blocked by default because this faculty has linked records.'
+                            + depLines
+                            + '\n\nTo force delete, type staff ID: ' + expectedStaffId
+                        );
+
+                        if (typed === null) {
+                            return;
+                        }
+
+                        if (typed.trim().toUpperCase() !== expectedStaffId) {
+                            alert('Confirmation text mismatch. Deletion cancelled.');
+                            return;
+                        }
+
+                        if (!confirm('Final warning: this will permanently delete faculty and related records. Continue?')) {
+                            return;
+                        }
+
+                        submitDelete(form, true, typed.trim().toUpperCase()).then(function (forceData) {
+                            if (forceData.success) {
+                                removeTableRow(rowId);
+                            } else {
+                                alert(forceData.error || 'Could not delete faculty.');
+                            }
+                        }).catch(function () {
+                            alert('Force delete failed. Please try again.');
+                        });
+                    } else {
+                        alert(data.error || 'Could not delete faculty.');
+                    }
+                }).catch(function () {
+                    alert('Delete failed. Please try again.');
+                });
+            });
+        });
+
+        var searchInput = document.getElementById('hodFacultySearch');
+        var facultySelect = document.getElementById('hodFacultySelect');
+        var changeHodForm = document.getElementById('changeHodForm');
+
+        if (searchInput && facultySelect) {
+            var optionSource = Array.prototype.slice.call(facultySelect.options)
+                .filter(function (opt) { return !!opt.value; })
+                .map(function (opt) {
+                    return {
+                        value: opt.value,
+                        label: opt.text,
+                        name: opt.text.toLowerCase(),
+                        staffId: (opt.text.split(' - ')[0] || '').toLowerCase()
+                    };
+                });
+
+            function renderFacultyOptions() {
+                var q = (searchInput.value || '').trim().toLowerCase();
+
+                var filtered = optionSource
+                    .map(function (item) {
+                        var rank = 999;
+                        if (!q) {
+                            rank = 100;
+                        } else if (item.staffId.indexOf(q) === 0) {
+                            rank = 1;
+                        } else if (item.name.indexOf(q) === 0) {
+                            rank = 2;
+                        } else if (item.staffId.indexOf(q) > -1) {
+                            rank = 3;
+                        } else if (item.name.indexOf(q) > -1) {
+                            rank = 4;
+                        }
+
+                        return {
+                            rank: rank,
+                            value: item.value,
+                            label: item.label
+                        };
+                    })
+                    .filter(function (item) { return item.rank < 999; })
+                    .sort(function (a, b) {
+                        if (a.rank !== b.rank) return a.rank - b.rank;
+                        return a.label.localeCompare(b.label);
+                    });
+
+                facultySelect.innerHTML = '';
+                filtered.forEach(function (item) {
+                    var option = document.createElement('option');
+                    option.value = item.value;
+                    option.text = item.label;
+                    facultySelect.appendChild(option);
+                });
+
+                if (facultySelect.options.length > 0) {
+                    facultySelect.selectedIndex = 0;
+                }
+            }
+
+            searchInput.addEventListener('input', renderFacultyOptions);
+            renderFacultyOptions();
+        }
+
+        if (changeHodForm) {
+            changeHodForm.addEventListener('submit', function (e) {
+                if (!facultySelect || !facultySelect.value) {
+                    e.preventDefault();
+                    alert('Please select a faculty member for HOD transfer.');
+                    return;
+                }
+
+                var selectedLabel = facultySelect.options[facultySelect.selectedIndex] ? facultySelect.options[facultySelect.selectedIndex].text : 'selected faculty';
+                var confirmed = confirm('Transfer HOD role to ' + selectedLabel + '? Existing HOD users will be demoted to faculty.');
+                if (!confirmed) {
+                    e.preventDefault();
+                }
+            });
+        }
+    })();
+</script>
+{% endblock custom_js %}

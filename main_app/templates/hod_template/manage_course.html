@@ -1,0 +1,177 @@
+{% extends 'main_app/base.html' %}
+{% load static %}
+{% block page_title %}{{ page_title }}{% endblock page_title %}
+
+{% block content %}
+<section class="content">
+    <div class="container-fluid">
+        <div class="row">
+            <div class="col-md-12">
+                <div class="card">
+                    <div class="card-header">
+                        <h3 class="card-title"><i class="fas fa-book mr-2"></i>{{ page_title }}</h3>
+                        <div class="card-tools">
+                            <a href="{% url 'add_course' %}" class="btn btn-primary btn-sm">
+                                <i class="fas fa-plus"></i> Add Course
+                            </a>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <!-- Filters -->
+                        <form method="GET" class="mb-3">
+                            <div class="row">
+                                <div class="col-md-3">
+                                    <div class="form-group">
+                                        <label>Course Type</label>
+                                        <select name="course_type" class="form-control form-control-sm" onchange="this.form.submit()">
+                                            <option value="">All Types</option>
+                                            {% for code, name in course_type_choices %}
+                                            <option value="{{ code }}" {% if request.GET.course_type == code %}selected{% endif %}>{{ name }}</option>
+                                            {% endfor %}
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="form-group">
+                                        <label>Search</label>
+                                        <input type="text" name="search" class="form-control form-control-sm" 
+                                               placeholder="Code or title..." value="{{ request.GET.search }}">
+                                    </div>
+                                </div>
+                                <div class="col-md-2">
+                                    <div class="form-group">
+                                        <label>&nbsp;</label>
+                                        <button type="submit" class="btn btn-info btn-sm btn-block">
+                                            <i class="fas fa-search"></i> Search
+                                        </button>
+                                    </div>
+                                </div>
+                                <div class="col-md-3">
+                                    <div class="form-group">
+                                        <label>&nbsp;</label>
+                                        <a href="{% url 'manage_course' %}" class="btn btn-secondary btn-sm btn-block">
+                                            <i class="fas fa-times"></i> Clear
+                                        </a>
+                                    </div>
+                                </div>
+                                <div class="col-md-12">
+                                    <div class="form-check mb-2">
+                                        <input class="form-check-input" type="checkbox" id="include_placeholders" name="include_placeholders" value="1" {% if include_placeholders %}checked{% endif %}>
+                                        <label class="form-check-label" for="include_placeholders">
+                                            Show placeholder courses (grouped by placeholder name)
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+                        </form>
+                        
+                        <!-- Help text -->
+                        <div class="alert alert-info alert-dismissible">
+                            <button type="button" class="close" data-dismiss="alert">&times;</button>
+                            <i class="icon fas fa-info-circle"></i>
+                            Courses are universal and not tied to any regulation. 
+                            To assign a course to a regulation with category and semester, go to 
+                            <a href="{% url 'manage_regulation' %}"><strong>Manage Regulations → Course Plan</strong></a>.
+                        </div>
+                        
+                        <table id="example2" class="table table-bordered table-hover table-sm">
+                            <thead class="thead-dark">
+                                <tr>
+                                    <th>#</th>
+                                    <th>Course Code</th>
+                                    <th>Title</th>
+                                    <th>Type</th>
+                                    <th>L-T-P</th>
+                                    <th>Credits</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for course in courses %}
+                                <tr>
+                                    <td>{{ forloop.counter }}</td>
+                                    <td><strong>{{ course.course_code }}</strong></td>
+                                    <td>{{ course.title }}</td>
+                                    <td>
+                                        {% if course.course_type == 'T' %}
+                                        <span class="badge badge-success">{{ course.get_course_type_display }}</span>
+                                        {% elif course.course_type == 'LIT' %}
+                                        <span class="badge badge-primary">{{ course.get_course_type_display }}</span>
+                                        {% elif course.course_type == 'L' %}
+                                        <span class="badge badge-warning">{{ course.get_course_type_display }}</span>
+                                        {% elif course.course_type == 'CDP' %}
+                                        <span class="badge badge-danger">{{ course.get_course_type_display }}</span>
+                                        {% else %}
+                                        <span class="badge badge-secondary">{{ course.get_course_type_display }}</span>
+                                        {% endif %}
+                                    </td>
+                                    <td><code>{{ course.ltp_display }}</code></td>
+                                    <td>{{ course.credits }}</td>
+                                    <td>
+                                        <a href="{% url 'edit_course' course.course_code %}" class="btn btn-warning btn-xs" title="Edit">
+                                            <i class="fas fa-edit"></i>
+                                        </a>
+                                        <a href="{% url 'delete_course' course.course_code %}" 
+                                           class="btn btn-danger btn-xs" 
+                                           title="Delete"
+                                           onclick="return confirm('Are you sure you want to delete {{ course.course_code }}?')">
+                                            <i class="fas fa-trash"></i>
+                                        </a>
+                                    </td>
+                                </tr>
+                                {% empty %}
+                                <tr>
+                                    <td colspan="7" class="text-center py-4">
+                                        <i class="fas fa-book fa-2x text-muted mb-2"></i><br>
+                                        No courses found. <a href="{% url 'add_course' %}">Add one</a>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+
+                        {% if include_placeholders %}
+                        <div class="mt-4">
+                            <h5><i class="fas fa-layer-group mr-2"></i>Placeholder Courses</h5>
+                            <table class="table table-bordered table-hover table-sm">
+                                <thead class="thead-light">
+                                    <tr>
+                                        <th>#</th>
+                                        <th>Alias</th>
+                                        <th>Name</th>
+                                        <th>Slots</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for p in placeholder_rows %}
+                                    <tr>
+                                        <td>{{ forloop.counter }}</td>
+                                        <td><span class="badge badge-info">{{ p.placeholder_type }}</span></td>
+                                        <td>{{ p.title }}</td>
+                                        <td>{{ p.slot_count }}</td>
+                                        <td>
+                                            <a href="{% url 'delete_placeholder_course_type' p.placeholder_type %}"
+                                               class="btn btn-danger btn-xs"
+                                               onclick="return confirm('Delete placeholder type {{ p.placeholder_type }} ({{ p.title }}) and all its slots?')"
+                                               title="Delete placeholder type">
+                                                <i class="fas fa-trash"></i>
+                                            </a>
+                                        </td>
+                                    </tr>
+                                    {% empty %}
+                                    <tr>
+                                        <td colspan="5" class="text-center text-muted">No placeholders found</td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock content %}

@@ -1,0 +1,138 @@
+{% extends 'main_app/base.html' %}
+{% load static %}
+{% block page_title %}{{page_title}}{% endblock page_title %}
+
+{% block content %}
+<section class="content">
+    <div class="container-fluid">
+        <div class="row">
+            <div class="col-md-12">
+                <div class="card card-primary">
+                    <div class="card-header">
+                        <h3 class="card-title">
+                            <i class="fas fa-chart-bar"></i> {{page_title}}
+                        </h3>
+                    </div>
+                    <div class="card-body">
+                        {% if messages %}
+                            {% for message in messages %}
+                                <div class="alert alert-{% if message.tags %}{{ message.tags }}{% else %}info{% endif %} alert-dismissible fade show" role="alert">
+                                    {{ message }}
+                                    <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                                        <span aria-hidden="true">&times;</span>
+                                    </button>
+                                </div>
+                            {% endfor %}
+                        {% endif %}
+
+                        <!-- Course Selection -->
+                        <form method="GET" class="mb-4">
+                            <div class="row">
+                                <div class="col-md-8">
+                                    <div class="form-group">
+                                        <label>Select Course Assignment</label>
+                                        <select name="assignment" class="form-control" onchange="this.form.submit()">
+                                            <option value="">-- Select Course --</option>
+                                            {% for assignment in assignments %}
+                                            <option value="{{ assignment.id }}" {% if selected_assignment and selected_assignment.id == assignment.id %}selected{% endif %}>
+                                                {{ assignment.course.course_code }} - {{ assignment.course.title }} (Batch {{ assignment.batch_label }})
+                                            </option>
+                                            {% endfor %}
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+                        </form>
+
+                        {% if selected_assignment %}
+                        <div class="alert alert-info">
+                            <strong>Course:</strong> {{ selected_assignment.course.course_code }} - {{ selected_assignment.course.title }} |
+                            <strong>Batch:</strong> {{ selected_assignment.batch_label }} |
+                            <strong>Academic Year:</strong> {{ selected_assignment.academic_year.year }}
+                        </div>
+
+                        {% if attendance_data %}
+                        <div class="table-responsive">
+                            <table class="table table-bordered table-striped" id="attendanceTable">
+                                <thead class="bg-primary">
+                                    <tr>
+                                        <th>#</th>
+                                        <th>Register No</th>
+                                        <th>Student Name</th>
+                                        <th>Total Classes</th>
+                                        <th>Present</th>
+                                        <th>Absent</th>
+                                        <th>Percentage</th>
+                                        <th>Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for data in attendance_data %}
+                                    <tr>
+                                        <td>{{ forloop.counter }}</td>
+                                        <td><strong>{{ data.student.register_no }}</strong></td>
+                                        <td>{{ data.student.user.full_name }}</td>
+                                        <td>{{ data.total }}</td>
+                                        <td><span class="text-success">{{ data.present }}</span></td>
+                                        <td><span class="text-danger">{{ data.absent }}</span></td>
+                                        <td>
+                                            <div class="progress" style="height: 20px;">
+                                                <div class="progress-bar {% if data.percentage >= 75 %}bg-success{% elif data.percentage >= 60 %}bg-warning{% else %}bg-danger{% endif %}" 
+                                                     role="progressbar" 
+                                                     style="width: {{ data.percentage }}%;" 
+                                                     aria-valuenow="{{ data.percentage }}" 
+                                                     aria-valuemin="0" 
+                                                     aria-valuemax="100">
+                                                    {{ data.percentage }}%
+                                                </div>
+                                            </div>
+                                        </td>
+                                        <td>
+                                            {% if data.percentage >= 75 %}
+                                                <span class="badge badge-success">Good</span>
+                                            {% elif data.percentage >= 60 %}
+                                                <span class="badge badge-warning">Warning</span>
+                                            {% else %}
+                                                <span class="badge badge-danger">Critical</span>
+                                            {% endif %}
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                        {% else %}
+                        <div class="alert alert-warning">
+                            <i class="fas fa-exclamation-triangle"></i> No attendance records found for this course.
+                        </div>
+                        {% endif %}
+
+                        {% else %}
+                        <div class="alert alert-info">
+                            <i class="fas fa-info-circle"></i> Please select a course assignment to view the attendance report.
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock content %}
+
+{% block custom_js %}
+<script>
+    $(document).ready(function() {
+        $('#attendanceTable').DataTable({
+            "paging": true,
+            "lengthChange": true,
+            "searching": true,
+            "ordering": true,
+            "info": true,
+            "autoWidth": false,
+            "responsive": true,
+            "order": [[6, "asc"]]
+        });
+    });
+</script>
+{% endblock custom_js %}

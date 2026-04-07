@@ -1,0 +1,94 @@
+{% extends 'main_app/base.html' %}
+{% load static %}
+{% block page_title %}{{page_title}}{% endblock page_title %}
+
+{% block content %}
+<section class="content">
+    <div class="container-fluid">
+        <div class="row">
+            <div class="col-md-12">
+                <div class="card card-primary">
+                    <div class="card-header">
+                        <h3 class="card-title">
+                            <i class="fas fa-trophy"></i> {{page_title}}
+                        </h3>
+                        <div class="card-tools">
+                            <a href="{% url 'student_add_achievement' %}" class="btn btn-light btn-sm">
+                                <i class="fas fa-plus"></i> Add Achievement
+                            </a>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        {% if messages %}
+                            {% for message in messages %}
+                                <div class="alert alert-{% if message.tags %}{{ message.tags }}{% else %}info{% endif %} alert-dismissible fade show" role="alert">
+                                    {{ message }}
+                                    <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                                        <span aria-hidden="true">&times;</span>
+                                    </button>
+                                </div>
+                            {% endfor %}
+                        {% endif %}
+
+                        {% if achievements %}
+                        <div class="table-responsive">
+                            <table class="table table-bordered table-striped">
+                                <thead class="bg-primary">
+                                    <tr>
+                                        <th>#</th>
+                                        <th>Event Name</th>
+                                        <th>Event Type</th>
+                                        <th>Award Category</th>
+                                        <th>Organizing Body</th>
+                                        <th>Date</th>
+                                        <th>Status</th>
+                                        <th>Certificate</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for achievement in achievements %}
+                                    <tr>
+                                        <td>{{ forloop.counter }}</td>
+                                        <td>{{ achievement.event_name }}</td>
+                                        <td>{{ achievement.get_event_type_display }}</td>
+                                        <td>
+                                            <span class="badge badge-{% if achievement.award_category == 'GOLD' %}warning{% elif achievement.award_category == 'SILVER' %}secondary{% elif achievement.award_category == 'BRONZE' %}dark{% else %}info{% endif %}">
+                                                {{ achievement.get_award_category_display }}
+                                            </span>
+                                        </td>
+                                        <td>{{ achievement.organizing_body|default:"-" }}</td>
+                                        <td>{{ achievement.event_date|date:"d-m-Y" }}</td>
+                                        <td>
+                                            {% if achievement.is_verified %}
+                                                <span class="badge badge-success"><i class="fas fa-check"></i> Verified</span>
+                                            {% else %}
+                                                <span class="badge badge-warning"><i class="fas fa-clock"></i> Pending</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            {% if achievement.proof_file %}
+                                                <a href="{{ achievement.proof_file.url }}" target="_blank" class="btn btn-info btn-sm">
+                                                    <i class="fas fa-file"></i> View
+                                                </a>
+                                            {% else %}
+                                                <span class="text-muted">-</span>
+                                            {% endif %}
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                        {% else %}
+                        <div class="alert alert-info">
+                            <i class="fas fa-info-circle"></i> No achievements found. 
+                            <a href="{% url 'student_add_achievement' %}">Add your first achievement</a>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock content %}

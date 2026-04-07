@@ -1,0 +1,452 @@
+{% extends 'main_app/base.html' %}
+{% load static %}
+
+{% block page_title %}{{ page_title }}{% endblock page_title %}
+
+{% block content %}
+<section class="content">
+    <div class="container-fluid">
+        <!-- Header -->
+        <div class="row mb-3">
+            <div class="col-12">
+                <h3><i class="fas fa-file-alt text-primary"></i> Question Paper Dashboard</h3>
+                <p class="text-muted">Manage your assigned question papers</p>
+            </div>
+        </div>
+
+        <!-- Stats Cards -->
+        <div class="row mb-4">
+            <div class="col-lg-3 col-6">
+                <div class="small-box bg-info">
+                    <div class="inner">
+                        <h3>{{ pending_assignments|length }}</h3>
+                        <p>Pending Tasks</p>
+                    </div>
+                    <div class="icon"><i class="fas fa-tasks"></i></div>
+                </div>
+            </div>
+            <div class="col-lg-3 col-6">
+                <div class="small-box bg-warning">
+                    <div class="inner">
+                        <h3>{{ draft_count|default:0 }}</h3>
+                        <p>In Progress</p>
+                    </div>
+                    <div class="icon"><i class="fas fa-edit"></i></div>
+                </div>
+            </div>
+            <div class="col-lg-3 col-6">
+                <div class="small-box bg-primary">
+                    <div class="inner">
+                        <h3>{{ submitted_count|default:0 }}</h3>
+                        <p>Submitted</p>
+                    </div>
+                    <div class="icon"><i class="fas fa-paper-plane"></i></div>
+                </div>
+            </div>
+            <div class="col-lg-3 col-6">
+                <div class="small-box bg-success">
+                    <div class="inner">
+                        <h3>{{ approved_count|default:0 }}</h3>
+                        <p>Approved</p>
+                    </div>
+                    <div class="icon"><i class="fas fa-check-circle"></i></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Pending Assignments Section -->
+        {% if pending_assignments %}
+        <div class="card card-outline card-danger mb-4">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-exclamation-circle text-danger"></i> Pending Assignments
+                    <span class="badge badge-danger ml-2">{{ pending_assignments|length }}</span>
+                </h5>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0">
+                        <thead class="bg-light">
+                            <tr>
+                                <th>Course</th>
+                                <th>Exam Type</th>
+                                <th>Regulation</th>
+                                <th>Deadline</th>
+                                <th>Status</th>
+                                <th class="text-center">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for assignment in pending_assignments %}
+                            <tr class="{% if assignment.is_overdue %}table-danger{% endif %}">
+                                <td>
+                                    <strong>{{ assignment.course.course_code }}</strong><br>
+                                    <small class="text-muted">{{ assignment.course.title }}</small>
+                                </td>
+                                <td>{{ assignment.get_exam_type_display }}</td>
+                                <td>{{ assignment.regulation|default:"-" }}</td>
+                                <td>
+                                    {{ assignment.deadline|date:"d M Y" }}
+                                    {% if assignment.is_overdue %}
+                                    <br><span class="badge badge-danger">Overdue!</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <span class="badge badge-{% if assignment.status == 'ASSIGNED' %}secondary{% elif assignment.status == 'IN_PROGRESS' %}warning{% elif assignment.status == 'REJECTED' or assignment.status == 'REVISION_REQUIRED' %}danger{% else %}info{% endif %}">
+                                        {{ assignment.get_status_display }}
+                                    </span>
+                                </td>
+                                <td class="text-center">
+                                    {% if assignment.status == 'REJECTED' or assignment.status == 'REVISION_REQUIRED' %}
+                                        {% if assignment.structured_qp %}
+                                        <a href="{% url 'staff_edit_structured_qp' assignment.structured_qp.id %}" 
+                                           class="btn btn-danger btn-sm" title="Revise Question Paper">
+                                            <i class="fas fa-redo"></i> Revise QP
+                                        </a>
+                                        {% endif %}
+                                    {% elif assignment.structured_qp %}
+                                    <a href="{% url 'staff_edit_structured_qp' assignment.structured_qp.id %}" 
+                                       class="btn btn-warning btn-sm" title="Edit Question Paper">
+                                        <i class="fas fa-edit"></i> Edit QP
+                                    </a>
+                                    {% else %}
+                                    <div class="btn-group" role="group">
+                                        <a href="{% url 'staff_create_structured_qp_from_assignment' assignment.id %}" 
+                                           class="btn btn-success btn-sm" title="Create Structured QP">
+                                            <i class="fas fa-plus"></i> Create
+                                        </a>
+                                        <a href="{% url 'staff_create_qp_from_upload_from_assignment' assignment.id %}" 
+                                           class="btn btn-info btn-sm" title="Upload QP from File">
+                                            <i class="fas fa-upload"></i> Upload
+                                        </a>
+                                    </div>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- My Question Papers Section -->
+        <div class="card card-outline card-primary">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-file-alt text-primary"></i> My Question Papers
+                    <span class="badge badge-primary ml-2">{{ qps|length }}</span>
+                </h5>
+                <div class="card-tools">
+                    <a href="{% url 'staff_create_structured_qp' %}" class="btn btn-sm btn-success" title="Create QP manually">
+                        <i class="fas fa-plus"></i> Create Manually
+                    </a>
+                    <a href="{% url 'staff_create_qp_from_upload' %}" class="btn btn-sm btn-info" title="Upload PDF/DOCX file">
+                        <i class="fas fa-cloud-upload-alt"></i> Upload File
+                    </a>
+                </div>
+            </div>
+            <div class="card-body">
+                {% if qps %}
+                <div class="accordion" id="qpAccordion">
+                    {% for qp in qps %}
+                    <div class="card mb-2 qp-card
+                        {% if qp.status == 'DRAFT' %}border-secondary
+                        {% elif qp.status == 'SUBMITTED' %}border-info
+                        {% elif qp.status == 'APPROVED' %}border-success
+                        {% elif qp.status == 'REJECTED' %}border-danger
+                        {% else %}border-warning{% endif %}">
+                        
+                        <!-- Clickable Header -->
+                        <div class="card-header py-2 qp-header" 
+                             data-toggle="collapse" 
+                             data-target="#qpCollapse{{ qp.id }}" 
+                             aria-expanded="false"
+                             style="cursor: pointer;">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div>
+                                    <strong class="mr-2">{{ qp.course.course_code }}</strong>
+                                    <span class="text-muted small">{{ qp.course.title|truncatechars:30 }}</span>
+                                </div>
+                                <div class="d-flex align-items-center">
+                                    <span class="text-muted small mr-2">
+                                        <i class="fas fa-calendar-alt"></i> {{ qp.exam_month_year }}
+                                    </span>
+                                    {% if qp.is_uploaded %}
+                                    <span class="badge badge-purple mr-1" title="Uploaded Document">
+                                        <i class="fas fa-upload"></i>
+                                    </span>
+                                    {% endif %}
+                                    <span class="badge 
+                                        {% if qp.status == 'DRAFT' %}badge-secondary
+                                        {% elif qp.status == 'SUBMITTED' %}badge-info
+                                        {% elif qp.status == 'APPROVED' %}badge-success
+                                        {% elif qp.status == 'REJECTED' %}badge-danger
+                                        {% else %}badge-warning{% endif %} mr-2">
+                                        {{ qp.get_status_display }}
+                                    </span>
+                                    <i class="fas fa-chevron-down collapse-icon"></i>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Collapsible Content -->
+                        <div id="qpCollapse{{ qp.id }}" class="collapse" data-parent="#qpAccordion">
+                            <div class="card-body">
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <p class="mb-1"><strong>Course:</strong> {{ qp.course.course_code }} - {{ qp.course.title }}</p>
+                                        <p class="mb-1"><strong>Exam:</strong> {{ qp.exam_month_year }}</p>
+                                        <p class="mb-1"><strong>Regulation:</strong> {{ qp.regulation }}</p>
+                                        <p class="mb-1"><strong>Semester:</strong> {{ qp.semester }}</p>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <p class="mb-1"><strong>Created:</strong> {{ qp.created_at|date:"d M Y, H:i" }}</p>
+                                        {% if qp.submitted_at %}
+                                        <p class="mb-1"><strong>Submitted:</strong> {{ qp.submitted_at|date:"d M Y, H:i" }}</p>
+                                        {% endif %}
+                                        <p class="mb-1"><strong>Type:</strong> 
+                                            {% if qp.is_uploaded %}
+                                            <span class="badge badge-purple">Uploaded</span>
+                                            {% else %}
+                                            <span class="badge badge-info">Structured</span>
+                                            {% endif %}
+                                        </p>
+                                    </div>
+                                </div>
+                                
+                                <hr class="my-3">
+                                
+                                <!-- HOD Comments for Rejected QPs -->
+                                {% if qp.status == 'REJECTED' and qp.hod_comments %}
+                                <div class="alert alert-danger mb-3">
+                                    <strong><i class="fas fa-exclamation-triangle"></i> Rejection Reason:</strong><br>
+                                    {{ qp.hod_comments }}
+                                </div>
+                                {% endif %}
+                                
+                                <!-- Action Buttons -->
+                                <div class="btn-group flex-wrap">
+                                    {% if not qp.is_uploaded %}
+                                    <a href="{% url 'staff_preview_structured_qp' qp.id %}" 
+                                       class="btn btn-info btn-sm">
+                                        <i class="fas fa-eye"></i> Preview
+                                    </a>
+                                    {% endif %}
+                                    
+                                    {% if qp.status == 'DRAFT' or qp.status == 'REJECTED' %}
+                                    {% if not qp.is_uploaded %}
+                                    <a href="{% url 'staff_edit_structured_qp' qp.id %}" 
+                                       class="btn btn-warning btn-sm">
+                                        <i class="fas fa-edit"></i> Edit
+                                    </a>
+                                    {% endif %}
+                                    {% endif %}
+                                    
+                                    {% if not qp.is_uploaded %}
+                                    <a href="{% url 'staff_manage_qp_answers' qp.id %}" 
+                                       class="btn btn-purple btn-sm">
+                                        <i class="fas fa-magic"></i> AI Answers
+                                    </a>
+                                    <a href="{% url 'staff_download_structured_qp' qp.id %}" 
+                                       class="btn btn-success btn-sm">
+                                        <i class="fas fa-download"></i> Download Complete QP (.docx)
+                                    </a>
+                                    <a href="{% url 'staff_download_answer_key' qp.id %}" 
+                                       class="btn btn-dark btn-sm">
+                                        <i class="fas fa-key"></i> Answer Key
+                                    </a>                                    {% if qp.status == 'APPROVED' %}
+                                    <a href="{% url 'staff_submit_answer_key' qp.id %}" 
+                                       class="btn btn-{% if qp.answer_key_status == 'NOT_SUBMITTED' %}danger{% elif qp.answer_key_status == 'SUBMITTED' %}warning{% elif qp.answer_key_status == 'APPROVED' %}success{% elif qp.answer_key_status == 'REJECTED' %}danger{% else %}secondary{% endif %} btn-sm"
+                                       title="{{ qp.get_answer_key_status_display }}">
+                                        <i class="fas fa-{% if qp.answer_key_status == 'APPROVED' %}check-circle{% elif qp.answer_key_status == 'SUBMITTED' %}clock{% elif qp.answer_key_status == 'REJECTED' %}redo{% else %}upload{% endif %}"></i>
+                                        {% if qp.answer_key_status == 'NOT_SUBMITTED' %}Submit Answer Key
+                                        {% elif qp.answer_key_status == 'SUBMITTED' %}AK: Pending Review
+                                        {% elif qp.answer_key_status == 'APPROVED' %}AK: Approved
+                                        {% elif qp.answer_key_status == 'REJECTED' %}AK: Revise
+                                        {% endif %}
+                                    </a>
+                                    {% endif %}                                    {% else %}
+                                    {% if qp.uploaded_document %}
+                                                <a href="{% url 'staff_download_structured_qp' qp.id %}" 
+                                                    class="btn btn-success btn-sm">
+                                        <i class="fas fa-download"></i> Download Complete QP (.docx)
+                                    </a>
+                                    {% endif %}
+                                    {% endif %}
+                                    
+                                    {% if qp.status == 'DRAFT' or qp.status == 'REJECTED' %}
+                                    <button type="button" class="btn btn-danger btn-sm delete-qp-btn" 
+                                            data-qp-id="{{ qp.id }}" 
+                                            data-course-code="{{ qp.course.course_code }}"
+                                            data-exam="{{ qp.exam_month_year }}">
+                                        <i class="fas fa-trash"></i> Delete
+                                    </button>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <div class="text-center py-4">
+                    <i class="fas fa-file-alt fa-3x text-muted mb-3"></i>
+                    <p class="text-muted">No question papers created yet.</p>
+                    {% if pending_assignments %}
+                    <p class="text-muted">Select a pending assignment above to create a question paper.</p>
+                    {% else %}
+                    <p class="text-muted">You don't have any assignments. Contact HOD for new assignments.</p>
+                    {% endif %}
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</section>
+
+<style>
+.btn-outline-purple {
+    color: #6f42c1;
+    border-color: #6f42c1;
+}
+.btn-outline-purple:hover {
+    color: #fff;
+    background-color: #6f42c1;
+}
+.btn-purple {
+    color: #fff;
+    background-color: #6f42c1;
+    border-color: #6f42c1;
+}
+.btn-purple:hover {
+    color: #fff;
+    background-color: #5a32a3;
+    border-color: #5a32a3;
+}
+.card-outline {
+    border-top: 3px solid;
+}
+.small-box {
+    border-radius: 0.5rem;
+    box-shadow: 0 0 1px rgba(0,0,0,.125), 0 1px 3px rgba(0,0,0,.2);
+    margin-bottom: 0;
+    position: relative;
+    overflow: hidden;
+}
+.small-box .inner {
+    padding: 15px;
+}
+.small-box .inner h3 {
+    font-size: 2rem;
+    font-weight: 700;
+    margin: 0;
+    color: #fff;
+}
+.small-box .inner p {
+    margin: 0;
+    color: rgba(255,255,255,.8);
+}
+.small-box .icon {
+    position: absolute;
+    right: 15px;
+    top: 15px;
+    font-size: 50px;
+    color: rgba(255,255,255,.3);
+}
+.badge-purple {
+    background-color: #6f42c1;
+    color: #fff;
+}
+.qp-card {
+    border-left: 4px solid;
+    transition: all 0.3s ease;
+}
+.qp-card:hover {
+    box-shadow: 0 4px 15px rgba(0,0,0,0.15);
+}
+.qp-header:hover {
+    background-color: rgba(0,0,0,0.03);
+}
+.collapse-icon {
+    transition: transform 0.3s ease;
+}
+.qp-header[aria-expanded="true"] .collapse-icon {
+    transform: rotate(180deg);
+}
+.btn-group.flex-wrap {
+    gap: 5px;
+}
+</style>
+{% endblock content %}
+
+{% block custom_js %}
+<script>
+$(document).ready(function() {
+    // Delete QP Handler
+    $(document).on('click', '.delete-qp-btn', function(e) {
+        e.stopPropagation(); // Prevent accordion toggle
+        const qpId = $(this).data('qp-id');
+        const courseCode = $(this).data('course-code');
+        const exam = $(this).data('exam');
+        const qpCard = $(this).closest('.qp-card');
+        
+        if (confirm(`Are you sure you want to delete the question paper for ${courseCode} (${exam})?\n\nThis will permanently delete all questions and answers. This action cannot be undone.`)) {
+            $.ajax({
+                url: '{% url "staff_delete_structured_qp_ajax" %}',
+                method: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify({ qp_id: qpId }),
+                headers: { 'X-CSRFToken': '{{ csrf_token }}' },
+                success: function(response) {
+                    if (response.success) {
+                        // Animate and remove the QP card
+                        qpCard.fadeOut(300, function() {
+                            $(this).remove();
+                            // Update the draft count
+                            const draftBadge = $('.small-box.bg-warning .inner h3');
+                            const currentCount = parseInt(draftBadge.text()) || 0;
+                            if (currentCount > 0) {
+                                draftBadge.text(currentCount - 1);
+                            }
+                            // Update the total QP count
+                            const totalBadge = $('.card-title .badge-primary');
+                            const totalCount = parseInt(totalBadge.text()) || 0;
+                            if (totalCount > 0) {
+                                totalBadge.text(totalCount - 1);
+                            }
+                        });
+                        showToast(response.message, 'success');
+                    }
+                },
+                error: function(xhr) {
+                    let errorMsg = 'Error deleting question paper. Please try again.';
+                    if (xhr.responseJSON && xhr.responseJSON.error) {
+                        errorMsg = xhr.responseJSON.error;
+                    }
+                    showToast(errorMsg, 'error');
+                }
+            });
+        }
+    });
+    
+    function showToast(message, type) {
+        const bgClass = type === 'success' ? 'bg-success' : 'bg-danger';
+        const toast = $(`
+            <div class="toast ${bgClass} text-white" style="position: fixed; top: 20px; right: 20px; z-index: 9999;">
+                <div class="toast-body">
+                    <i class="fas fa-${type === 'success' ? 'check-circle' : 'exclamation-circle'}"></i>
+                    ${message}
+                </div>
+            </div>
+        `);
+        $('body').append(toast);
+        toast.toast({delay: 3000}).toast('show');
+        toast.on('hidden.bs.toast', function() {
+            $(this).remove();
+        });
+    }
+});
+</script>
+{% endblock custom_js %}

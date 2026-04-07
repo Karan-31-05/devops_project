@@ -1,0 +1,211 @@
+{% extends 'main_app/base.html' %}
+{% load static %}
+{% block page_title %}{{ page_title }}{% endblock page_title %}
+
+{% block content %}
+<section class="content">
+    <div class="container-fluid">
+        <div class="row">
+            <div class="col-md-8">
+                <div class="card card-primary">
+                    <div class="card-header">
+                        <h3 class="card-title"><i class="fas fa-file-alt mr-2"></i>{{ page_title }}</h3>
+                    </div>
+                    <form method="POST">
+                        {% csrf_token %}
+                        <div class="card-body">
+                            {% if form.non_field_errors %}
+                            <div class="alert alert-danger">
+                                {{ form.non_field_errors }}
+                            </div>
+                            {% endif %}
+
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="form-group">
+                                        <label for="{{ form.course.id_for_label }}">Course/Subject <span class="text-danger">*</span></label>
+                                        {{ form.course }}
+                                        {% if form.course.errors %}
+                                            <div class="invalid-feedback d-block">{{ form.course.errors }}</div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="form-group">
+                                        <label for="{{ form.assigned_faculty.id_for_label }}">Assign to Faculty <span class="text-danger">*</span></label>
+                                        {{ form.assigned_faculty }}
+                                        {% if form.assigned_faculty.errors %}
+                                            <div class="invalid-feedback d-block">{{ form.assigned_faculty.errors }}</div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="form-group">
+                                        <label for="{{ form.academic_year.id_for_label }}">Academic Year <span class="text-danger">*</span></label>
+                                        {{ form.academic_year }}
+                                        {% if form.academic_year.errors %}
+                                            <div class="invalid-feedback d-block">{{ form.academic_year.errors }}</div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="form-group">
+                                        <label for="{{ form.semester.id_for_label }}">Semester <span class="text-danger">*</span></label>
+                                        {{ form.semester }}
+                                        {% if form.semester.errors %}
+                                            <div class="invalid-feedback d-block">{{ form.semester.errors }}</div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="form-group">
+                                        <label for="{{ form.exam_type.id_for_label }}">Exam Type <span class="text-danger">*</span></label>
+                                        {{ form.exam_type }}
+                                        {% if form.exam_type.errors %}
+                                            <div class="invalid-feedback d-block">{{ form.exam_type.errors }}</div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="form-group">
+                                        <label for="{{ form.regulation.id_for_label }}">Regulation</label>
+                                        {{ form.regulation }}
+                                        {% if form.regulation.errors %}
+                                            <div class="invalid-feedback d-block">{{ form.regulation.errors }}</div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="{{ form.deadline.id_for_label }}">Deadline <span class="text-danger">*</span></label>
+                                {{ form.deadline }}
+                                {% if form.deadline.errors %}
+                                    <div class="invalid-feedback d-block">{{ form.deadline.errors }}</div>
+                                {% endif %}
+                            </div>
+
+                            <div class="form-group">
+                                <label for="{{ form.instructions.id_for_label }}">Instructions</label>
+                                {{ form.instructions }}
+                                {% if form.instructions.errors %}
+                                    <div class="invalid-feedback d-block">{{ form.instructions.errors }}</div>
+                                {% endif %}
+                                <small class="text-muted">Provide any specific instructions or guidelines for the question paper</small>
+                            </div>
+                        </div>
+                        <div class="card-footer">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-paper-plane mr-1"></i> Assign Task
+                            </button>
+                            <a href="{% url 'manage_qp_assignments' %}" class="btn btn-secondary">
+                                <i class="fas fa-times mr-1"></i> Cancel
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Recent Assignments Sidebar -->
+            <div class="col-md-4">
+                <div class="card card-info">
+                    <div class="card-header">
+                        <h3 class="card-title"><i class="fas fa-history mr-2"></i>Recent Assignments</h3>
+                    </div>
+                    <div class="card-body p-0">
+                        {% if recent_assignments %}
+                        <ul class="list-group list-group-flush">
+                            {% for assignment in recent_assignments %}
+                            <li class="list-group-item">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <div>
+                                        <strong>{{ assignment.course.course_code }}</strong>
+                                        <br>
+                                        <small class="text-muted">{{ assignment.assigned_faculty.user.full_name }}</small>
+                                    </div>
+                                    <span class="badge badge-{% if assignment.status == 'APPROVED' %}success{% elif assignment.status == 'SUBMITTED' %}info{% elif assignment.status == 'REJECTED' %}danger{% else %}warning{% endif %}">
+                                        {{ assignment.get_status_display }}
+                                    </span>
+                                </div>
+                            </li>
+                            {% endfor %}
+                        </ul>
+                        {% else %}
+                        <div class="p-3 text-center text-muted">
+                            <i class="fas fa-inbox fa-2x mb-2"></i>
+                            <p class="mb-0">No recent assignments</p>
+                        </div>
+                        {% endif %}
+                    </div>
+                    <div class="card-footer text-center">
+                        <a href="{% url 'manage_qp_assignments' %}" class="btn btn-sm btn-outline-info">
+                            View All Assignments
+                        </a>
+                    </div>
+                </div>
+
+                <!-- Info Card -->
+                <div class="card card-secondary">
+                    <div class="card-header">
+                        <h3 class="card-title"><i class="fas fa-info-circle mr-2"></i>Help</h3>
+                    </div>
+                    <div class="card-body">
+                        <p><strong>Exam Types:</strong></p>
+                        <ul class="small">
+                            <li><strong>CAT 1/2:</strong> Continuous Assessment Test</li>
+                            <li><strong>End Semester:</strong> Final examination</li>
+                            <li><strong>Model:</strong> Model/Mock exam</li>
+                            <li><strong>Arrear:</strong> Supplementary exam</li>
+                        </ul>
+                        <p class="mb-0"><strong>Note:</strong> Faculty will receive a notification once assigned.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock content %}
+
+{% block custom_js %}
+<script>
+$(document).ready(function() {
+    // Initialize select2 for dropdowns
+    $('#id_course, #id_assigned_faculty, #id_academic_year, #id_semester, #id_regulation').select2({
+        theme: 'bootstrap4',
+        width: '100%'
+    });
+
+    // Dynamic faculty loading based on course selection
+    $('#id_course').on('change', function() {
+        var courseId = $(this).val();
+        if (courseId) {
+            $.ajax({
+                url: '{% url "get_faculty_for_course" %}',
+                type: 'POST',
+                data: {
+                    'course_id': courseId,
+                    'csrfmiddlewaretoken': '{{ csrf_token }}'
+                },
+                success: function(data) {
+                    if (data.faculty) {
+                        var $facultySelect = $('#id_assigned_faculty');
+                        $facultySelect.empty();
+                        $facultySelect.append('<option value="">---------</option>');
+                        $.each(data.faculty, function(i, faculty) {
+                            $facultySelect.append('<option value="' + faculty.id + '">' + faculty.name + ' (' + faculty.staff_id + ')</option>');
+                        });
+                        $facultySelect.trigger('change');
+                    }
+                }
+            });
+        }
+    });
+});
+</script>
+{% endblock custom_js %}

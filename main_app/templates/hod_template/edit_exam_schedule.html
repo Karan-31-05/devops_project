@@ -1,0 +1,172 @@
+{% extends 'main_app/base.html' %}
+{% load static %}
+{% block page_title %}{{page_title}}{% endblock page_title %}
+
+{% block content %}
+<section class="content">
+    <div class="container-fluid">
+        <div class="row">
+            <div class="col-md-12">
+                <div class="card card-dark">
+                    <div class="card-header">
+                        <h3 class="card-title">{{page_title}}</h3>
+                    </div>
+                    <form method="post" enctype="multipart/form-data">
+                        {% csrf_token %}
+                        <div class="card-body">
+                            {% if messages %}
+                            {% for message in messages %}
+                            <div class="alert alert-{{ message.tags }} alert-dismissible">
+                                <button type="button" class="close" data-dismiss="alert">&times;</button>
+                                {{ message }}
+                            </div>
+                            {% endfor %}
+                            {% endif %}
+
+                            <!-- Show QP Info -->
+                            <div class="alert alert-info">
+                                <h5><i class="fas fa-file-alt"></i> Question Paper Details</h5>
+                                <p class="mb-0">
+                                    <strong>Course:</strong> {{ schedule.structured_qp.course.course_code }} - {{ schedule.structured_qp.course.title }}<br>
+                                    <strong>Faculty:</strong> {{ schedule.structured_qp.faculty.user.full_name }}<br>
+                                    <strong>Exam:</strong> {{ schedule.structured_qp.exam_month_year }}
+                                </p>
+                            </div>
+
+                            {% if schedule.is_exam_ended %}
+                            <div class="alert alert-danger">
+                                <i class="fas fa-exclamation-triangle"></i> 
+                                <strong>Warning:</strong> This exam has already ended. No changes are allowed.
+                            </div>
+                            {% elif schedule.is_exam_started %}
+                            <div class="alert alert-warning">
+                                <i class="fas fa-clock"></i> 
+                                <strong>Note:</strong> This exam is currently ongoing. Limited changes are allowed.
+                            </div>
+                            {% endif %}
+
+                            <div class="row">
+                                <div class="col-md-4">
+                                    <div class="form-group">
+                                        <label for="id_exam_date">Exam Date *</label>
+                                        {{ form.exam_date }}
+                                        {% if form.exam_date.errors %}
+                                        <span class="text-danger">{{ form.exam_date.errors }}</span>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="form-group">
+                                        <label for="id_start_time">Start Time *</label>
+                                        {{ form.start_time }}
+                                        {% if form.start_time.errors %}
+                                        <span class="text-danger">{{ form.start_time.errors }}</span>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="form-group">
+                                        <label for="id_end_time">End Time *</label>
+                                        {{ form.end_time }}
+                                        {% if form.end_time.errors %}
+                                        <span class="text-danger">{{ form.end_time.errors }}</span>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="row">
+                                <div class="col-md-4">
+                                    <div class="form-group">
+                                        <label for="id_duration_minutes">Duration (minutes)</label>
+                                        {{ form.duration_minutes }}
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="form-group">
+                                        <label for="id_venue">Venue</label>
+                                        {{ form.venue }}
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="form-group">
+                                        <label for="id_batch_labels">Batch Labels</label>
+                                        {{ form.batch_labels }}
+                                        <small class="text-muted">Comma-separated (e.g., N,P,Q)</small>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="row">
+                                <div class="col-md-4">
+                                    <div class="form-group">
+                                        <label for="id_semester">Semester</label>
+                                        {{ form.semester }}
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="form-group">
+                                        <label for="id_status">Status</label>
+                                        {{ form.status }}
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="form-group">
+                                        <div class="custom-control custom-checkbox">
+                                            {{ form.release_qp_after_exam }}
+                                            <label class="custom-control-label" for="id_release_qp_after_exam">
+                                                Release Question Paper to students after exam ends
+                                            </label>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="form-group">
+                                        <div class="custom-control custom-checkbox">
+                                            {{ form.release_answers_after_exam }}
+                                            <label class="custom-control-label" for="id_release_answers_after_exam">
+                                                Release Answer Key to students after exam ends
+                                            </label>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="form-group">
+                                        <label for="id_release_datetime">QP Release Date & Time</label>
+                                        {{ form.release_datetime }}
+                                        <small class="form-text text-muted">
+                                            Students can view QP and answers after this datetime. Leave blank to release immediately after exam ends.
+                                            You can edit this anytime before the release.
+                                        </small>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {% if form.non_field_errors %}
+                            <div class="alert alert-danger">
+                                {{ form.non_field_errors }}
+                            </div>
+                            {% endif %}
+                        </div>
+
+                        <div class="card-footer">
+                            {% if not schedule.is_exam_ended %}
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-save"></i> Update Schedule
+                            </button>
+                            {% endif %}
+                            <a href="{% url 'manage_exam_schedules' %}" class="btn btn-secondary">Back</a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock content %}

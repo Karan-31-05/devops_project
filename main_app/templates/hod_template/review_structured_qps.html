@@ -1,0 +1,129 @@
+{% extends 'main_app/base.html' %}
+{% load static %}
+
+{% block page_title %}{{ page_title }}{% endblock page_title %}
+
+{% block content %}
+<section class="content">
+    <div class="container-fluid">
+        <div class="row">
+            <div class="col-md-12">
+                <div class="card">
+                    <div class="card-header bg-gradient-primary">
+                        <h3 class="card-title">
+                            <i class="fas fa-clipboard-check"></i> Review Structured Question Papers
+                        </h3>
+                    </div>
+                    <div class="card-body">
+                        <!-- Status Filter -->
+                        <div class="mb-3">
+                            <label>Filter by Status:</label>
+                            <div class="btn-group btn-group-sm" role="group">
+                                <a href="?status=" class="btn btn-{% if not status_filter %}primary{% else %}outline-primary{% endif %}">
+                                    All
+                                </a>
+                                <a href="?status=SUBMITTED" class="btn btn-{% if status_filter == 'SUBMITTED' %}info{% else %}outline-info{% endif %}">
+                                    Submitted
+                                </a>
+                                <a href="?status=UNDER_REVIEW" class="btn btn-{% if status_filter == 'UNDER_REVIEW' %}warning{% else %}outline-warning{% endif %}">
+                                    Under Review
+                                </a>
+                                <a href="?status=APPROVED" class="btn btn-{% if status_filter == 'APPROVED' %}success{% else %}outline-success{% endif %}">
+                                    Approved
+                                </a>
+                                <a href="?status=REJECTED" class="btn btn-{% if status_filter == 'REJECTED' %}danger{% else %}outline-danger{% endif %}">
+                                    Rejected
+                                </a>
+                            </div>
+                        </div>
+
+                        {% if qps %}
+                        <div class="table-responsive">
+                            <table class="table table-bordered table-striped" id="qpReviewTable">
+                                <thead class="bg-light">
+                                    <tr>
+                                        <th>#</th>
+                                        <th>Faculty</th>
+                                        <th>Course</th>
+                                        <th>Regulation</th>
+                                        <th>Exam</th>
+                                        <th>Status</th>
+                                        <th>Submitted On</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for qp in qps %}
+                                    <tr>
+                                        <td>{{ forloop.counter }}</td>
+                                        <td>
+                                            <strong>{{ qp.faculty.user.full_name }}</strong><br>
+                                            <small class="text-muted">{{ qp.faculty.staff_id }}</small>
+                                        </td>
+                                        <td>
+                                            <strong>{{ qp.course.course_code }}</strong><br>
+                                            <small class="text-muted">{{ qp.course.title|truncatewords:5 }}</small>
+                                        </td>
+                                        <td>{{ qp.regulation }}</td>
+                                        <td>{{ qp.exam_month_year }}</td>
+                                        <td>
+                                            <span class="badge badge-{{ qp.status|lower }}">
+                                                {{ qp.get_status_display }}
+                                            </span>
+                                        </td>
+                                        <td>
+                                            {% if qp.submitted_at %}
+                                            {{ qp.submitted_at|date:"d M Y H:i" }}
+                                            {% else %}
+                                            <span class="text-muted">Not submitted</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            <div class="btn-group btn-group-sm">
+                                                <a href="{% url 'hod_review_structured_qp_detail' qp.id %}" 
+                                                   class="btn btn-info" title="Review">
+                                                    <i class="fas fa-eye"></i> Review
+                                                </a>
+                                                {% if qp.generated_document %}
+                                                <a href="{% url 'hod_download_structured_qp' qp.id %}" 
+                                                   class="btn btn-success" title="Download">
+                                                    <i class="fas fa-download"></i>
+                                                </a>
+                                                {% endif %}
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                        {% else %}
+                        <div class="alert alert-info">
+                            <i class="fas fa-info-circle"></i>
+                            No structured question papers found for review.
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<style>
+.badge-draft { background-color: #6c757d; }
+.badge-submitted { background-color: #17a2b8; }
+.badge-under_review { background-color: #ffc107; color: #000; }
+.badge-approved { background-color: #28a745; }
+.badge-rejected { background-color: #dc3545; }
+</style>
+
+<script>
+$(document).ready(function() {
+    $('#qpReviewTable').DataTable({
+        "order": [[6, "desc"]],
+        "pageLength": 25
+    });
+});
+</script>
+{% endblock content %}

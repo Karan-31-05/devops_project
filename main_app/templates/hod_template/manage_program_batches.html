@@ -1,0 +1,342 @@
+{% extends 'main_app/base.html' %}
+{% load static %}
+{% block page_title %}{{ page_title }}{% endblock page_title %}
+
+{% block content %}
+<section class="content">
+    <div class="container-fluid">
+        <!-- Header -->
+        <div class="row mb-3">
+            <div class="col-md-12">
+                <div class="card card-outline card-primary">
+                    <div class="card-header">
+                        <h3 class="card-title">
+                            <i class="fas fa-users-class mr-2"></i>{{ page_title }}
+                        </h3>
+                        <div class="card-tools">
+                            <!-- Academic Year Selector -->
+                            <select class="form-control form-control-sm d-inline-block" style="width: auto;" 
+                                    onchange="window.location.href='{% url 'manage_program_batches' %}' + this.value + '/'">
+                                {% for year in academic_years %}
+                                <option value="{{ year.id }}" {% if selected_year.id == year.id %}selected{% endif %}>
+                                    {{ year.year }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <div class="alert alert-info mb-0">
+                            <i class="fas fa-info-circle mr-2"></i>
+                            <strong>Important:</strong> Configure batches for 1st Year students <strong>before</strong> uploading students.
+                            Once students are assigned to batches, the batch configuration is locked.
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        {% if selected_year %}
+        
+        <!-- Programs Without Batch Configuration -->
+        {% if programs_without_batches %}
+        <div class="row mb-3">
+            <div class="col-md-12">
+                <div class="card card-outline card-warning">
+                    <div class="card-header">
+                        <h3 class="card-title">
+                            <i class="fas fa-exclamation-triangle mr-2"></i>Programs Without Batch Configuration (Year 1)
+                        </h3>
+                    </div>
+                    <div class="card-body">
+                        <p class="text-muted">These programs don't have batch configuration for 1st Year students. Click to initialize default batches.</p>
+                        <div class="row">
+                            {% for program in programs_without_batches %}
+                            <div class="col-md-4 col-lg-3 mb-3">
+                                <div class="card h-100 bg-light">
+                                    <div class="card-body text-center">
+                                        <h5 class="card-title mb-1">{{ program.code }}</h5>
+                                        <p class="card-text text-muted small mb-1">{{ program.name }}</p>
+                                        <p class="mb-2">
+                                            <span class="badge badge-{% if program.level == 'UG' %}primary{% else %}success{% endif %}">
+                                                {{ program.get_level_display }}
+                                            </span>
+                                            {% if program.regulation %}
+                                            <span class="badge badge-secondary">R{{ program.regulation.year }}</span>
+                                            {% endif %}
+                                        </p>
+                                        <p class="small text-muted mb-2">
+                                            Default: {{ program.default_batch_count }} batch(es)<br>
+                                            <code>{{ program.default_batch_labels }}</code>
+                                        </p>
+                                        <a href="{% url 'initialize_default_batches' selected_year.id program.id %}" 
+                                           class="btn btn-sm btn-success">
+                                            <i class="fas fa-magic mr-1"></i> Initialize Batches
+                                        </a>
+                                    </div>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Manual Add Batch (Collapsed by default) -->
+        <div class="row mb-3">
+            <div class="col-md-12">
+                <div class="card card-outline card-success collapsed-card">
+                    <div class="card-header">
+                        <h3 class="card-title">
+                            <i class="fas fa-plus-circle mr-2"></i>Add Custom Batches (1st Year)
+                        </h3>
+                        <div class="card-tools">
+                            <button type="button" class="btn btn-tool" data-card-widget="collapse">
+                                <i class="fas fa-plus"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <form method="POST" action="{% url 'add_program_batch' %}">
+                            {% csrf_token %}
+                            <input type="hidden" name="academic_year" value="{{ selected_year.id }}">
+                            <input type="hidden" name="year_of_study" value="1">
+                            <div class="row">
+                                <div class="col-md-4">
+                                    <div class="form-group">
+                                        <label>Program <span class="text-danger">*</span></label>
+                                        <select name="program" class="form-control" required>
+                                            <option value="">-- Select Program --</option>
+                                            {% for program in programs %}
+                                            <option value="{{ program.id }}">
+                                                {{ program.code }} - {{ program.name }}{% if program.regulation %} (R{{ program.regulation.year }}){% endif %}
+                                            </option>
+                                            {% endfor %}
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="col-md-5">
+                                    <div class="form-group">
+                                        <label>Batch Names <span class="text-danger">*</span></label>
+                                        <input type="text" name="batch_names" class="form-control" 
+                                               placeholder="e.g., A, B, C or N, P, Q" required>
+                                        <small class="text-muted">Comma or space separated</small>
+                                    </div>
+                                </div>
+                                <div class="col-md-3">
+                                    <div class="form-group">
+                                        <label>&nbsp;</label>
+                                        <button type="submit" class="btn btn-success btn-block">
+                                            <i class="fas fa-plus mr-1"></i> Add Batches
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Copy from Previous Year -->
+        {% if previous_year %}
+        <div class="row mb-3">
+            <div class="col-md-12">
+                <div class="card card-outline card-info collapsed-card">
+                    <div class="card-header">
+                        <h3 class="card-title">
+                            <i class="fas fa-copy mr-2"></i>Copy from {{ previous_year.year }}
+                        </h3>
+                        <div class="card-tools">
+                            <button type="button" class="btn btn-tool" data-card-widget="collapse">
+                                <i class="fas fa-plus"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <form method="POST" action="{% url 'copy_batches_from_previous_year' %}">
+                            {% csrf_token %}
+                            <input type="hidden" name="source_year" value="{{ previous_year.id }}">
+                            <input type="hidden" name="target_year" value="{{ selected_year.id }}">
+                            <div class="row">
+                                <div class="col-md-4">
+                                    <div class="form-group">
+                                        <label>Program (Optional)</label>
+                                        <select name="program" class="form-control">
+                                            <option value="">All Programs</option>
+                                            {% for program in programs %}
+                                            <option value="{{ program.id }}">{{ program.code }}</option>
+                                            {% endfor %}
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <button type="submit" class="btn btn-info mt-4">
+                                        <i class="fas fa-copy mr-1"></i> Copy Batches
+                                    </button>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- 1st Year Batch Configuration -->
+        <div class="row">
+            <div class="col-md-12">
+                <div class="card">
+                    <div class="card-header">
+                        <h3 class="card-title">
+                            <i class="fas fa-list mr-2"></i>1st Year Batch Configuration for {{ selected_year.year }}
+                        </h3>
+                    </div>
+                    <div class="card-body">
+                        {% if year1_batches %}
+                        <div class="table-responsive">
+                            <table class="table table-bordered table-hover">
+                                <thead class="thead-dark">
+                                    <tr>
+                                        <th>Program</th>
+                                        <th>Batches</th>
+                                        <th>Status</th>
+                                        <th width="200">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for data in year1_batches %}
+                                    <tr class="{% if data.has_students %}table-secondary{% endif %}">
+                                        <td>
+                                            <strong>{{ data.program.code }}</strong>
+                                            {% if data.program.regulation %}
+                                            <span class="badge badge-secondary ml-1">R{{ data.program.regulation.year }}</span>
+                                            {% endif %}
+                                            <br><small class="text-muted">{{ data.program.name }}</small>
+                                        </td>
+                                        <td>
+                                            {% for batch in data.batches %}
+                                            <span class="badge badge-info mr-1" style="font-size: 0.95em;">
+                                                {{ batch.batch_name }}
+                                            </span>
+                                            {% endfor %}
+                                        </td>
+                                        <td>
+                                            {% if data.has_students %}
+                                            <span class="badge badge-success">
+                                                <i class="fas fa-lock mr-1"></i> Students Assigned
+                                            </span>
+                                            {% else %}
+                                            <span class="badge badge-warning">
+                                                <i class="fas fa-edit mr-1"></i> Editable
+                                            </span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            {% if not data.has_students %}
+                                            <!-- Add batch button -->
+                                            <button type="button" class="btn btn-xs btn-success mb-1 add-batch-btn"
+                                                    data-program-id="{{ data.program.id }}"
+                                                    data-program-code="{{ data.program.code }}"
+                                                    title="Add batch to {{ data.program.code }}">
+                                                <i class="fas fa-plus"></i> Add
+                                            </button>
+                                            {% for batch in data.batches %}
+                                            <a href="{% url 'delete_program_batch' batch.id %}" 
+                                               class="btn btn-xs btn-danger mb-1"
+                                               onclick="return confirm('Delete batch {{ batch.batch_name }}?')"
+                                               title="Delete {{ batch.batch_name }}">
+                                                <i class="fas fa-times"></i> {{ batch.batch_name }}
+                                            </a>
+                                            {% endfor %}
+                                            {% else %}
+                                            <small class="text-muted">
+                                                <i class="fas fa-lock"></i> Cannot modify - students assigned
+                                            </small>
+                                            {% endif %}
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                        {% else %}
+                        <div class="text-center py-5">
+                            <i class="fas fa-inbox fa-3x text-muted mb-3"></i>
+                            <h5 class="text-muted">No batches configured for 1st Year {{ selected_year.year }}</h5>
+                            <p class="text-muted">
+                                Initialize default batches from the cards above or add manually.
+                            </p>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        {% else %}
+        <div class="row">
+            <div class="col-md-12">
+                <div class="alert alert-warning">
+                    <i class="fas fa-exclamation-triangle mr-2"></i>
+                    No academic year selected. Please select or create an academic year first.
+                </div>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</section>
+
+<!-- Add Batch Modal -->
+<div class="modal fade" id="addBatchModal" tabindex="-1" role="dialog">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header bg-success">
+                <h5 class="modal-title text-white">
+                    <i class="fas fa-plus mr-2"></i>Add Batch to <span id="modalProgramCode"></span>
+                </h5>
+                <button type="button" class="close text-white" data-dismiss="modal">
+                    <span>&times;</span>
+                </button>
+            </div>
+            <form method="POST" action="{% url 'add_program_batch' %}">
+                {% csrf_token %}
+                <input type="hidden" name="academic_year" value="{{ selected_year.id }}">
+                <input type="hidden" name="year_of_study" value="1">
+                <input type="hidden" name="program" id="modalProgramId">
+                <div class="modal-body">
+                    <div class="form-group">
+                        <label>Batch Name(s) <span class="text-danger">*</span></label>
+                        <input type="text" name="batch_names" class="form-control" 
+                               placeholder="e.g., D or R, S, T" required>
+                        <small class="text-muted">Enter one or more batch names (comma or space separated)</small>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-success">
+                        <i class="fas fa-plus mr-1"></i> Add Batch
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock content %}
+
+{% block custom_js %}
+<script>
+$(document).ready(function() {
+    // Handle Add Batch button click
+    $('.add-batch-btn').on('click', function() {
+        var programId = $(this).data('program-id');
+        var programCode = $(this).data('program-code');
+        $('#modalProgramId').val(programId);
+        $('#modalProgramCode').text(programCode);
+        $('#addBatchModal').modal('show');
+    });
+});
+</script>
+{% endblock custom_js %}

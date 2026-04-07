@@ -1,0 +1,1755 @@
+{% extends 'main_app/base.html' %}
+{% load static %}
+{% block page_title %}{{ page_title }}{% endblock page_title %}
+
+{% block custom_css %}
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.css">
+<style>
+    .wizard-steps { display:flex; margin-bottom:20px; border-bottom:2px solid #dee2e6; }
+    .wizard-step { flex:1; text-align:center; padding:15px 10px; cursor:pointer; color:#6c757d; font-weight:500; position:relative; transition:all .3s; }
+    .wizard-step.active { color:#007bff; border-bottom:3px solid #007bff; margin-bottom:-2px; }
+    .wizard-step.completed { color:#28a745; border-bottom:3px solid #28a745; margin-bottom:-2px; }
+    .wizard-step .step-number { display:inline-block; width:30px; height:30px; line-height:30px; border-radius:50%; background:#dee2e6; color:#fff; margin-right:8px; }
+    .wizard-step.active .step-number { background:#007bff; }
+    .wizard-step.completed .step-number { background:#28a745; }
+    .wizard-content { display:none; }
+    .wizard-content.active { display:block; }
+    .batch-badge { display:inline-block; padding:4px 12px; border-radius:20px; background:#e8f4fd; color:#007bff; font-weight:500; margin:2px; font-size:12px; }
+
+    /* Timetable grid */
+    .tt-grid { width:100%; border-collapse:collapse; }
+    .tt-grid th, .tt-grid td { border:1px solid #dee2e6; padding:4px; text-align:center; font-size:12px; min-width:80px; }
+    .tt-grid th { background:#343a40; color:#fff; font-weight:600; }
+    .tt-grid .day-cell { background:#495057; color:#fff; width:80px; }
+    .tt-cell { min-height:60px; cursor:pointer; transition:background .2s; vertical-align:middle; position:relative; }
+    .tt-cell:hover { background:#f0f7ff !important; }
+    .tt-cell.reserved { background:#e8f4fd; border:2px solid #007bff; }
+    .tt-cell.all-batch { background:#d4edda; border:2px solid #28a745; }
+    .tt-cell.blocked { background:repeating-linear-gradient(45deg,#f8f9fa,#f8f9fa 5px,#e9ecef 5px,#e9ecef 10px); border:2px solid #6c757d; }
+    .tt-cell .course-code { font-weight:bold; color:#007bff; font-size:13px; }
+    .tt-cell .faculty-name { font-size:10px; color:#666; }
+    .tt-cell .block-label { font-weight:600; color:#6c757d; font-size:11px; }
+    .tt-cell .block-reason { font-size:10px; color:#999; }
+    .tt-cell .pin-icon { position:absolute; top:2px; right:2px; font-size:10px; color:#28a745; }
+    .tt-cell .clear-btn { position:absolute; top:2px; right:2px; opacity:0; font-size:10px; cursor:pointer; color:#dc3545; }
+    .tt-cell:hover .clear-btn { opacity:1; }
+
+    /* Lab config */
+    .lab-card { border:1px solid #dee2e6; border-radius:8px; padding:15px; margin-bottom:10px; position:relative; }
+    .lab-card.lab-deselected { opacity:.55; }
+    .lab-card .restriction-row { display:flex; gap:8px; align-items:center; margin-top:5px; flex-wrap:wrap; }
+    .lab-card .restriction-row .restriction-control { flex:0 0 auto; }
+    .lab-card .restriction-row .restriction-remove {
+        flex:0 0 auto;
+        min-width:26px;
+        height:26px;
+        line-height:1;
+        padding:0;
+        border:0;
+        background:transparent;
+        color:#dc3545;
+        cursor:pointer;
+        position:relative;
+        z-index:2;
+        pointer-events:auto;
+    }
+    .lab-card .restriction-row .restriction-remove:hover { color:#bd2130; }
+    #batch-tabs .nav-link.active { font-weight:bold; }
+
+    /* Program-year table */
+    .prog-row { cursor:pointer; transition:background .15s; }
+    .prog-row:hover { background:#f0f7ff; }
+    .prog-row.active-config { background:#e8f4fd; }
+    .prog-row .status-badge { font-size:11px; }
+
+    /* Modal radio */
+    .slot-type-radio { display:flex; gap:12px; margin-bottom:12px; }
+    .slot-type-radio label { cursor:pointer; padding:8px 16px; border:2px solid #dee2e6; border-radius:6px; font-weight:500; transition:all .2s; }
+    .slot-type-radio input:checked + label { border-color:#007bff; background:#e8f4fd; color:#007bff; }
+    .slot-type-radio input:checked + label.block-label-radio { border-color:#6c757d; background:#f8f9fa; color:#6c757d; }
+    .slot-type-radio input { display:none; }
+
+    /* Conflict panel */
+    .conflict-panel { max-height:200px; overflow-y:auto; font-size:12px; }
+    .conflict-item { padding:4px 8px; border-left:3px solid #dc3545; background:#fff5f5; margin-bottom:4px; }
+
+    .autofill-badge { background:#d4edda; color:#155724; padding:2px 8px; border-radius:10px; font-size:11px; }
+
+    /* Config editor panel */
+    #config-editor-panel { border:2px solid #007bff; border-radius:8px; padding:15px; background:#fdfdff; }
+    #config-editor-panel .card-header { background:#007bff; color:#fff; }
+
+    /* Faculty Block Modal */
+    .fb-grid { width:100%; border-collapse:collapse; }
+    .fb-grid th, .fb-grid td { border:1px solid #dee2e6; padding:6px 4px; text-align:center; font-size:12px; }
+    .fb-grid th { background:#343a40; color:#fff; font-weight:600; }
+    .fb-grid .fb-day { background:#495057; color:#fff; width:90px; font-weight:600; }
+    .fb-cell { cursor:pointer; min-height:40px; transition:all .15s; user-select:none; }
+    .fb-cell:hover { background:#e8f4fd !important; }
+    .fb-cell.fb-blocked { background:#f8d7da !important; border:2px solid #dc3545; }
+    .fb-cell.fb-blocked .fb-icon { color:#dc3545; }
+    .fb-cell .fb-icon { font-size:14px; }
+    .fb-faculty-selected { background:#e8f4fd; border:1px solid #007bff; border-radius:6px; padding:8px 12px; display:flex; align-items:center; justify-content:space-between; }
+    .fb-block-count { font-weight:600; color:#dc3545; }
+    .fb-summary-item { display:flex; align-items:center; justify-content:space-between; padding:8px 12px; border:1px solid #eee; border-radius:6px; margin-bottom:6px; cursor:pointer; transition:all .15s; }
+    .fb-summary-item:hover { background:#e8f4fd; border-color:#007bff; }
+    .fb-summary-item .fb-s-name { font-weight:600; }
+    .fb-summary-item .fb-s-slots { font-size:11px; color:#666; }
+    .fb-summary-item .fb-s-count { font-weight:700; color:#dc3545; font-size:13px; }
+
+    /* ME lab-assist mapping */
+    .me-assist-select { min-height: 120px; }
+    .me-assist-row-label { font-weight: 600; color: #2c3e50; }
+    .me-assist-help { font-size: 12px; color: #6c757d; }
+
+
+</style>
+{% endblock custom_css %}
+
+{% block content %}
+<section class="content">
+<div class="container-fluid">
+    <!-- Header -->
+    <div class="card mb-3">
+        <div class="card-header">
+            <h3 class="card-title"><i class="fas fa-magic mr-2"></i>{{ page_title }}</h3>
+            <div class="card-tools">
+                <button class="btn btn-danger btn-sm mr-2" onclick="deleteAllTimetables()">
+                    <i class="fas fa-trash mr-1"></i> Delete All Existing Timetables
+                </button>
+                <a href="{% url 'manage_timetables' %}" class="btn btn-secondary btn-sm">
+                    <i class="fas fa-arrow-left mr-1"></i> Back to Timetables
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Academic Year / Semester Indicator -->
+    <div class="alert alert-info d-flex align-items-center mb-3" id="semester-banner" style="font-size:15px; display:none !important;">
+        <i class="fas fa-calendar-alt fa-lg mr-3"></i>
+        <div>
+            <strong>Academic Year:</strong> <span id="banner-academic-year">Loading...</span>
+            &nbsp;&nbsp;|&nbsp;&nbsp;
+            <strong>Semester Type:</strong> <span id="banner-semester-type" class="badge badge-primary" style="font-size:13px;">—</span>
+        </div>
+    </div>
+
+    <!-- Wizard Steps -->
+    <div class="card">
+        <div class="card-body p-0">
+            <div class="wizard-steps">
+                <div class="wizard-step active" data-step="1" onclick="goToStep(1)">
+                    <span class="step-number">1</span> Lab Configuration
+                </div>
+                <div class="wizard-step" data-step="2" onclick="goToStep(2)">
+                    <span class="step-number">2</span> Configure All Programs
+                </div>
+                <div class="wizard-step" data-step="3" onclick="goToStep(3)">
+                    <span class="step-number">3</span> Review &amp; Generate All
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ==================== STEP 1: Lab Configuration ==================== -->
+    <div class="wizard-content active" id="step-1">
+        <div class="card card-outline card-warning">
+            <div class="card-header">
+                <h3 class="card-title"><i class="fas fa-flask mr-2"></i>Lab Configuration</h3>
+                <div class="card-tools">
+                    <button class="btn btn-success btn-sm" onclick="addLabRow()">
+                        <i class="fas fa-plus mr-1"></i> Add Lab
+                    </button>
+                </div>
+            </div>
+            <div class="card-body">
+                <p class="text-muted mb-2">
+                    Configure labs, set restrictions (program/year/course), and <strong>check the box</strong> to include in auto-generation.
+                    Labs without restrictions are open to all.
+                </p>
+                <div id="lab-utilization-info" class="alert alert-info py-2 px-3 mb-3" style="display:none;"></div>
+                <div id="lab-editor-list"></div>
+                <div id="lab-empty-msg" class="alert alert-info" style="display:none;">
+                    <i class="fas fa-info-circle mr-2"></i>No labs configured. Click <strong>Add Lab</strong> to create one.
+                </div>
+            </div>
+            <div class="card-footer d-flex justify-content-between">
+                <span></span>
+                <div>
+                    <button class="btn btn-warning mr-2" onclick="saveLabConfig()">
+                        <i class="fas fa-save mr-1"></i> Save Lab Config
+                    </button>
+                    <button class="btn btn-primary" onclick="saveLabConfigAndNext()">
+                        Next: Configure Programs <i class="fas fa-arrow-right ml-1"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ==================== STEP 2: Configure All Programs ==================== -->
+    <div class="wizard-content" id="step-2">
+        <div class="card card-outline card-primary">
+            <div class="card-header">
+                <h3 class="card-title"><i class="fas fa-graduation-cap mr-2"></i>Configure All Programs &amp; Years</h3>
+                <div class="card-tools">
+                    <button class="btn btn-outline-warning btn-sm mr-2" onclick="openFacultyBlockModal()">
+                        <i class="fas fa-user-clock mr-1"></i> Faculty Availability
+                    </button>
+                    <button class="btn btn-outline-light btn-sm" onclick="loadProgramYearStatus()">
+                        <i class="fas fa-sync mr-1"></i> Refresh
+                    </button>
+                </div>
+            </div>
+            <div class="card-body">
+                <p class="text-muted mb-2">
+                    Click on each program/year to configure slot reservations and blocked periods.
+                    <strong>All programs must be configured</strong> before generating timetables.
+                </p>
+                <div id="program-year-loading" class="text-center py-4">
+                    <i class="fas fa-spinner fa-spin fa-2x text-muted"></i>
+                    <p class="text-muted mt-2">Loading all program/year combinations...</p>
+                </div>
+                <table class="table table-bordered table-hover" id="program-year-table" style="display:none;">
+                    <thead class="thead-dark">
+                        <tr>
+                            <th>Program</th>
+                            <th>Year</th>
+                            <th>Batches</th>
+                            <th>Reserved</th>
+                            <th>Blocked</th>
+                            <th><i class="fas fa-clock" title="Same-Time Constraints"></i> Same-Time</th>
+                            <th>Existing TT</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody id="program-year-tbody"></tbody>
+                </table>
+
+                <!-- Inline config editor — appears when user clicks a row -->
+                <div id="config-editor-panel" class="mt-3" style="display:none;">
+                    <div class="card mb-0">
+                        <div class="card-header py-2" id="config-editor-header">
+                            <h5 class="mb-0" id="config-editor-title"></h5>
+                            <button type="button" class="close text-white" onclick="closeConfigEditor()"><span>&times;</span></button>
+                        </div>
+                        <div class="card-body">
+                            <!-- Conflict panel -->
+                            <div class="card mb-3 border-warning" id="conflict-panel-card" style="display:none;">
+                                <div class="card-header py-2 bg-warning text-dark">
+                                    <strong><i class="fas fa-exclamation-triangle mr-1"></i>Conflicts</strong>
+                                </div>
+                                <div class="card-body conflict-panel p-2" id="conflict-list"></div>
+                            </div>
+
+                            <!-- Batch Tabs + Grids -->
+                            <ul class="nav nav-tabs" id="batch-tabs" role="tablist"></ul>
+                            <div class="tab-content mt-3" id="batch-tab-content"></div>
+
+                            <!-- Course sidebar -->
+                            <div class="card mt-3" id="course-sidebar-card" style="display:none;">
+                                <div class="card-header py-2">
+                                    <h6 class="mb-0"><i class="fas fa-book mr-2"></i>Available Courses
+                                        <small class="text-muted ml-2" title="Click the clock icon to mark a course as same-time across all batches"><i class="fas fa-info-circle"></i> Click <i class="fas fa-clock"></i> for same-time</small>
+                                    </h6>
+                                    <div class="card-tools">
+                                        <button type="button" class="btn btn-tool" data-card-widget="collapse"><i class="fas fa-minus"></i></button>
+                                    </div>
+                                </div>
+                                <div class="card-body p-2" style="max-height:300px;overflow-y:auto;">
+                                    <div id="course-list-container"></div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="card-footer text-right">
+                            <button class="btn btn-secondary mr-2" onclick="closeConfigEditor()">
+                                <i class="fas fa-times mr-1"></i> Close
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="card-footer d-flex justify-content-between">
+                <button class="btn btn-secondary" onclick="goToStep(1)">
+                    <i class="fas fa-arrow-left mr-1"></i> Back to Lab Config
+                </button>
+                <button class="btn btn-primary" onclick="goToStep(3)" id="btn-next-step3">
+                    Next: Review &amp; Generate <i class="fas fa-arrow-right ml-1"></i>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ==================== STEP 3: Review & Generate ==================== -->
+    <div class="wizard-content" id="step-3">
+        <div class="card card-outline card-success">
+            <div class="card-header">
+                <h3 class="card-title"><i class="fas fa-rocket mr-2"></i>Review &amp; Generate All Timetables</h3>
+            </div>
+            <div class="card-body">
+                <div class="alert alert-info">
+                    <i class="fas fa-info-circle mr-2"></i>
+                    Timetables will be generated for <strong>all</strong> program/year combinations
+                    for the current academic year &amp; semester. Faculty conflicts are resolved across all programs.
+                </div>
+
+                <!-- ── PG Course Clubbing Panel ── -->
+                <div class="card card-outline card-info mb-3" id="pg-clubbing-card">
+                    <div class="card-header py-2">
+                        <h5 class="card-title mb-0">
+                            <i class="fas fa-link mr-2"></i>PG Course Clubbing
+                        </h5>
+                        <div class="card-tools">
+                            <button class="btn btn-tool" data-card-widget="collapse">
+                                <i class="fas fa-minus"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <p class="text-muted mb-3" style="font-size:13px;">
+                            When the <strong>same course</strong> is taught by the <strong>same faculty</strong>
+                            across multiple M.E. programs, you can <em>club</em> them so all programs share
+                            the same timetable slot. Toggle the switch to club/unclub.
+                        </p>
+                        <div id="pg-clubbing-loading" class="text-center py-3" style="display:none;">
+                            <i class="fas fa-spinner fa-spin fa-lg text-muted"></i>
+                            <p class="text-muted mt-2">Detecting clubbing candidates...</p>
+                        </div>
+                        <div id="pg-clubbing-empty" class="alert alert-secondary py-2" style="display:none;">
+                            <i class="fas fa-info-circle mr-1"></i>
+                            No clubbing candidates found. Either no PG programs exist, or no
+                            course+faculty combination is shared across 2+ PG programs.
+                        </div>
+                        <div class="table-responsive" id="pg-clubbing-table-wrap" style="display:none;">
+                            <table class="table table-sm table-bordered table-hover mb-0" id="pg-clubbing-table">
+                                <thead class="thead-light">
+                                    <tr>
+                                        <th>Course</th>
+                                        <th>Faculty</th>
+                                        <th>Programs</th>
+                                        <th>Semester</th>
+                                        <th style="width:90px;">Club</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="pg-clubbing-tbody"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card card-outline card-warning mb-3" id="me-lab-assist-card">
+                    <div class="card-header py-2">
+                        <h5 class="card-title mb-0">
+                            <i class="fas fa-project-diagram mr-2"></i>M.E. Lab-Assist Blocking
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <p class="text-muted mb-3" style="font-size:13px;">
+                            Map each <strong>M.E. class/year</strong> to one or more <strong>B.E. lab courses</strong>.
+                            When the mapped B.E. labs are scheduled, the mapped M.E. class will be kept free in those periods.
+                        </p>
+                        <div id="me-assist-loading" class="text-center py-3" style="display:none;">
+                            <i class="fas fa-spinner fa-spin fa-lg text-muted"></i>
+                            <p class="text-muted mt-2">Loading M.E. assist mappings...</p>
+                        </div>
+                        <div id="me-assist-empty" class="alert alert-secondary py-2" style="display:none;">
+                            <i class="fas fa-info-circle mr-1"></i>
+                            No M.E. classes or B.E. lab courses found for the selected semester type.
+                        </div>
+                        <div class="table-responsive" id="me-assist-table-wrap" style="display:none;">
+                            <table class="table table-sm table-bordered mb-0">
+                                <thead class="thead-light">
+                                    <tr>
+                                        <th style="width:35%;">M.E. Class / Year</th>
+                                        <th style="width:65%;">Mapped B.E. Lab Courses (single/multi-select)</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="me-assist-tbody"></tbody>
+                            </table>
+                        </div>
+                        <div class="text-right mt-2">
+                            <button class="btn btn-sm btn-warning" onclick="saveMELabAssistMappings(true)">
+                                <i class="fas fa-save mr-1"></i> Save M.E. Assist Mapping
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="review-summary"></div>
+
+                <div class="card mt-3 border-info">
+                    <div class="card-header py-2 bg-light">
+                        <strong><i class="fas fa-sliders-h mr-1"></i>Generation Preferences</strong>
+                    </div>
+                    <div class="card-body py-2">
+                        <div class="custom-control custom-checkbox">
+                            <input type="checkbox" class="custom-control-input" id="pref-avoid-professor-edge" checked>
+                            <label class="custom-control-label" for="pref-avoid-professor-edge">
+                                Avoid assigning first and last period to Professors
+                            </label>
+                        </div>
+                        <small class="text-muted d-block mt-1">
+                            This is a preference, not a hard constraint. The generator may still use edge periods when needed.
+                        </small>
+                    </div>
+                </div>
+
+                <div class="text-center mt-4">
+                    <button class="btn btn-success btn-lg" id="btn-generate-all" onclick="generateAllTimetables()">
+                        <i class="fas fa-magic mr-2"></i> Generate All Timetables
+                    </button>
+                </div>
+            </div>
+            <div class="card-footer d-flex justify-content-between">
+                <button class="btn btn-secondary" onclick="goToStep(2)">
+                    <i class="fas fa-arrow-left mr-1"></i> Back
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+</section>
+
+<!-- ============ Reserve / Block Slot Modal ============ -->
+<div class="modal fade" id="reserveModal" tabindex="-1">
+<div class="modal-dialog">
+<div class="modal-content">
+    <div class="modal-header bg-primary text-white">
+        <h5 class="modal-title"><i class="fas fa-thumbtack mr-2"></i>Slot - <span id="modal-title-info"></span></h5>
+        <button type="button" class="close text-white" data-dismiss="modal"><span>&times;</span></button>
+    </div>
+    <div class="modal-body">
+        <input type="hidden" id="modal-batch-id">
+        <input type="hidden" id="modal-day">
+        <input type="hidden" id="modal-slot">
+
+        <div class="slot-type-radio">
+            <input type="radio" name="slot-type" id="slot-type-course" value="course" checked>
+            <label for="slot-type-course"><i class="fas fa-book mr-1"></i>Reserve Course</label>
+            <input type="radio" name="slot-type" id="slot-type-block" value="block">
+            <label for="slot-type-block" class="block-label-radio"><i class="fas fa-ban mr-1"></i>Block Slot</label>
+        </div>
+
+        <div id="course-fields">
+            <div class="form-group">
+                <label>Course <span class="text-danger">*</span></label>
+                <select class="form-control" id="modal-course"><option value="">-- Select Course --</option></select>
+            </div>
+            <div class="form-group">
+                <label>Faculty <span class="autofill-badge" id="faculty-autofill-label" style="display:none;"><i class="fas fa-magic mr-1"></i>Auto-filled</span></label>
+                <input type="text" class="form-control" id="modal-faculty-search" placeholder="Auto-filled from assignment or search...">
+                <input type="hidden" id="modal-faculty-id">
+                <div id="modal-selected-faculty" class="mt-2" style="display:none;">
+                    <span class="badge badge-primary" id="modal-faculty-badge"></span>
+                    <button type="button" class="btn btn-xs btn-link text-danger" onclick="clearModalFaculty()"><i class="fas fa-times"></i></button>
+                </div>
+                <div id="modal-faculty-results" class="list-group mt-2" style="display:none;max-height:150px;overflow-y:auto;"></div>
+            </div>
+            <div class="form-group">
+                <label>Special Note (Optional)</label>
+                <input type="text" class="form-control" id="modal-special-note" placeholder="e.g., GFL, SFL, Lab-MBA">
+            </div>
+        </div>
+
+        <div id="block-fields" style="display:none;">
+            <div class="form-group">
+                <label>Block Reason</label>
+                <select class="form-control" id="modal-block-preset">
+                    <option value="">-- Select or type below --</option>
+                    <option value="Free Period">Free Period</option>
+                    <option value="Library Hour">Library Hour</option>
+                    <option value="Sports">Sports</option>
+                    <option value="Mentoring">Mentoring</option>
+                    <option value="Club Activity">Club Activity</option>
+                    <option value="Open Elective">Open Elective</option>
+                </select>
+                <input type="text" class="form-control mt-2" id="modal-block-reason" placeholder="Custom reason">
+            </div>
+        </div>
+
+        <div class="form-check mt-3">
+            <input class="form-check-input" type="checkbox" id="modal-apply-all">
+            <label class="form-check-label" for="modal-apply-all">
+                <strong>Apply to ALL batches</strong>
+                <small class="text-muted d-block">Same slot reserved/blocked across all batches of this year</small>
+            </label>
+        </div>
+    </div>
+    <div class="modal-footer">
+        <button type="button" class="btn btn-danger" onclick="deleteReservation()"><i class="fas fa-trash mr-1"></i> Clear</button>
+        <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+        <button type="button" class="btn btn-primary" onclick="saveReservation()"><i class="fas fa-thumbtack mr-1"></i> Save</button>
+    </div>
+</div>
+</div>
+</div>
+
+<!-- ============ Faculty Availability Block Modal ============ -->
+<div class="modal fade" id="facultyBlockModal" tabindex="-1">
+<div class="modal-dialog modal-lg">
+<div class="modal-content">
+    <div class="modal-header bg-warning text-dark">
+        <h5 class="modal-title"><i class="fas fa-user-clock mr-2"></i>Manage Faculty Availability</h5>
+        <button type="button" class="close" data-dismiss="modal"><span>&times;</span></button>
+    </div>
+    <div class="modal-body">
+        <p class="text-muted mb-2">
+            Search for a faculty member and click on the grid cells to block/unblock time slots.
+            Blocked slots will be avoided by the timetable engine across <strong>all</strong> programs.
+        </p>
+
+        <!-- Faculty Search -->
+        <div class="form-group">
+            <label class="font-weight-bold"><i class="fas fa-search mr-1"></i>Search Faculty</label>
+            <input type="text" class="form-control" id="fb-faculty-search" placeholder="Type faculty name or staff ID..." autocomplete="off">
+            <div id="fb-faculty-results" class="list-group mt-1" style="display:none; max-height:180px; overflow-y:auto; position:absolute; z-index:1060; width:calc(100% - 30px);"></div>
+        </div>
+
+        <!-- Selected faculty info -->
+        <div id="fb-selected-faculty" style="display:none;" class="mb-3">
+            <div class="fb-faculty-selected">
+                <div>
+                    <i class="fas fa-user-tie mr-2 text-primary"></i>
+                    <strong id="fb-faculty-name"></strong>
+                    <small class="text-muted ml-2" id="fb-faculty-staff-id"></small>
+                </div>
+                <div>
+                    <span class="fb-block-count mr-2" id="fb-block-count">0 blocks</span>
+                    <button class="btn btn-sm btn-outline-secondary" onclick="clearFacultyBlock()"><i class="fas fa-times"></i></button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Reason input -->
+        <div id="fb-reason-row" style="display:none;" class="form-group">
+            <label class="small font-weight-bold">Default Reason <small class="text-muted">(optional)</small></label>
+            <input type="text" class="form-control form-control-sm" id="fb-reason" placeholder="e.g., Teaching in ME Dept, Other duty...">
+        </div>
+
+        <!-- Timetable Grid -->
+        <div id="fb-grid-container" style="display:none;">
+            <div class="table-responsive">
+                <table class="fb-grid" id="fb-grid-table">
+                    <thead><tr><th class="fb-day">Day</th></tr></thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+            <div class="mt-2 text-muted small">
+                <i class="fas fa-square text-danger mr-1"></i> Blocked &nbsp;&nbsp;
+                <i class="far fa-square mr-1"></i> Available &nbsp;&nbsp;
+                Click a cell to toggle.
+            </div>
+        </div>
+
+        <!-- Empty state -->
+        <div id="fb-empty-state" class="text-center py-4">
+            <i class="fas fa-user-clock fa-3x text-muted mb-3"></i>
+            <p class="text-muted">Search and select a faculty member above to manage their availability.</p>
+        </div>
+
+        <!-- Existing blocks summary -->
+        <div id="fb-summary-section" style="display:none;" class="mt-3">
+            <hr>
+            <h6 class="font-weight-bold"><i class="fas fa-list mr-1"></i>Faculty with Blocked Slots</h6>
+            <div id="fb-summary-list"></div>
+            <div id="fb-summary-empty" class="text-muted small py-2" style="display:none;">
+                <i class="fas fa-info-circle mr-1"></i>No faculty blocks configured yet.
+            </div>
+        </div>
+    </div>
+    <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+    </div>
+</div>
+</div>
+</div>
+
+
+
+<!-- ============ Generation Result Modal ============ -->
+<div class="modal fade" id="genResultModal" tabindex="-1">
+<div class="modal-dialog modal-lg">
+<div class="modal-content">
+    <div class="modal-header bg-success text-white">
+        <h5 class="modal-title"><i class="fas fa-check-circle mr-2"></i>Generation Complete</h5>
+        <button type="button" class="close text-white" data-dismiss="modal"><span>&times;</span></button>
+    </div>
+    <div class="modal-body" id="gen-result-body"></div>
+    <div class="modal-footer">
+        <button type="button" class="btn btn-primary" id="btn-go-timetables">
+            <i class="fas fa-calendar-alt mr-1"></i> View Timetables
+        </button>
+    </div>
+</div>
+</div>
+</div>
+{% endblock content %}
+
+{% block custom_js %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.js"></script>
+<script>
+// ===================== State =====================
+let currentStep = 1;
+
+// Per-program-year editor state (set when user clicks a row)
+let activeEditor = {
+    programId: null,
+    programCode: '',
+    yearOfStudy: null,
+    academicYearId: null,
+    semesterId: null,
+    batches: [],
+    courses: [],
+    assignments: [],
+    configId: null,
+    reservations: {},  // "batchId_day_slot" -> reservation data
+    sameTimeConstraints: []  // [course_code, ...]
+};
+
+// Global data from backend
+let allCombos = [];      // Program+year combos from api_program_year_status
+let globalAcademicYearId = null;
+let globalSemesterId = null;
+let globalSemesterType = null;
+
+let meAssistState = {
+    meClasses: [],
+    beLabCourses: [],
+    mappings: {},
+};
+
+const dayNames = {'MON':'Monday','TUE':'Tuesday','WED':'Wednesday','THU':'Thursday','FRI':'Friday'};
+const days = ['MON','TUE','WED','THU','FRI'];
+const timeSlots = [
+    {% for ts in time_slots %}
+    {slot_number:{{ ts.slot_number }}, start:'{{ ts.start_time|time:"H:i" }}', end:'{{ ts.end_time|time:"H:i" }}', is_break:{{ ts.is_break|yesno:"true,false" }}},
+    {% endfor %}
+];
+
+const allLabCourses = {{ all_lab_courses_json|safe }};
+
+const programsList = [
+    {% for p in programs %}
+    {id:{{ p.id }}, code:'{{ p.code }}', name:'{{ p.name }}'},
+    {% endfor %}
+];
+
+function escapeHtml(text) {
+    return $('<div>').text(text || '').html();
+}
+
+
+
+// ─── Slot type toggle ─────────────────────────────
+$('input[name="slot-type"]').on('change', function(){
+    if (this.value === 'block') { $('#course-fields').hide(); $('#block-fields').show(); }
+    else { $('#course-fields').show(); $('#block-fields').hide(); }
+});
+$('#modal-block-preset').on('change', function(){ if (this.value) $('#modal-block-reason').val(this.value); });
+
+// ===================== Wizard Navigation =====================
+function goToStep(step) {
+    if (step === 2) loadProgramYearStatus();
+    if (step === 3) buildReviewSummary();
+    for (let i = 1; i < step; i++) $(`.wizard-step[data-step="${i}"]`).removeClass('active').addClass('completed');
+    $(`.wizard-step[data-step="${step}"]`).removeClass('completed').addClass('active');
+    for (let i = step + 1; i <= 3; i++) $(`.wizard-step[data-step="${i}"]`).removeClass('active completed');
+    $('.wizard-content').removeClass('active');
+    $(`#step-${step}`).addClass('active');
+    currentStep = step;
+    if (step === 1) updateLabUtilization();
+}
+
+// ===================== Step 2: Load all program+year combos =====================
+function loadProgramYearStatus() {
+    $('#program-year-loading').show();
+    $('#program-year-table').hide();
+    $.get('{% url "api_program_year_status" %}', function(data){
+        if (!data.success) { toastr.error(data.error); return; }
+        allCombos = data.combos;
+        globalAcademicYearId = data.academic_year_id;
+        globalSemesterId = data.semester_id;
+
+        // Update the semester banner
+        $('#banner-academic-year').text(data.academic_year || '—');
+        const semType = data.semester_type || (data.semester_number % 2 === 0 ? 'EVEN' : 'ODD');
+        globalSemesterType = semType;
+        $('#banner-semester-type').text(semType === 'EVEN' ? 'Even Semester' : 'Odd Semester')
+            .removeClass('badge-primary badge-warning')
+            .addClass(semType === 'EVEN' ? 'badge-primary' : 'badge-warning');
+        $('#semester-banner').removeAttr('style').show();
+
+        renderProgramYearTable();
+        $('#program-year-loading').hide();
+        $('#program-year-table').show();
+    }).fail(function(xhr){ toastr.error('Error loading programs: '+(xhr.responseJSON?.error||'Unknown')); });
+}
+
+function renderProgramYearTable() {
+    let html = '';
+    allCombos.forEach((c, idx) => {
+        const statusClass = c.existing_timetables > 0 ? 'table-success' :
+                            (c.reserved_count + c.blocked_count > 0 ? 'table-info' : '');
+        const ttBadge = c.existing_timetables > 0
+            ? `<span class="badge badge-success">${c.existing_timetables} timetable(s)</span>`
+            : '<span class="badge badge-secondary">None</span>';
+
+        html += `<tr class="prog-row ${statusClass}" data-idx="${idx}">
+            <td><strong>${c.program_code}</strong><br><small class="text-muted">${c.program_name}</small></td>
+            <td>Year ${c.year_of_study}</td>
+            <td>${c.batch_names.map(b=>'<span class="batch-badge">'+b+'</span>').join(' ')} <small>(${c.batch_count})</small></td>
+            <td><span class="badge badge-primary">${c.reserved_count}</span></td>
+            <td><span class="badge badge-secondary">${c.blocked_count}</span></td>
+            <td>${c.same_time_count ? '<span class="badge badge-success">'+c.same_time_count+'</span>' : '<span class="badge badge-light">0</span>'}</td>
+            <td>${ttBadge}</td>
+            <td>
+                <button class="btn btn-sm btn-outline-primary" onclick="openConfigEditor(${idx})">
+                    <i class="fas fa-edit mr-1"></i> Configure
+                </button>
+                ${c.existing_timetables > 0 ? '<button class="btn btn-sm btn-outline-danger ml-1" onclick="deleteProgramTimetable('+idx+')"><i class="fas fa-trash"></i></button>' : ''}
+            </td>
+        </tr>`;
+    });
+    $('#program-year-tbody').html(html);
+}
+
+// ===================== Config Editor (inline in Step 2) =====================
+function openConfigEditor(idx) {
+    const combo = allCombos[idx];
+    activeEditor = {
+        programId: combo.program_id,
+        programCode: combo.program_code,
+        yearOfStudy: combo.year_of_study,
+        academicYearId: globalAcademicYearId,
+        semesterId: combo.semester_id || globalSemesterId,
+        batches: [],
+        courses: [],
+        assignments: [],
+        configId: combo.config_id,
+        reservations: {},
+        sameTimeConstraints: []
+    };
+
+    $('#config-editor-title').text(`${combo.program_code} - Year ${combo.year_of_study}`);
+    $('#config-editor-panel').slideDown();
+    // Scroll to editor
+    $('html, body').animate({scrollTop: $('#config-editor-panel').offset().top - 80}, 300);
+
+    // Load batches + courses + existing reservations in parallel
+    loadEditorData(combo);
+}
+
+function closeConfigEditor() {
+    $('#config-editor-panel').slideUp();
+    // Refresh the table to show updated counts
+    loadProgramYearStatus();
+}
+
+function loadEditorData(combo) {
+    $('#batch-tabs').html('<div class="text-center py-3"><i class="fas fa-spinner fa-spin"></i> Loading...</div>');
+    $('#batch-tab-content').empty();
+    $('#course-sidebar-card').hide();
+
+    // Load batches
+    const batchPromise = $.get('{% url "api_timetable_batches" %}', {
+        program_id: combo.program_id, year_of_study: combo.year_of_study
+    });
+
+    // Load courses
+    const coursePromise = $.get('{% url "api_timetable_courses" %}', {
+        program_id: combo.program_id, year_of_study: combo.year_of_study
+    });
+
+    // Load existing reservations if config exists
+    const resPromise = combo.config_id
+        ? $.get('{% url "api_get_reservations" %}', {config_id: combo.config_id})
+        : $.Deferred().resolve({reservations: []});
+
+    // Load same-time constraints if config exists
+    const stPromise = combo.config_id
+        ? $.get('{% url "api_get_same_time_constraints" %}', {config_id: combo.config_id})
+        : $.Deferred().resolve({constraints: []});
+
+    $.when(batchPromise, coursePromise, resPromise, stPromise).done(function(batchResp, courseResp, resResp, stResp) {
+        const bData = batchResp[0], cData = courseResp[0], rData = resResp[0] || resResp;
+        const stData = stResp[0] || stResp;
+
+        activeEditor.batches = bData.batches || [];
+        activeEditor.courses = cData.courses || [];
+        activeEditor.assignments = cData.assignments || [];
+        // Use globalSemesterId (current semester) — don't override with semesters[0] which may be wrong semester
+
+        // Populate reservations
+        activeEditor.reservations = {};
+        (rData.reservations || []).forEach(r => {
+            const key = `${r.batch_id}_${r.day}_${r.slot_number}`;
+            activeEditor.reservations[key] = {
+                course_code: r.course_code,
+                faculty_id: r.faculty_id,
+                faculty_name: r.faculty_name,
+                special_note: r.special_note,
+                apply_to_all_batches: r.apply_to_all_batches,
+                is_blocked: r.is_blocked,
+                block_reason: r.block_reason,
+            };
+        });
+
+        // Populate same-time constraints
+        activeEditor.sameTimeConstraints = stData.constraints || [];
+
+        renderEditorGrids();
+        renderCourseSidebar();
+        populateModalCourseDropdown();
+    }).fail(function(){ toastr.error('Error loading data for this program/year.'); });
+}
+
+function renderEditorGrids() {
+    let tabHtml = '', contentHtml = '';
+    activeEditor.batches.forEach((b, idx) => {
+        const ac = idx === 0 ? 'active' : '';
+        tabHtml += `<li class="nav-item"><a class="nav-link ${ac}" data-toggle="tab" href="#batch-pane-${b.id}">${b.batch_display}</a></li>`;
+        contentHtml += `<div class="tab-pane fade ${idx===0?'show active':''}" id="batch-pane-${b.id}"><div class="table-responsive">${buildTimetableGrid(b.id)}</div></div>`;
+    });
+    $('#batch-tabs').html(tabHtml);
+    $('#batch-tab-content').html(contentHtml);
+}
+
+function renderCourseSidebar() {
+    let html = '';
+    if (!activeEditor.courses.length) { html = '<div class="text-muted p-2">No course assignments found.</div>'; }
+    else {
+        activeEditor.courses.forEach(c => {
+            const tc = c.is_lab ? 'badge-warning' : 'badge-primary';
+            const isSameTime = activeEditor.sameTimeConstraints.includes(c.course_code);
+            const stBtnClass = isSameTime ? 'btn-success' : 'btn-outline-secondary';
+            const stIcon = isSameTime ? 'fa-link' : 'fa-clock';
+            const stTitle = isSameTime ? 'Same-time enabled — click to remove' : 'Schedule at same time for all batches';
+            const offeringInfo = c.is_placeholder && c.offering_display
+                ? `<div><small class="text-info"><i class="fas fa-layer-group mr-1"></i>${c.offering_display}</small></div>`
+                : '';
+            html += `<div style="padding:4px 8px;border-bottom:1px solid #eee;font-size:12px;display:flex;align-items:center;justify-content:space-between;">` +
+                `<div><strong>${c.course_code}</strong> - ${c.title} <span class="badge ${tc}" style="font-size:10px;">${c.course_type}</span> <small class="text-muted ml-1">${c.ltp||''} | ${c.credits}cr</small>${offeringInfo}</div>` +
+                `<button class="btn btn-xs ${stBtnClass} ml-2" onclick="toggleSameTime('${c.course_code}')" title="${stTitle}" style="white-space:nowrap;"><i class="fas ${stIcon}"></i></button>` +
+                `</div>`;
+        });
+    }
+    $('#course-list-container').html(html);
+
+    $('#course-sidebar-card').show();
+}
+
+function toggleSameTime(courseCode) {
+    const payload = {
+        config_id: activeEditor.configId,
+        academic_year_id: activeEditor.academicYearId,
+        semester_id: activeEditor.semesterId,
+        program_id: activeEditor.programId,
+        year_of_study: activeEditor.yearOfStudy,
+        course_code: courseCode,
+    };
+    $.ajax({
+        url: '{% url "api_toggle_same_time" %}', method: 'POST', contentType: 'application/json',
+        data: JSON.stringify(payload),
+        success: function(resp) {
+            if (resp.success) {
+                activeEditor.configId = resp.config_id;
+                activeEditor.sameTimeConstraints = resp.constraints;
+                // Update combo config_id in allCombos
+                const combo = allCombos.find(c => c.program_id === activeEditor.programId && c.year_of_study === activeEditor.yearOfStudy);
+                if (combo) combo.config_id = resp.config_id;
+                renderCourseSidebar();
+                toastr.success(resp.enabled
+                    ? `${courseCode} will be scheduled at the same time for all batches`
+                    : `${courseCode} same-time constraint removed`);
+            }
+        },
+        error: function(xhr) { toastr.error('Error: '+(xhr.responseJSON?.error||'Unknown')); }
+    });
+}
+
+function populateModalCourseDropdown() {
+    let optHtml = '<option value="">-- Select Course --</option>';
+    activeEditor.courses.forEach(c => { optHtml += `<option value="${c.course_code}">${c.course_code} - ${c.title}</option>`; });
+    $('#modal-course').html(optHtml);
+}
+
+function buildTimetableGrid(batchId) {
+    let html = `<table class="tt-grid"><thead><tr><th class="day-cell">Day</th>`;
+    timeSlots.forEach(ts => {
+        if (ts.is_break) html += `<th style="background:#ffc107;color:#333;min-width:50px;">Break</th>`;
+        else html += `<th>P${ts.slot_number}<br><small>${ts.start}-${ts.end}</small></th>`;
+    });
+    html += '</tr></thead><tbody>';
+    days.forEach(day => {
+        html += `<tr><td class="day-cell">${dayNames[day]}</td>`;
+        timeSlots.forEach(ts => {
+            if (ts.is_break) { html += `<td style="background:#fffde7;color:#aaa;"><i>Break</i></td>`; return; }
+            const key = `${batchId}_${day}_${ts.slot_number}`;
+            const res = activeEditor.reservations[key];
+            let cls = 'tt-cell', content = '<span class="text-muted">+</span>';
+            if (res) {
+                if (res.is_blocked) {
+                    cls += ' blocked';
+                    content = `<div class="block-label"><i class="fas fa-ban mr-1"></i>BLOCKED</div>`;
+                    if (res.block_reason) content += `<div class="block-reason">${res.block_reason}</div>`;
+                } else {
+                    cls += res.apply_to_all_batches ? ' all-batch' : ' reserved';
+                    content = `<div class="course-code">${res.course_code}</div>`;
+                    if (res.faculty_name) content += `<div class="faculty-name">${res.faculty_name}</div>`;
+                    if (res.apply_to_all_batches) content += '<span class="pin-icon"><i class="fas fa-link"></i></span>';
+                }
+                content += `<span class="clear-btn" onclick="event.stopPropagation(); openReserveModal(${batchId},'${day}',${ts.slot_number})"><i class="fas fa-times"></i></span>`;
+            }
+            html += `<td class="${cls}" onclick="openReserveModal(${batchId},'${day}',${ts.slot_number})">${content}</td>`;
+        });
+        html += '</tr>';
+    });
+    html += '</tbody></table>';
+    return html;
+}
+
+// ===================== Reserve Modal =====================
+function openReserveModal(batchId, day, slot) {
+    const batch = activeEditor.batches.find(b => b.id === batchId);
+    if (!batch) return;
+    $('#modal-batch-id').val(batchId); $('#modal-day').val(day); $('#modal-slot').val(slot);
+    $('#modal-title-info').text(`${batch.batch_display} - ${dayNames[day]} P${slot}`);
+
+    const key = `${batchId}_${day}_${slot}`;
+    const res = activeEditor.reservations[key];
+    if (res) {
+        if (res.is_blocked) {
+            $('#slot-type-block').prop('checked', true).trigger('change');
+            $('#modal-block-reason').val(res.block_reason || '');
+            $('#modal-block-preset').val(res.block_reason || '');
+            $('#modal-course').val(''); clearModalFaculty(); $('#modal-special-note').val('');
+        } else {
+            $('#slot-type-course').prop('checked', true).trigger('change');
+            $('#modal-course').val(res.course_code);
+            if (res.faculty_id) { $('#modal-faculty-id').val(res.faculty_id); $('#modal-faculty-badge').text(res.faculty_name); $('#modal-selected-faculty').show(); $('#faculty-autofill-label').hide(); }
+            else clearModalFaculty();
+            $('#modal-special-note').val(res.special_note || '');
+            $('#modal-block-reason').val(''); $('#modal-block-preset').val('');
+        }
+        $('#modal-apply-all').prop('checked', res.apply_to_all_batches);
+    } else {
+        $('#slot-type-course').prop('checked', true).trigger('change');
+        $('#modal-course').val(''); clearModalFaculty(); $('#modal-special-note').val('');
+        $('#modal-apply-all').prop('checked', false);
+        $('#modal-block-reason').val(''); $('#modal-block-preset').val('');
+    }
+    $('#modal-faculty-search').val(''); $('#modal-faculty-results').hide();
+    $('#reserveModal').modal('show');
+}
+
+// ─── Faculty auto-fill when course is selected ────
+$('#modal-course').on('change', function(){
+    const courseCode = $(this).val();
+    if (!courseCode) { clearModalFaculty(); return; }
+    const batchId = parseInt($('#modal-batch-id').val());
+    let match = activeEditor.assignments.find(a => a.course_code === courseCode && a.batch_id === batchId);
+    if (!match) match = activeEditor.assignments.find(a => a.course_code === courseCode && a.faculty_id);
+    if (match && match.faculty_id) {
+        $('#modal-faculty-id').val(match.faculty_id);
+        $('#modal-faculty-badge').text(match.faculty_name);
+        $('#modal-selected-faculty').show(); $('#faculty-autofill-label').show();
+        $('#modal-faculty-search').val(''); $('#modal-faculty-results').hide();
+    } else { clearModalFaculty(); }
+});
+
+// Faculty manual search
+let fSearchTimeout;
+$('#modal-faculty-search').on('input', function(){
+    const s = $(this).val(); clearTimeout(fSearchTimeout);
+    if (s.length < 2) { $('#modal-faculty-results').hide(); return; }
+    fSearchTimeout = setTimeout(function(){
+        $.get('{% url "get_all_faculty" %}', {search: s}, function(data){
+            let h = '';
+            data.faculty.forEach(f => { h += `<a href="#" class="list-group-item list-group-item-action py-1 px-2" onclick="selectModalFaculty(${f.id},'${f.name.replace(/'/g,"\\'")}'); return false;"><strong>${f.name}</strong> <small class="text-muted">(${f.staff_id})</small></a>`; });
+            if (!h) h = '<div class="list-group-item text-muted py-1">No faculty found</div>';
+            $('#modal-faculty-results').html(h).show();
+        });
+    }, 300);
+});
+function selectModalFaculty(id, name) { $('#modal-faculty-id').val(id); $('#modal-faculty-badge').text(name); $('#modal-selected-faculty').show(); $('#modal-faculty-search').val(''); $('#modal-faculty-results').hide(); $('#faculty-autofill-label').hide(); }
+function clearModalFaculty() { $('#modal-faculty-id').val(''); $('#modal-selected-faculty').hide(); $('#faculty-autofill-label').hide(); }
+
+// ===================== Save / Delete Reservation =====================
+function saveReservation() {
+    const slotType = $('input[name="slot-type"]:checked').val();
+    const isBlocked = slotType === 'block';
+    if (!isBlocked && !$('#modal-course').val()) { toastr.warning('Please select a course'); return; }
+
+    let blockReason = '';
+    if (isBlocked) blockReason = $('#modal-block-reason').val().trim() || $('#modal-block-preset').val() || 'Blocked';
+
+    const payload = {
+        config_id: activeEditor.configId,
+        academic_year_id: activeEditor.academicYearId,
+        semester_id: activeEditor.semesterId,
+        program_id: activeEditor.programId,
+        year_of_study: activeEditor.yearOfStudy,
+        batch_id: parseInt($('#modal-batch-id').val()),
+        day: $('#modal-day').val(),
+        slot_number: parseInt($('#modal-slot').val()),
+        is_blocked: isBlocked,
+        block_reason: blockReason,
+        course_code: isBlocked ? '' : $('#modal-course').val(),
+        faculty_id: isBlocked ? null : ($('#modal-faculty-id').val() ? parseInt($('#modal-faculty-id').val()) : null),
+        special_note: isBlocked ? '' : $('#modal-special-note').val(),
+        apply_to_all_batches: $('#modal-apply-all').is(':checked'),
+    };
+
+    $.ajax({
+        url: '{% url "api_save_reservation" %}', method: 'POST', contentType: 'application/json',
+        data: JSON.stringify(payload),
+        success: function(resp){
+            if (resp.success) {
+                activeEditor.configId = resp.config_id;
+                // Update the combo's config_id in allCombos
+                const combo = allCombos.find(c => c.program_id === activeEditor.programId && c.year_of_study === activeEditor.yearOfStudy);
+                if (combo) combo.config_id = resp.config_id;
+
+                resp.reservations.forEach(r => {
+                    const key = `${r.batch_id}_${payload.day}_${payload.slot_number}`;
+                    activeEditor.reservations[key] = {
+                        course_code: resp.course_code || '',
+                        faculty_id: r.faculty_id || null,
+                        faculty_name: r.faculty_name || '',
+                        special_note: payload.special_note,
+                        apply_to_all_batches: payload.apply_to_all_batches,
+                        is_blocked: resp.is_blocked,
+                        block_reason: resp.block_reason || '',
+                    };
+                });
+                refreshEditorGrids(); detectConflicts();
+                $('#reserveModal').modal('hide');
+                toastr.success(isBlocked ? 'Slot blocked!' : 'Slot reserved!');
+            }
+        },
+        error: function(xhr){ toastr.error('Error: '+(xhr.responseJSON?.error||'Unknown')); }
+    });
+}
+
+function deleteReservation() {
+    const configId = activeEditor.configId;
+    const batchId = parseInt($('#modal-batch-id').val()),
+          day = $('#modal-day').val(), slot = parseInt($('#modal-slot').val());
+    if (!configId) {
+        delete activeEditor.reservations[`${batchId}_${day}_${slot}`];
+        refreshEditorGrids(); detectConflicts();
+        $('#reserveModal').modal('hide'); return;
+    }
+    $.ajax({
+        url: '{% url "api_delete_reservation" %}', method: 'POST', contentType: 'application/json',
+        data: JSON.stringify({config_id: configId, batch_id: batchId, day: day, slot_number: slot}),
+        success: function(resp){
+            if (resp.success) {
+                resp.deleted_batches.forEach(bid => { delete activeEditor.reservations[`${bid}_${day}_${slot}`]; });
+                refreshEditorGrids(); detectConflicts();
+                $('#reserveModal').modal('hide');
+                toastr.success('Reservation cleared!');
+            }
+        },
+        error: function(xhr){ toastr.error('Error: '+(xhr.responseJSON?.error||'Unknown')); }
+    });
+}
+
+function refreshEditorGrids() {
+    activeEditor.batches.forEach(b => { $(`#batch-pane-${b.id} .table-responsive`).html(buildTimetableGrid(b.id)); });
+}
+
+function detectConflicts() {
+    const conflicts = [];
+    const facultySlots = {};
+    Object.entries(activeEditor.reservations).forEach(([key, res]) => {
+        if (res.is_blocked || !res.faculty_id) return;
+        const [bId, day, slot] = key.split('_');
+        const batch = activeEditor.batches.find(b => b.id === parseInt(bId));
+        const fk = `${res.faculty_id}_${day}_${slot}`;
+        if (!facultySlots[fk]) facultySlots[fk] = [];
+        facultySlots[fk].push({batch_display: batch ? batch.batch_display : bId, faculty_name: res.faculty_name, day, slot, course_code: res.course_code, apply_to_all: res.apply_to_all_batches});
+    });
+    Object.values(facultySlots).forEach(entries => {
+        if (entries.length > 1) {
+            // If all entries are the same course with apply_to_all, it's intentional (common lecture) — not a conflict
+            const allSameCourse = entries.every(e => e.course_code === entries[0].course_code && e.apply_to_all);
+            if (allSameCourse) return;
+            conflicts.push(`<i class="fas fa-user-times text-danger mr-1"></i><strong>${entries[0].faculty_name}</strong> double-booked at ${dayNames[entries[0].day]} P${entries[0].slot}: ${entries.map(e=>e.batch_display).join(', ')}`);
+        }
+    });
+    if (conflicts.length) { $('#conflict-list').html(conflicts.map(c=>`<div class="conflict-item">${c}</div>`).join('')); $('#conflict-panel-card').show(); }
+    else { $('#conflict-panel-card').hide(); }
+}
+
+// ===================== Delete Timetable =====================
+function deleteProgramTimetable(idx) {
+    const combo = allCombos[idx];
+    if (!confirm(`Delete all timetables for ${combo.program_code} Year ${combo.year_of_study}?`)) return;
+    $.ajax({
+        url: '{% url "api_delete_timetables" %}', method: 'POST', contentType: 'application/json',
+        data: JSON.stringify({scope: 'program_year', program_id: combo.program_id, year_of_study: combo.year_of_study}),
+        success: function(resp){
+            if (resp.success) { toastr.success(`Deleted ${resp.deleted} timetable(s).`); loadProgramYearStatus(); }
+        },
+        error: function(xhr){ toastr.error('Error: '+(xhr.responseJSON?.error||'Unknown')); }
+    });
+}
+
+function deleteAllTimetables() {
+    if (!confirm('Delete ALL existing timetables for the current semester? This cannot be undone.')) return;
+    if (!confirm('Are you SURE? All generated timetables will be permanently deleted.')) return;
+    $.ajax({
+        url: '{% url "api_delete_timetables" %}', method: 'POST', contentType: 'application/json',
+        data: JSON.stringify({scope: 'all'}),
+        success: function(resp){
+            if (resp.success) { toastr.success(`Deleted ${resp.deleted} timetable(s).`); if (currentStep === 2) loadProgramYearStatus(); }
+        },
+        error: function(xhr){ toastr.error('Error: '+(xhr.responseJSON?.error||'Unknown')); }
+    });
+}
+
+// ===================== Step 3: Review & Generate =====================
+function buildReviewSummary() {
+    if (!allCombos.length) { loadProgramYearStatus(); }
+    loadPGClubbingCandidates();
+    loadMELabAssistMappings();
+    let html = '<table class="table table-bordered table-sm"><thead class="thead-light"><tr><th>Program</th><th>Year</th><th>Batches</th><th>Reserved</th><th>Blocked</th><th>Same-Time</th><th>Status</th></tr></thead><tbody>';
+    let allReady = true;
+    allCombos.forEach(c => {
+        const hasExisting = c.existing_timetables > 0;
+        const statusHtml = hasExisting
+            ? '<span class="badge badge-success">Generated</span>'
+            : '<span class="badge badge-info">Ready for generation</span>';
+        html += `<tr><td><strong>${c.program_code}</strong></td><td>Year ${c.year_of_study}</td><td>${c.batch_count}</td><td>${c.reserved_count}</td><td>${c.blocked_count}</td><td>${c.same_time_count || 0}</td><td>${statusHtml}</td></tr>`;
+    });
+    html += '</tbody></table>';
+    html += `<div class="alert alert-warning mt-2"><i class="fas fa-info-circle mr-1"></i>Generating will <strong>overwrite</strong> any existing timetables for the current semester. Faculty conflicts are resolved across all programs.</div>`;
+    $('#review-summary').html(html);
+}
+
+function generateAllTimetables() {
+    const btn = $('#btn-generate-all');
+    btn.html('<i class="fas fa-spinner fa-spin mr-2"></i> Generating All...').prop('disabled', true);
+    const payload = {
+        generation_preferences: {
+            avoid_professor_first_last: $('#pref-avoid-professor-edge').is(':checked'),
+        },
+    };
+
+    const startGeneration = function() {
+        $.ajax({
+            url: '{% url "api_generate_all_timetables" %}',
+            method: 'POST', contentType: 'application/json',
+            data: JSON.stringify(payload),
+            success: function(resp){
+                if (resp.success) {
+                    let body = '<table class="table table-sm table-bordered"><thead><tr><th>Program</th><th>Year</th><th>Batch</th><th>Entries</th></tr></thead><tbody>';
+                    resp.timetables.forEach(t => { body += `<tr><td>${t.program_code}</td><td>Year ${t.year}</td><td>${t.batch_name}</td><td>${t.entries_count}</td></tr>`; });
+                    body += '</tbody></table>';
+                    if (resp.warnings && resp.warnings.length) {
+                        body += '<div class="alert alert-warning mt-2"><strong>Warnings:</strong><ul>';
+                        resp.warnings.forEach(w => { body += `<li>${w}</li>`; });
+                        body += '</ul></div>';
+                    }
+                    $('#gen-result-body').html(body);
+                    $('#btn-go-timetables').off('click').on('click', function(){ window.location.href = resp.redirect_url; });
+                    $('#genResultModal').modal('show');
+                }
+            },
+            error: function(xhr){ toastr.error('Error: '+(xhr.responseJSON?.error||'Unknown')); },
+            complete: function(){ btn.html('<i class="fas fa-magic mr-2"></i> Generate All Timetables').prop('disabled', false); }
+        });
+    };
+
+    saveMELabAssistMappings(false)
+        .done(function(){
+            startGeneration();
+        })
+        .fail(function(xhr){
+            const msg = xhr.responseJSON?.error || 'Unable to save M.E. assist mapping';
+            toastr.error(msg);
+            btn.html('<i class="fas fa-magic mr-2"></i> Generate All Timetables').prop('disabled', false);
+        });
+}
+
+// Close faculty results when clicking outside
+$(document).click(function(e){ if (!$(e.target).closest('#modal-faculty-search, #modal-faculty-results').length) $('#modal-faculty-results').hide(); });
+
+// ===================== Lab Configuration (Step 1) =====================
+let labsData = [
+    {% for lab in labs %}
+    {
+        id: {{ lab.id }},
+        room_code: '{{ lab.room_code }}',
+        name: '{{ lab.name|escapejs }}',
+        capacity: {{ lab.capacity }},
+        is_active: true,
+        is_selected: true,
+        restrictions: [
+            {% for r in lab.restrictions.all %}
+            { program_id: {{ r.program_id|default:"null" }}, year_of_study: {{ r.year_of_study|default:"null" }}, course_id: '{{ r.course_id|default:""|escapejs }}' || null, course_code: '{{ r.course.course_code|default:""|escapejs }}' },
+            {% endfor %}
+        ]
+    },
+    {% endfor %}
+];
+let labCounter = labsData.length;
+
+$(document).ready(function(){ renderLabEditor(); loadProgramYearStatus(); });
+
+function renderLabEditor() {
+    const c = $('#lab-editor-list'); c.empty();
+    if (!labsData.length) { $('#lab-empty-msg').show(); return; }
+    $('#lab-empty-msg').hide();
+    labsData.forEach((lab, idx) => { c.append(buildLabCard(lab, idx)); });
+    updateLabUtilization();
+}
+
+function buildLabCard(lab, idx) {
+    let rHtml = '';
+    if (lab.restrictions && lab.restrictions.length) {
+        lab.restrictions.forEach((r, rIdx) => { rHtml += buildRestrictionRow(idx, rIdx, r); });
+    }
+    const sel = lab.is_selected !== false;
+    return '<div class="lab-card '+(sel?'':'lab-deselected')+'" id="lab-card-'+idx+'">' +
+        '<div class="row mb-2">' +
+        '<div class="col-md-1 d-flex align-items-center justify-content-center">' +
+        '<div class="custom-control custom-checkbox"><input type="checkbox" class="custom-control-input" id="lab-sel-'+idx+'" '+(sel?'checked':'')+' onchange="labsData['+idx+'].is_selected=this.checked; $(\'#lab-card-'+idx+'\').toggleClass(\'lab-deselected\',!this.checked); updateLabUtilization();">' +
+        '<label class="custom-control-label" for="lab-sel-'+idx+'" title="Include in generation"></label></div></div>' +
+        '<div class="col-md-2"><label class="small font-weight-bold">Room Code</label>' +
+        '<input type="text" class="form-control form-control-sm" value="'+lab.room_code+'" onchange="labsData['+idx+'].room_code=this.value" placeholder="e.g. LAB-1"></div>' +
+        '<div class="col-md-2"><label class="small font-weight-bold">Lab Name</label>' +
+        '<input type="text" class="form-control form-control-sm" value="'+lab.name+'" onchange="labsData['+idx+'].name=this.value" placeholder="e.g. Computer Lab"></div>' +
+        '<div class="col-md-1"><label class="small font-weight-bold">Cap.</label>' +
+        '<input type="number" class="form-control form-control-sm" value="'+lab.capacity+'" min="1" onchange="labsData['+idx+'].capacity=parseInt(this.value)"></div>' +
+        '<div class="col-md-4"><label class="small font-weight-bold">Restrictions ' +
+        '<button type="button" class="btn btn-xs btn-outline-success ml-1" onclick="addRestriction('+idx+'); return false;" title="Add restriction"><i class="fas fa-plus"></i></button></label>' +
+        '<div id="restrictions-'+idx+'">'+(rHtml||'<span class="text-success small"><i class="fas fa-unlock mr-1"></i>Open to all</span>')+'</div></div>' +
+        '<div class="col-md-2 d-flex align-items-start justify-content-end pt-4">' +
+        '<button type="button" class="btn btn-sm btn-outline-danger" onclick="removeLab('+idx+'); return false;" title="Remove lab"><i class="fas fa-trash mr-1"></i> Remove</button></div>' +
+        '</div></div>';
+}
+
+function buildRestrictionRow(labIdx, rIdx, restriction) {
+    let po = '<option value="">Any Program</option>';
+    programsList.forEach(p => { po += '<option value="'+p.id+'"'+(restriction.program_id==p.id?' selected':'')+'>'+p.code+'</option>'; });
+    let yo = '<option value="">Any Year</option>';
+    for (let y = 1; y <= 6; y++) yo += '<option value="'+y+'"'+(restriction.year_of_study==y?' selected':'')+'>Year '+y+'</option>';
+    let co = '<option value="">Any Course</option>';
+    if (allLabCourses && allLabCourses.length) {
+        allLabCourses.forEach(c => { co += '<option value="'+c.course_code+'"'+(restriction.course_code==c.course_code?' selected':'')+'>'+c.course_code+' - '+c.title+'</option>'; });
+    }
+    const courseSelectId = 'restriction-course-'+labIdx+'-'+rIdx;
+    return '<div class="restriction-row mb-1">'+
+        '<select class="form-control form-control-sm restriction-control" style="width:100px;display:inline-block;" '+
+        'onchange="labsData['+labIdx+'].restrictions['+rIdx+'].program_id=this.value?parseInt(this.value):null; filterRestrictionCourses('+labIdx+','+rIdx+');">'+po+'</select> '+
+        '<select class="form-control form-control-sm restriction-control" style="width:80px;display:inline-block;" '+
+        'onchange="labsData['+labIdx+'].restrictions['+rIdx+'].year_of_study=this.value?parseInt(this.value):null; filterRestrictionCourses('+labIdx+','+rIdx+');">'+yo+'</select> '+
+        '<select id="'+courseSelectId+'" class="form-control form-control-sm restriction-control" style="width:180px;display:inline-block;" '+
+        'onchange="labsData['+labIdx+'].restrictions['+rIdx+'].course_code=this.value||null;" title="Reserve for course">'+co+'</select> '+
+        '<button type="button" class="restriction-remove" aria-label="Remove restriction" title="Remove restriction" onclick="removeRestriction('+labIdx+','+rIdx+'); return false;"><i class="fas fa-times"></i></button></div>';
+}
+
+// Filter the course dropdown based on selected program + year
+function filterRestrictionCourses(labIdx, rIdx) {
+    const r = labsData[labIdx].restrictions[rIdx];
+    const selectEl = document.getElementById('restriction-course-'+labIdx+'-'+rIdx);
+    if (!selectEl) return;
+
+    const progId = r.program_id;
+    const year = r.year_of_study;
+
+    // If both program and year are selected, fetch courses for that combo
+    if (progId && year) {
+        selectEl.innerHTML = '<option value="">Loading...</option>';
+        selectEl.disabled = true;
+        $.get('{% url "api_timetable_courses" %}', {program_id: progId, year_of_study: year}, function(data) {
+            let co = '<option value="">Any Course</option>';
+            // Only show lab courses (L or LIT type)
+            const labCourses = (data.courses || []).filter(c => c.is_lab);
+            labCourses.forEach(c => {
+                co += '<option value="'+c.course_code+'"'+(r.course_code==c.course_code?' selected':'')+'>'+c.course_code+' - '+c.title+'</option>';
+            });
+            if (labCourses.length === 0) co += '<option value="" disabled>No lab courses found</option>';
+            selectEl.innerHTML = co;
+            selectEl.disabled = false;
+        }).fail(function() {
+            selectEl.innerHTML = '<option value="">Any Course</option>';
+            selectEl.disabled = false;
+        });
+    } else {
+        // No program+year selected — show all lab courses
+        let co = '<option value="">Any Course</option>';
+        if (allLabCourses && allLabCourses.length) {
+            allLabCourses.forEach(c => { co += '<option value="'+c.course_code+'"'+(r.course_code==c.course_code?' selected':'')+'>'+c.course_code+' - '+c.title+'</option>'; });
+        }
+        selectEl.innerHTML = co;
+    }
+    // Clear course selection since the list changed
+    r.course_code = null;
+}
+
+function addLabRow() {
+    labsData.push({id:null, room_code:'', name:'', capacity:60, is_active:true, is_selected:true, restrictions:[]});
+    labCounter++; renderLabEditor();
+    var lc = document.querySelectorAll('#lab-editor-list .lab-card');
+    if (lc.length) lc[lc.length-1].scrollIntoView({behavior:'smooth', block:'center'});
+    toastr.info('New lab row added.');
+}
+function removeLab(idx) { if (!confirm('Remove this lab?')) return; labsData.splice(idx, 1); renderLabEditor(); }
+function addRestriction(labIdx) { labsData[labIdx].restrictions.push({program_id:null, year_of_study:null, course_id:null, course_code:null}); renderLabEditor(); }
+function removeRestriction(labIdx, rIdx) {
+    if (!labsData[labIdx] || !Array.isArray(labsData[labIdx].restrictions)) return;
+    if (rIdx < 0 || rIdx >= labsData[labIdx].restrictions.length) return;
+    labsData[labIdx].restrictions.splice(rIdx, 1);
+    renderLabEditor();
+}
+
+function updateLabUtilization() {
+    const selectedCount = labsData.filter(l => l.is_selected !== false).length;
+    const totalSlots = selectedCount * 20;
+    if (selectedCount > 0) { $('#lab-utilization-info').html(`<i class="fas fa-chart-bar mr-1"></i><strong>${selectedCount}</strong> lab(s) selected. ~<strong>${totalSlots}</strong> 2-period lab slots/week.`).show(); }
+    else { $('#lab-utilization-info').html('<i class="fas fa-exclamation-triangle mr-1"></i>No labs selected! Lab courses cannot be auto-scheduled.').show(); }
+}
+
+function saveLabConfig(callback) {
+    for (let i = 0; i < labsData.length; i++) {
+        if (!labsData[i].room_code.trim() || !labsData[i].name.trim()) { toastr.warning('Lab #'+(i+1)+' needs both a Room Code and Name.'); return; }
+    }
+    const labsPayload = labsData.map(l => ({
+        id: l.id, room_code: l.room_code, name: l.name, capacity: l.capacity,
+        restrictions: (l.restrictions || []).map(r => ({ program_id: r.program_id, year_of_study: r.year_of_study, course_id: r.course_id || null, course_code: r.course_code || null }))
+    }));
+    const selectedIds = labsData.filter(l => l.is_selected !== false && l.id).map(l => l.id);
+    $.ajax({
+        url: '{% url "api_save_lab_config" %}', method: 'POST', contentType: 'application/json',
+        data: JSON.stringify({labs: labsPayload, config_id: null, selected_lab_ids: selectedIds, full_sync: true}),
+        success: function(resp){
+            if (resp.success) {
+                if (resp.labs && resp.labs.length) {
+                    resp.labs.forEach(serverLab => { const m = labsData.find(l => l.room_code === serverLab.room_code); if (m && !m.id) m.id = serverLab.id; });
+                }
+                toastr.success('Lab configuration saved! (' + resp.labs_saved + ' labs)');
+                if (typeof callback === 'function') callback();
+            }
+        },
+        error: function(xhr){ toastr.error('Error saving labs: '+(xhr.responseJSON ? xhr.responseJSON.error : 'Unknown')); }
+    });
+}
+function saveLabConfigAndNext() { if (!labsData.length) { goToStep(2); return; } saveLabConfig(function(){ goToStep(2); }); }
+
+// ===================== Faculty Availability Blocks =====================
+let fbFacultyId = null;
+let fbFacultyName = '';
+let fbBlocks = {};  // "day_slotNum" -> true
+
+function openFacultyBlockModal() {
+    fbFacultyId = null;
+    fbFacultyName = '';
+    fbBlocks = {};
+    $('#fb-faculty-search').val('');
+    $('#fb-faculty-results').hide();
+    $('#fb-selected-faculty').hide();
+    $('#fb-reason-row').hide();
+    $('#fb-grid-container').hide();
+    $('#fb-empty-state').show();
+    $('#fb-reason').val('');
+    $('#facultyBlockModal').modal('show');
+    setTimeout(() => $('#fb-faculty-search').focus(), 500);
+    loadFacultyBlockSummary();
+}
+
+// Faculty search
+let fbSearchTimeout;
+$('#fb-faculty-search').on('input', function(){
+    const q = $(this).val().trim();
+    clearTimeout(fbSearchTimeout);
+    if (q.length < 2) { $('#fb-faculty-results').hide(); return; }
+    fbSearchTimeout = setTimeout(function(){
+        $.get('{% url "get_all_faculty" %}', {search: q}, function(data){
+            let h = '';
+            (data.faculty || []).forEach(f => {
+                h += `<a href="#" class="list-group-item list-group-item-action py-2 px-3" onclick="selectFacultyForBlock(${f.id}, '${f.name.replace(/'/g,"\\'")}', '${f.staff_id||''}'); return false;">
+                    <i class="fas fa-user-tie mr-2 text-primary"></i>
+                    <strong>${f.name}</strong>
+                    <small class="text-muted ml-2">(${f.staff_id || 'N/A'})</small>
+                </a>`;
+            });
+            if (!h) h = '<div class="list-group-item text-muted py-2">No faculty found</div>';
+            $('#fb-faculty-results').html(h).show();
+        });
+    }, 300);
+});
+
+function selectFacultyForBlock(id, name, staffId) {
+    fbFacultyId = id;
+    fbFacultyName = name;
+    $('#fb-faculty-name').text(name);
+    $('#fb-faculty-staff-id').text(staffId ? `(${staffId})` : '');
+    $('#fb-faculty-search').val('');
+    $('#fb-faculty-results').hide();
+    $('#fb-selected-faculty').show();
+    $('#fb-reason-row').show();
+    $('#fb-empty-state').hide();
+    loadFacultyBlocks(id);
+}
+
+function clearFacultyBlock() {
+    fbFacultyId = null;
+    fbFacultyName = '';
+    fbBlocks = {};
+    $('#fb-selected-faculty').hide();
+    $('#fb-reason-row').hide();
+    $('#fb-grid-container').hide();
+    $('#fb-empty-state').show();
+    $('#fb-faculty-search').val('').focus();
+}
+
+function loadFacultyBlocks(facultyId) {
+    $.get('{% url "api_get_faculty_time_blocks" %}', {
+        faculty_id: facultyId,
+        academic_year_id: globalAcademicYearId,
+        semester_id: globalSemesterId,
+    }, function(resp){
+        if (!resp.success) { toastr.error(resp.error || 'Error loading blocks'); return; }
+        fbBlocks = {};
+        (resp.blocks || []).forEach(b => {
+            fbBlocks[`${b.day}_${b.slot_number}`] = b.reason || '';
+        });
+        buildFacultyBlockGrid();
+        $('#fb-grid-container').show();
+    }).fail(function(xhr){ toastr.error('Error loading faculty blocks'); });
+}
+
+function buildFacultyBlockGrid() {
+    // Build header
+    const nonBreakSlots = timeSlots.filter(ts => !ts.is_break);
+    let headHtml = '<tr><th class="fb-day">Day</th>';
+    timeSlots.forEach(ts => {
+        if (ts.is_break) {
+            headHtml += `<th style="background:#ffc107;color:#333;min-width:40px;font-size:11px;">Break</th>`;
+        } else {
+            headHtml += `<th>P${ts.slot_number}<br><small>${ts.start}-${ts.end}</small></th>`;
+        }
+    });
+    headHtml += '</tr>';
+
+    // Build body
+    let bodyHtml = '';
+    days.forEach(day => {
+        bodyHtml += `<tr><td class="fb-day">${dayNames[day]}</td>`;
+        timeSlots.forEach(ts => {
+            if (ts.is_break) {
+                bodyHtml += `<td style="background:#fffde7;color:#bbb;"><i>Break</i></td>`;
+                return;
+            }
+            const key = `${day}_${ts.slot_number}`;
+            const isBlocked = key in fbBlocks;
+            const cls = isBlocked ? 'fb-cell fb-blocked' : 'fb-cell';
+            const icon = isBlocked ? '<span class="fb-icon"><i class="fas fa-ban"></i></span>' : '';
+            const reason = isBlocked && fbBlocks[key] ? `<div style="font-size:9px;color:#888;margin-top:2px;">${fbBlocks[key]}</div>` : '';
+            bodyHtml += `<td class="${cls}" onclick="toggleFacultyBlock('${day}', ${ts.slot_number})" title="${isBlocked ? 'Blocked' + (fbBlocks[key] ? ': '+fbBlocks[key] : '') : 'Click to block'}">${icon}${reason}</td>`;
+        });
+        bodyHtml += '</tr>';
+    });
+
+    $('#fb-grid-table thead').html(headHtml);
+    $('#fb-grid-table tbody').html(bodyHtml);
+    updateFbBlockCount();
+}
+
+function toggleFacultyBlock(day, slotNumber) {
+    if (!fbFacultyId) return;
+    const reason = $('#fb-reason').val().trim();
+    $.ajax({
+        url: '{% url "api_toggle_faculty_time_block" %}',
+        method: 'POST',
+        contentType: 'application/json',
+        data: JSON.stringify({
+            faculty_id: fbFacultyId,
+            day: day,
+            slot_number: slotNumber,
+            academic_year_id: globalAcademicYearId,
+            semester_id: globalSemesterId,
+            reason: reason
+        }),
+        success: function(resp) {
+            if (!resp.success) { toastr.error(resp.error || 'Error'); return; }
+            // Rebuild local blocks from response
+            fbBlocks = {};
+            (resp.blocks || []).forEach(b => {
+                fbBlocks[`${b.day}_${b.slot_number}`] = reason;
+            });
+            buildFacultyBlockGrid();
+            const action = resp.enabled ? 'blocked' : 'unblocked';
+            toastr.info(`${dayNames[day]} P${slotNumber} ${action} for ${fbFacultyName}`);
+            loadFacultyBlockSummary();
+        },
+        error: function(xhr) { toastr.error('Error: ' + (xhr.responseJSON?.error || 'Unknown')); }
+    });
+}
+
+function updateFbBlockCount() {
+    const count = Object.keys(fbBlocks).length;
+    $('#fb-block-count').text(count + (count === 1 ? ' block' : ' blocks'));
+}
+
+// Load summary of all faculty who have blocks
+function loadFacultyBlockSummary() {
+    $.get('{% url "api_get_faculty_time_blocks" %}', {
+        academic_year_id: globalAcademicYearId,
+        semester_id: globalSemesterId,
+    }, function(resp){
+        if (!resp.success) { $('#fb-summary-section').hide(); return; }
+        const blocks = resp.blocks || [];
+        if (!blocks.length) {
+            $('#fb-summary-list').empty();
+            $('#fb-summary-empty').show();
+            $('#fb-summary-section').show();
+            return;
+        }
+        // Group by faculty
+        const grouped = {};
+        blocks.forEach(b => {
+            if (!grouped[b.faculty_id]) {
+                grouped[b.faculty_id] = { name: b.faculty_name, staff_id: b.staff_id, slots: [] };
+            }
+            grouped[b.faculty_id].slots.push({ day: b.day, slot: b.slot_number, reason: b.reason });
+        });
+        let html = '';
+        Object.entries(grouped).forEach(([fid, info]) => {
+            const slotSummary = info.slots.map(s => `${s.day} P${s.slot}`).join(', ');
+            html += `<div class="fb-summary-item" onclick="selectFacultyForBlock(${fid}, '${info.name.replace(/'/g,"\\'")}', '${info.staff_id||''}')">
+                <div>
+                    <div class="fb-s-name"><i class="fas fa-user-tie mr-1 text-primary"></i>${info.name} <small class="text-muted">(${info.staff_id||'N/A'})</small></div>
+                    <div class="fb-s-slots">${slotSummary}</div>
+                </div>
+                <div class="fb-s-count">${info.slots.length} block${info.slots.length>1?'s':''}</div>
+            </div>`;
+        });
+        $('#fb-summary-list').html(html);
+        $('#fb-summary-empty').hide();
+        $('#fb-summary-section').show();
+    });
+}
+
+// Close faculty block search results when clicking outside
+$(document).on('click', function(e){ if (!$(e.target).closest('#fb-faculty-search, #fb-faculty-results').length) $('#fb-faculty-results').hide(); });
+
+// ===================== ME Lab Assist Mapping =====================
+function loadMELabAssistMappings() {
+    $('#me-assist-loading').show();
+    $('#me-assist-empty, #me-assist-table-wrap').hide();
+
+    $.get('{% url "api_get_me_lab_assist_mappings" %}', {
+        academic_year_id: globalAcademicYearId,
+        semester_type: globalSemesterType,
+    }, function(resp) {
+        $('#me-assist-loading').hide();
+        if (!resp.success) {
+            toastr.error(resp.error || 'Unable to load M.E. assist mappings');
+            $('#me-assist-empty').show();
+            return;
+        }
+
+        meAssistState.meClasses = resp.me_classes || [];
+        meAssistState.beLabCourses = resp.be_lab_courses || [];
+        meAssistState.mappings = resp.mappings || {};
+
+        renderMELabAssistTable();
+    }).fail(function(xhr) {
+        $('#me-assist-loading').hide();
+        toastr.error('Error loading M.E. assist mappings: ' + (xhr.responseJSON?.error || 'Unknown'));
+        $('#me-assist-empty').show();
+    });
+}
+
+function renderMELabAssistTable() {
+    const meClasses = meAssistState.meClasses || [];
+    const beLabs = meAssistState.beLabCourses || [];
+
+    if (!meClasses.length || !beLabs.length) {
+        $('#me-assist-table-wrap').hide();
+        $('#me-assist-empty').show();
+        return;
+    }
+
+    let rows = '';
+    meClasses.forEach(row => {
+        const key = `${row.program_id}_${row.year_of_study}`;
+        const selectedCodes = meAssistState.mappings[key] || [];
+
+        let options = '';
+        beLabs.forEach(course => {
+            const selected = selectedCodes.includes(course.course_code) ? 'selected' : '';
+            const titleText = escapeHtml(course.title || '');
+            const contextText = escapeHtml((course.contexts || []).join(', '));
+            options += `<option value="${course.course_code}" ${selected} title="${contextText}">${course.course_code} - ${titleText}</option>`;
+        });
+
+        rows += `<tr>
+            <td>
+                <div class="me-assist-row-label">${escapeHtml(row.label)}</div>
+                <div class="text-muted small">Batches: ${row.batch_count || 0}</div>
+            </td>
+            <td>
+                <select multiple class="form-control form-control-sm me-assist-select"
+                        data-me-program-id="${row.program_id}"
+                        data-me-year="${row.year_of_study}">
+                    ${options}
+                </select>
+                <div class="me-assist-help mt-1">Use Ctrl/Cmd + click to select multiple B.E. labs</div>
+            </td>
+        </tr>`;
+    });
+
+    $('#me-assist-tbody').html(rows);
+    $('#me-assist-empty').hide();
+    $('#me-assist-table-wrap').show();
+}
+
+function collectMELabAssistMappingsPayload() {
+    const mappings = [];
+    $('.me-assist-select').each(function() {
+        const meProgramId = parseInt($(this).data('me-program-id'));
+        const meYear = parseInt($(this).data('me-year'));
+        const selectedCodes = ($(this).val() || []).filter(Boolean);
+
+        mappings.push({
+            me_program_id: meProgramId,
+            me_year_of_study: meYear,
+            be_lab_course_codes: selectedCodes,
+        });
+    });
+    return mappings;
+}
+
+function saveMELabAssistMappings(showToast = true) {
+    if (!globalAcademicYearId) {
+        return $.Deferred().resolve({success: true}).promise();
+    }
+
+    const payload = {
+        academic_year_id: globalAcademicYearId,
+        semester_type: globalSemesterType,
+        mappings: collectMELabAssistMappingsPayload(),
+    };
+
+    return $.ajax({
+        url: '{% url "api_save_me_lab_assist_mappings" %}',
+        method: 'POST',
+        contentType: 'application/json',
+        data: JSON.stringify(payload),
+        success: function(resp) {
+            if (showToast && resp.success) {
+                toastr.success(`M.E. assist mapping saved (${resp.saved_count} mapping${resp.saved_count === 1 ? '' : 's'})`);
+            }
+        },
+        error: function(xhr) {
+            if (showToast) {
+                toastr.error('Error saving M.E. assist mapping: ' + (xhr.responseJSON?.error || 'Unknown'));
+            }
+        }
+    });
+}
+
+// ===================== PG Course Clubbing =====================
+function loadPGClubbingCandidates() {
+    $('#pg-clubbing-loading').show();
+    $('#pg-clubbing-empty, #pg-clubbing-table-wrap').hide();
+
+    $.get('{% url "api_pg_clubbing_candidates" %}', function(resp){
+        $('#pg-clubbing-loading').hide();
+        if (!resp.success) { toastr.error(resp.error || 'Error loading clubbing candidates'); return; }
+
+        const candidates = resp.candidates || [];
+        if (candidates.length === 0) {
+            $('#pg-clubbing-empty').show();
+            return;
+        }
+
+        let html = '';
+        candidates.forEach(c => {
+            const programBadges = c.programs.map(p =>
+                `<span class="badge badge-secondary mr-1">${p.program_code}</span>`
+            ).join('');
+            
+            // Show categories if cross-category (IOC+PEC for example)
+            let categoryInfo = '';
+            if (c.category_types && c.category_types.length > 1) {
+                const categoryBadges = c.category_types.map(ct => {
+                    const iocClass = (ct === 'IOC' || ct === 'EEC') ? 'badge-warning' : 'badge-secondary';
+                    return `<span class="badge ${iocClass} small" style="font-size:0.7rem;" title="Course category in one program">${ct}</span>`;
+                }).join(' ');
+                categoryInfo = `<div class="mt-1">${categoryBadges}</div>`;
+            }
+            
+            const checked = c.is_clubbed ? 'checked' : '';
+            const switchId = `club-switch-${c.course_code}-${c.faculty_id}`;
+            
+            // Add tooltip hint for IOC clubbing
+            let iocHint = '';
+            if (c.is_ioc_related) {
+                iocHint = `title="IOC course – can club across PG programs even if categorized differently (IOC, PEC, PCC, EEC)"`;
+            }
+            
+            html += `<tr>
+                <td><strong>${c.course_code}</strong><br><small class="text-muted">${c.course_title}</small>${categoryInfo}</td>
+                <td>${c.faculty_name}</td>
+                <td>${programBadges}</td>
+                <td><small>${c.semester_label}</small></td>
+                <td class="text-center">
+                    <div class="custom-control custom-switch" ${iocHint}>
+                        <input type="checkbox" class="custom-control-input" id="${switchId}" ${checked}
+                               onchange="togglePGClubbing('${c.course_code}', ${c.faculty_id}, ${c.semester_id}, this)">
+                        <label class="custom-control-label" for="${switchId}"></label>
+                    </div>
+                </td>
+            </tr>`;
+        });
+        $('#pg-clubbing-tbody').html(html);
+        $('#pg-clubbing-table-wrap').show();
+    }).fail(function(){
+        $('#pg-clubbing-loading').hide();
+        $('#pg-clubbing-empty').show();
+    });
+}
+
+function togglePGClubbing(courseCode, facultyId, semesterId, el) {
+    const $switch = $(el);
+    $switch.prop('disabled', true);
+
+    $.ajax({
+        url: '{% url "api_toggle_pg_clubbing" %}',
+        method: 'POST',
+        contentType: 'application/json',
+        data: JSON.stringify({
+            course_code: courseCode,
+            faculty_id: facultyId,
+            semester_id: semesterId,
+        }),
+        success: function(resp) {
+            $switch.prop('disabled', false);
+            if (resp.success) {
+                if (resp.is_clubbed) {
+                    toastr.success(`${courseCode} clubbed across PG programs`);
+                } else {
+                    toastr.info(`${courseCode} clubbing removed`);
+                }
+            } else {
+                toastr.error(resp.error || 'Toggle failed');
+                $switch.prop('checked', !$switch.prop('checked'));
+            }
+        },
+        error: function(xhr) {
+            $switch.prop('disabled', false);
+            const msg = xhr.responseJSON ? xhr.responseJSON.error : 'Server error';
+            toastr.error(msg);
+            $switch.prop('checked', !$switch.prop('checked'));
+        },
+    });
+}
+
+</script>
+{% endblock custom_js %}

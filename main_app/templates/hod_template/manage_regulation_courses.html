@@ -1,0 +1,616 @@
+{% extends 'main_app/base.html' %}
+{% load static %}
+{% block page_title %}{{ page_title }}{% endblock page_title %}
+
+{% block content %}
+<style>
+    .bg-warning-light {
+        background-color: #fff3cd !important;
+    }
+    .course-option.bg-light {
+        background-color: #fff3cd !important;
+        border-left: 3px solid #ffc107;
+    }
+    .course-option.bg-light:hover {
+        background-color: #ffe69c !important;
+    }
+</style>
+<section class="content">
+    <div class="container-fluid">
+        <!-- Header -->
+        <div class="row mb-3">
+            <div class="col-md-12">
+                <div class="card card-outline card-primary">
+                    <div class="card-header">
+                        <h3 class="card-title">
+                            <i class="fas fa-book mr-2"></i>Course Plan for {{ regulation }}
+                        </h3>
+                        <div class="card-tools">
+                            <a href="{% url 'manage_regulation' %}" class="btn btn-sm btn-secondary">
+                                <i class="fas fa-arrow-left"></i> Back to Regulations
+                            </a>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <div class="row align-items-end">
+                            <div class="col-md-3">
+                                <div class="form-group mb-0">
+                                    <label>Program Type</label>
+                                    <select class="form-control" id="globalProgramType">
+                                        {% for code, name in program_levels %}
+                                        <option value="{{ code }}">{{ name }}</option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="form-group mb-0">
+                                    <label>Branch</label>
+                                    <select class="form-control" id="globalBranch">
+                                        <option value="">-- Select Program First --</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <p class="text-muted mb-0">
+                                    <i class="fas fa-info-circle mr-1"></i>
+                                    Select program and branch, then click on any semester to expand and manage courses.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Semester Tiles -->
+        <div id="semesterContainer">
+            {% for sem_num in semesters %}
+            <div class="card card-outline card-secondary semester-card mb-2" data-semester="{{ sem_num }}">
+                <div class="card-header py-2" style="cursor: pointer;" data-toggle="collapse" data-target="#semester{{ sem_num }}Content">
+                    <h5 class="card-title mb-0">
+                        <i class="fas fa-calendar-alt mr-2"></i>Semester {{ sem_num }}
+                        <span class="badge badge-primary ml-2 course-count" data-semester="{{ sem_num }}">0 courses</span>
+                    </h5>
+                    <div class="card-tools">
+                        <i class="fas fa-chevron-down toggle-icon"></i>
+                    </div>
+                </div>
+                <div id="semester{{ sem_num }}Content" class="collapse">
+                    <div class="card-body">
+                        <!-- Quick Add Course for this semester -->
+                        <div class="mb-3 p-3 bg-light rounded">
+                            <form class="add-course-form" data-semester="{{ sem_num }}">
+                                {% csrf_token %}
+                                <div class="row align-items-end">
+                                    <div class="col-md-6">
+                                        <div class="form-group mb-0">
+                                            <label class="small font-weight-bold">
+                                                <i class="fas fa-book mr-1"></i>Course Selection
+                                            </label>
+                                            <input type="text" class="form-control form-control-sm course-search" 
+                                                   placeholder="Type course code or title..." autocomplete="off">
+                                            <input type="hidden" class="selected-course-code" required>
+                                            <input type="hidden" class="selected-is-placeholder" value="0">
+                                            <input type="hidden" class="selected-placeholder-type" value="">
+                                            <div class="course-dropdown dropdown-menu w-100" style="max-height: 200px; overflow-y: auto;"></div>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <div class="form-group mb-0">
+                                            <label class="small font-weight-bold">Category</label>
+                                            <select class="form-control form-control-sm category-select" required>
+                                                <option value="">Select</option>
+                                                {% for cat in active_categories %}
+                                                <option value="{{ cat.id }}" data-code="{{ cat.code }}">{{ cat.code }}</option>
+                                                {% endfor %}
+                                            </select>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-2 credits-field" style="display: none;">
+                                        <div class="form-group mb-0">
+                                            <label class="small font-weight-bold">Credits</label>
+                                            <input type="number" class="form-control form-control-sm credits-input" 
+                                                  min="0" max="20" step="0.5" value="3" placeholder="Credits">
+                                        </div>
+                                    </div>
+                                    <div class="col-md-2">
+                                        <button type="submit" class="btn btn-success btn-sm btn-block">
+                                            <i class="fas fa-plus mr-1"></i> Add Course
+                                        </button>
+                                    </div>
+                                </div>
+                            </form>
+                        </div>
+
+                        <!-- Course List for this semester -->
+                        <div class="semester-courses" data-semester="{{ sem_num }}">
+                            <div class="text-center text-muted py-3">
+                                <i class="fas fa-spinner fa-spin"></i> Loading courses...
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+
+        <!-- Available Courses Reference -->
+        <div class="row mt-4">
+            <div class="col-md-12">
+                <div class="card card-outline card-dark collapsed-card">
+                    <div class="card-header">
+                        <h3 class="card-title">
+                            <i class="fas fa-list mr-2"></i>All Available Courses (Reference)
+                        </h3>
+                        <div class="card-tools">
+                            <button type="button" class="btn btn-tool" data-card-widget="collapse">
+                                <i class="fas fa-plus"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="card-body p-0">
+                        <table class="table table-sm table-striped mb-0">
+                            <thead class="thead-dark">
+                                <tr>
+                                    <th>Code</th>
+                                    <th>Title</th>
+                                    <th>Type</th>
+                                    <th>L-T-P</th>
+                                    <th>Credits</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for course in available_courses %}
+                                <tr>
+                                    <td><strong>{{ course.course_code }}</strong></td>
+                                    <td>{{ course.title }}</td>
+                                    <td>{{ course.get_course_type_display }}</td>
+                                    <td>{{ course.ltp_display }}</td>
+                                    <td>{{ course.credits }}</td>
+                                </tr>
+                                {% empty %}
+                                <tr>
+                                    <td colspan="5" class="text-center text-muted">No courses found</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock content %}
+
+{% block custom_js %}
+<script>
+$(document).ready(function() {
+    const regulationId = {{ regulation.id }};
+    let currentProgramType = '';
+    let currentBranch = '';
+    let programsData = {};  // Store programs data including total_semesters
+    
+    // Toggle icon on collapse
+    $('.semester-card .card-header').on('click', function() {
+        $(this).find('.toggle-icon').toggleClass('fa-chevron-down fa-chevron-up');
+    });
+    
+    // Function to load programs/branches by level
+    function loadProgramsByLevel(level, callback) {
+        $.get("{% url 'api_get_programs_by_level' %}", {level: level, regulation_id: {{ regulation.id }}}, function(data) {
+            const select = $('#globalBranch');
+            select.empty();
+            programsData = {};  // Reset programs data
+            if (data.programs && data.programs.length > 0) {
+                data.programs.forEach(function(program) {
+                    const displayText = program.specialization 
+                        ? `${program.code} - ${program.specialization}`
+                        : program.code;
+                    select.append(`<option value="${program.code}" data-semesters="${program.total_semesters}">${displayText}</option>`);
+                    programsData[program.code] = program;
+                });
+                currentBranch = select.val();
+                updateVisibleSemesters();  // Update visible semesters based on selected program
+            } else {
+                // Auto-fallback: if UG has no programs for this regulation,
+                // switch to PG so the page remains usable.
+                if (level === 'UG') {
+                    $('#globalProgramType').val('PG');
+                    loadProgramsByLevel('PG', callback);
+                    return;
+                }
+
+                select.append('<option value="">No programs found for selected program type</option>');
+            }
+            if (callback) callback();
+        });
+    }
+    
+    // Function to show/hide semester cards based on program's total_semesters
+    function updateVisibleSemesters() {
+        const selectedBranch = $('#globalBranch').val();
+        const program = programsData[selectedBranch];
+        const totalSemesters = program ? program.total_semesters : 8;
+        
+        $('.semester-card').each(function() {
+            const semNum = parseInt($(this).data('semester'));
+            if (semNum <= totalSemesters) {
+                $(this).show();
+            } else {
+                $(this).hide();
+            }
+        });
+    }
+    
+    // Load courses for all semesters based on selected program/branch
+    function loadAllSemesterCourses() {
+        currentProgramType = $('#globalProgramType').val();
+        currentBranch = $('#globalBranch').val();
+        if (!currentBranch) return;
+        
+        // Only load courses for visible semesters
+        const program = programsData[currentBranch];
+        const totalSemesters = program ? program.total_semesters : 8;
+        for (let sem = 1; sem <= totalSemesters; sem++) {
+            loadSemesterCourses(sem);
+        }
+    }
+    
+    // Load courses for a specific semester with cache busting
+    function loadSemesterCourses(semester) {
+        const container = $(`.semester-courses[data-semester="${semester}"]`);
+        container.html('<div class="text-center text-muted py-3"><i class="fas fa-spinner fa-spin"></i> Loading...</div>');
+        
+        $.get("{% url 'api_get_semester_courses' regulation.id %}", {
+            semester: semester,
+            program_type: currentProgramType,
+            branch: currentBranch,
+            _t: new Date().getTime()  // Cache buster
+        }, function(data) {
+            renderSemesterCourses(semester, data.courses || []);
+        }).fail(function(xhr, status, error) {
+            console.error('Failed to load courses:', error);
+            container.html(`<div class="text-center text-danger py-3">Error loading courses: ${error}</div>`);
+        });
+    }
+    
+    // Render courses table for a semester
+    function renderSemesterCourses(semester, courses) {
+        const container = $(`.semester-courses[data-semester="${semester}"]`);
+        const countBadge = $(`.course-count[data-semester="${semester}"]`);
+        
+        countBadge.text(courses.length + ' course' + (courses.length !== 1 ? 's' : ''));
+        
+        if (courses.length === 0) {
+            container.html(`
+                <div class="text-center text-muted py-4">
+                    <i class="fas fa-inbox fa-2x mb-2"></i>
+                    <p class="mb-0">No courses added for Semester ${semester}</p>
+                    <small>Use the form above to add courses</small>
+                </div>
+            `);
+            return;
+        }
+        
+        let html = `
+            <table class="table table-sm table-hover mb-0">
+                <thead class="thead-light">
+                    <tr>
+                        <th>Course Code</th>
+                        <th>Title</th>
+                        <th>Category</th>
+                        <th>Credits</th>
+                        <th>L-T-P</th>
+                        <th>Type</th>
+                        <th width="60">Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+        `;
+        
+        courses.forEach(function(course) {
+            let typeDisplay = '';
+            let rowClass = '';
+            const codeText = course.display_code || course.course_code;
+            let codeDisplay = codeText;
+            
+            // Check if it's a placeholder course
+            if (course.is_placeholder) {
+                rowClass = 'bg-warning-light';
+                codeDisplay = `<span class="badge badge-warning mr-1">Placeholder</span>${codeDisplay}`;
+            }
+            
+            if (course.is_elective) {
+                typeDisplay = '<span class="badge badge-warning">Elective</span>';
+                if (course.elective_vertical) {
+                    typeDisplay += `<br><small class="text-muted">${course.elective_vertical}</small>`;
+                }
+            } else {
+                typeDisplay = '<span class="badge badge-success">Core</span>';
+            }
+            
+            html += `
+                <tr class="${rowClass}">
+                    <td><strong>${codeDisplay}</strong></td>
+                    <td>${course.title}</td>
+                    <td><span class="badge badge-info">${course.category || '-'}</span></td>
+                    <td>${course.credits}</td>
+                    <td>${course.ltp || '-'}</td>
+                    <td>${typeDisplay}</td>
+                    <td>
+                        <button type="button" class="btn btn-xs btn-danger remove-course" 
+                                data-plan-id="${course.plan_id}" data-code="${codeText}">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </td>
+                </tr>
+            `;
+        });
+        
+        html += '</tbody></table>';
+        container.html(html);
+    }
+    
+    // Program type change handler
+    $('#globalProgramType').on('change', function() {
+        loadProgramsByLevel($(this).val(), loadAllSemesterCourses);
+    });
+    
+    // Branch change handler
+    $('#globalBranch').on('change', function() {
+        updateVisibleSemesters();
+        loadAllSemesterCourses();
+    });
+    
+    // Initialize on page load
+    loadProgramsByLevel($('#globalProgramType').val(), loadAllSemesterCourses);
+    
+    // Course search functionality
+    let searchTimeout = null;
+    $(document).on('input', '.course-search', function() {
+        const $input = $(this);
+        const query = $input.val().trim();
+        const $dropdown = $input.siblings('.course-dropdown');
+        
+        if (searchTimeout) clearTimeout(searchTimeout);
+        
+        if (query.length < 2) {
+            $dropdown.removeClass('show').empty();
+            return;
+        }
+        
+        searchTimeout = setTimeout(function() {
+            $.get("{% url 'api_search_courses' %}", {q: query, regulation_id: regulationId, limit: 10}, function(data) {
+                $dropdown.empty();
+                if (data.courses && data.courses.length > 0) {
+                    const seenPlaceholderTypes = new Set();
+                    data.courses.forEach(function(course) {
+                        let displayHtml = '';
+                        if (course.is_placeholder) {
+                            // Show one logical placeholder entry per type (e.g., only one SDC option).
+                            if (seenPlaceholderTypes.has(course.placeholder_type)) {
+                                return;
+                            }
+                            seenPlaceholderTypes.add(course.placeholder_type);
+
+                            const placeholderTitle = (course.placeholder_base_title || course.title || course.placeholder_type || '').trim();
+
+                            displayHtml = `
+                                <a class="dropdown-item course-option bg-light" href="#" 
+                                   data-code="${course.course_code}" data-title="${placeholderTitle}"
+                                              data-is-placeholder="true" data-placeholder-type="${course.placeholder_type}" data-credits="${course.credits}">
+                                    <span class="badge badge-warning mr-1">Placeholder</span>
+                                    <strong>${course.placeholder_type}</strong> - ${placeholderTitle}
+                                    <br><small class="text-muted">${course.credits} cr | ${course.placeholder_type}</small>
+                                </a>
+                            `;
+                        } else {
+                            displayHtml = `
+                                <a class="dropdown-item course-option" href="#" 
+                                   data-code="${course.course_code}" data-title="${course.title}"
+                                   data-is-placeholder="false">
+                                    <strong>${course.course_code}</strong> - ${course.title}
+                                    <br><small class="text-muted">${course.ltp}, ${course.credits} cr</small>
+                                </a>
+                            `;
+                        }
+                        $dropdown.append(displayHtml);
+                    });
+                } else {
+                    $dropdown.append('<span class="dropdown-item text-muted">No courses found</span>');
+                }
+                $dropdown.addClass('show');
+            });
+        }, 300);
+    });
+    
+    // Select course from dropdown
+    $(document).on('click', '.course-option', function(e) {
+        e.preventDefault();
+        const $option = $(this);
+        const $form = $option.closest('.add-course-form');
+        $form.find('.selected-course-code').val($option.data('code'));
+        $form.find('.course-search').val($option.data('code') + ' - ' + $option.data('title'));
+        const isPlaceholder = String($option.data('is-placeholder')) === 'true';
+        $form.find('.selected-is-placeholder').val(isPlaceholder ? '1' : '0');
+        $form.find('.selected-placeholder-type').val(isPlaceholder ? ($option.data('placeholder-type') || '') : '');
+
+        if (isPlaceholder) {
+            $form.find('.credits-field').slideDown(150);
+            const currentCredits = $option.data('credits');
+            if (currentCredits !== undefined) {
+                $form.find('.credits-input').val(currentCredits);
+            }
+        } else {
+            $form.find('.credits-field').slideUp(150);
+            $form.find('.credits-input').val(3);
+        }
+
+        $option.closest('.course-dropdown').removeClass('show');
+    });
+
+    // If user edits text manually, clear selected hidden values.
+    $(document).on('input', '.course-search', function() {
+        const $form = $(this).closest('.add-course-form');
+        $form.find('.selected-course-code').val('');
+        $form.find('.selected-is-placeholder').val('0');
+        $form.find('.selected-placeholder-type').val('');
+        $form.find('.credits-field').slideUp(150);
+        $form.find('.credits-input').val(3);
+    });
+    
+    // Close dropdown when clicking outside
+    $(document).on('click', function(e) {
+        if (!$(e.target).closest('.course-search, .course-dropdown').length) {
+            $('.course-dropdown').removeClass('show');
+        }
+    });
+    
+    // Category change no longer drives extra placeholder fields.
+    $(document).on('change', '.category-select', function() {
+        // Intentionally minimal: only course + category are required.
+    });
+    
+    // Add course form submission
+    $(document).on('submit', '.add-course-form', function(e) {
+        e.preventDefault();
+        const $form = $(this);
+        const semester = $form.data('semester');
+        const courseCode = $form.find('.selected-course-code').val();
+        const category = $form.find('.category-select').val();
+        const categoryCode = $form.find('.category-select option:selected').data('code');
+        const credits = $form.find('.credits-input').val() || 3;
+        const selectedIsPlaceholder = $form.find('.selected-is-placeholder').val() === '1';
+        
+        // PEC/OEC/ETC/HON/MIN/AC/UC are always elective.
+        // SDC/SLC/NCC are elective when a placeholder slot is selected.
+        // IOC/EEC placeholder slots are NEVER elective.
+        const alwaysElectiveCats = ['PEC', 'OEC', 'ETC', 'HON', 'MIN', 'AC', 'UC'];
+        const mixedCats = ['SDC', 'SLC', 'NCC'];
+        const isElective = alwaysElectiveCats.includes(categoryCode) ||
+                           (mixedCats.includes(categoryCode) && selectedIsPlaceholder);
+
+        if (!courseCode) { 
+            alert('Please select a course from the dropdown'); 
+            return; 
+        }
+
+        if (selectedIsPlaceholder && credits === '') {
+            alert('Please enter credits for placeholder');
+            return;
+        }
+
+        if (!category) { alert('Please select a category'); return; }
+        
+        $.post("{% url 'api_add_regulation_course' regulation.id %}", {
+            course_code: courseCode,
+            semester: semester,
+            category: category,
+            program_type: currentProgramType,
+            branch: currentBranch,
+            is_elective: isElective ? '1' : '0',
+            auto_placeholder: '0',
+            credits: credits,
+            csrfmiddlewaretoken: '{{ csrf_token }}'
+        }, function(data) {
+            if (data.success) {
+                $form.find('.course-search').val('').attr('placeholder', 'Type course code or title...');
+                $form.find('.selected-course-code').val('');
+                $form.find('.selected-is-placeholder').val('0');
+                $form.find('.selected-placeholder-type').val('');
+                $form.find('.category-select').val('');
+                $form.find('.credits-field').hide();
+                $form.find('.credits-input').val(3);
+                loadSemesterCourses(semester);
+            } else {
+                const msg = data.error || 'Error adding course';
+                let $err = $form.find('.add-course-error');
+                if (!$err.length) {
+                    $err = $('<div class="add-course-error alert alert-danger alert-dismissible mt-2" role="alert"><button type="button" class="close" data-dismiss="alert">&times;</button><span></span></div>');
+                    $form.append($err);
+                }
+                $err.find('span').text(msg);
+                $err.show();
+            }
+        }).fail(function() {
+            alert('Network error. Please try again.');
+        });
+    });
+    
+    // Remove course
+    $(document).on('click', '.remove-course', function() {
+        const $btn = $(this);
+        const planId = $btn.data('plan-id');
+        const code = $btn.data('code');
+        const semester = $btn.closest('.semester-courses').data('semester');
+
+        // First: check impact counts before asking user
+        $.post("{% url 'api_remove_regulation_course' %}", {
+            plan_id: planId,
+            check: '1',
+            csrfmiddlewaretoken: '{{ csrf_token }}'
+        }, function(info) {
+            if (!info.success) { 
+                alert('Error checking course dependencies: ' + (info.error || 'Unknown error')); 
+                return; 
+            }
+
+            const hasLiveData = (info.assignments > 0 || info.timetable_entries > 0 || info.attendance > 0);
+
+            let msg = `Remove ${code} from the course plan?`;
+            if (hasLiveData) {
+                msg += '\n\n⚠️ This course has live data:';
+                if (info.assignments > 0)      msg += `\n  • ${info.assignments} faculty assignment(s)`;
+                if (info.timetable_entries > 0) msg += `\n  • ${info.timetable_entries} timetable slot(s)`;
+                if (info.attendance > 0)        msg += `\n  • ${info.attendance} attendance record(s)`;
+                if (info.attendance > 0) {
+                    msg += '\n\nAttendance records exist. Type CONFIRM to force-delete everything.';
+                    const typed = prompt(msg);
+                    if ((typed || '').trim().toUpperCase() !== 'CONFIRM') return;
+                    doRemove(planId, semester, true);
+                    return;
+                }
+                msg += '\n\nAll related assignments and timetable entries will also be deleted. Continue?';
+                if (!confirm(msg)) return;
+                doRemove(planId, semester, true);
+                return;
+            }
+            if (!confirm(msg)) return;
+            doRemove(planId, semester, false);
+        }).fail(function(xhr, status, error) {
+            console.error('Check deletion impact failed:', error);
+            alert('Error checking course dependencies. Please try again.');
+        });
+    });
+
+    function doRemove(planId, semester, force) {
+        $.post("{% url 'api_remove_regulation_course' %}", {
+            plan_id: planId,
+            force: force ? '1' : '0',
+            csrfmiddlewaretoken: '{{ csrf_token }}'
+        }, function(data) {
+            if (data.success) {
+                // Show success message
+                const alertHtml = `<div class="alert alert-success alert-dismissible fade show" role="alert">
+                    <i class="fas fa-check-circle mr-2"></i> Course deleted successfully!
+                    <button type="button" class="close" data-dismiss="alert"><span>&times;</span></button>
+                </div>`;
+                $('body').prepend(alertHtml);
+                setTimeout(() => {
+                    loadSemesterCourses(semester);
+                }, 300);
+            } else {
+                const errorMsg = data.error || 'Error removing course';
+                console.error('Deletion error:', data);
+                alert(errorMsg);
+            }
+        }).fail(function(xhr, status, error) {
+            console.error('Deletion failed:', error, xhr.responseText);
+            alert('Error removing course: ' + error + '. Please try again.');
+        });
+    }
+});
+</script>
+{% endblock custom_js %}

@@ -1,0 +1,136 @@
+{% extends 'main_app/base.html' %}
+{% load static %}
+{% block page_title %}{{page_title}}{% endblock page_title %}
+
+{% block content %}
+<section class="content">
+    <div class="container-fluid">
+        <div class="row">
+            <div class="col-md-12">
+                <div class="card">
+                    <div class="card-header">
+                        <h3 class="card-title">
+                            <i class="fas fa-file-alt"></i> {{page_title}}
+                        </h3>
+                    </div>
+                    <div class="card-body">
+                        {% if messages %}
+                        {% for message in messages %}
+                        <div class="alert alert-{{ message.tags }} alert-dismissible">
+                            <button type="button" class="close" data-dismiss="alert">&times;</button>
+                            {{ message }}
+                        </div>
+                        {% endfor %}
+                        {% endif %}
+
+                        <div class="alert alert-info">
+                            <i class="fas fa-info-circle"></i>
+                            Question papers are released after the exam is completed. You can view both the questions and answer keys (if available) below.
+                        </div>
+
+                        {% if courses_with_qps %}
+                        <div class="row">
+                            {% for item in courses_with_qps %}
+                            <div class="col-md-6 col-lg-4">
+                                <div class="card card-outline card-primary">
+                                    <div class="card-header">
+                                        <h5 class="card-title mb-0">
+                                            <i class="fas fa-book"></i> {{ item.course.course_code }}
+                                        </h5>
+                                    </div>
+                                    <div class="card-body">
+                                        <h6 class="text-muted">{{ item.course.title }}</h6>
+                                        
+                                        <hr>
+                                        
+                                        <p class="mb-2"><strong>Available Papers:</strong></p>
+                                        <ul class="list-group list-group-flush">
+                                            {% for schedule in item.schedules %}
+                                            <li class="list-group-item d-flex justify-content-between align-items-center px-0">
+                                                <div>
+                                                    <span class="badge badge-info">{{ schedule.structured_qp.exam_month_year }}</span>
+                                                    <br>
+                                                    <small class="text-muted">
+                                                        <i class="fas fa-calendar"></i> {{ schedule.exam_date|date:"d M Y" }}
+                                                    </small>
+                                                </div>
+                                                <div>
+                                                    <a href="{% url 'student_view_qp_detail' schedule.id %}" class="btn btn-primary btn-sm" title="View Questions">
+                                                        <i class="fas fa-eye"></i> QP
+                                                    </a>
+                                                    {% if schedule.is_answers_released %}
+                                                    <a href="{% url 'student_view_answer_key' schedule.id %}" class="btn btn-success btn-sm" title="View Answers">
+                                                        <i class="fas fa-key"></i> Ans
+                                                    </a>
+                                                    {% else %}
+                                                    <span class="btn btn-secondary btn-sm disabled" title="Answers not yet released">
+                                                        <i class="fas fa-lock"></i> Ans
+                                                    </span>
+                                                    {% endif %}
+                                                </div>
+                                            </li>
+                                            {% endfor %}
+                                        </ul>
+                                    </div>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                        {% endif %}
+
+                        {% if direct_released_qps %}
+                        <h5 class="mt-4 mb-3"><i class="fas fa-calendar-check text-success"></i> Released Question Papers</h5>
+                        <div class="row">
+                            {% for qp in direct_released_qps %}
+                            <div class="col-md-6 col-lg-4">
+                                <div class="card card-outline card-success">
+                                    <div class="card-header">
+                                        <h5 class="card-title mb-0">
+                                            <i class="fas fa-book"></i> {{ qp.course.course_code }}
+                                        </h5>
+                                    </div>
+                                    <div class="card-body">
+                                        <h6 class="text-muted">{{ qp.course.title }}</h6>
+                                        <hr>
+                                        <p class="mb-1"><strong>Exam:</strong> {{ qp.exam_month_year }}</p>
+                                        <p class="mb-1"><strong>Regulation:</strong> {{ qp.regulation }}</p>
+                                        <p class="mb-2">
+                                            <small class="text-muted">
+                                                <i class="fas fa-calendar"></i> Released: {{ qp.release_datetime|date:"d M Y, H:i" }}
+                                            </small>
+                                        </p>
+                                        <a href="{% url 'student_view_released_qp_detail' qp.id %}" class="btn btn-primary btn-sm btn-block">
+                                            <i class="fas fa-eye"></i> View Question Paper
+                                        </a>
+                                        {% if qp.answer_key_status == 'APPROVED' and qp.answer_key_document %}
+                                        <a href="{{ qp.answer_key_document.url }}" class="btn btn-success btn-sm btn-block mt-1" target="_blank">
+                                            <i class="fas fa-key"></i> Download Answer Key
+                                        </a>
+                                        {% elif qp.answer_key_status == 'SUBMITTED' or qp.answer_key_status == 'NOT_SUBMITTED' %}
+                                        <span class="btn btn-secondary btn-sm btn-block mt-1 disabled">
+                                            <i class="fas fa-lock"></i> Answer Key Pending
+                                        </span>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                        {% endif %}
+
+                        {% if not courses_with_qps and not direct_released_qps %}
+                        <div class="text-center py-5">
+                            <i class="fas fa-folder-open fa-4x text-muted mb-3"></i>
+                            <h4 class="text-muted">No Released Question Papers Yet</h4>
+                            <p class="text-muted">
+                                Question papers will appear here after your exams are completed and the HOD releases them.
+                            </p>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock content %}

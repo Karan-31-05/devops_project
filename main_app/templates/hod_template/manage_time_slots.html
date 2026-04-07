@@ -1,0 +1,147 @@
+{% extends 'main_app/base.html' %}
+{% load static %}
+{% block page_title %}{{ page_title }}{% endblock page_title %}
+
+{% block content %}
+<section class="content">
+    <div class="container-fluid">
+        <div class="row">
+            <!-- Current Time Slots -->
+            <div class="col-md-8">
+                <div class="card">
+                    <div class="card-header">
+                        <h3 class="card-title"><i class="fas fa-clock mr-2"></i>Current Time Slots</h3>
+                        <div class="card-tools">
+                            {% if not time_slots %}
+                            <form method="POST" class="d-inline">
+                                {% csrf_token %}
+                                <input type="hidden" name="action" value="create_defaults">
+                                <button type="submit" class="btn btn-success btn-sm">
+                                    <i class="fas fa-magic mr-1"></i> Create Default Slots
+                                </button>
+                            </form>
+                            {% endif %}
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        {% if time_slots %}
+                        <table class="table table-bordered table-striped">
+                            <thead class="thead-dark">
+                                <tr>
+                                    <th>Period</th>
+                                    <th>Start Time</th>
+                                    <th>End Time</th>
+                                    <th>Type</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for slot in time_slots %}
+                                <tr>
+                                    <td><strong>Period {{ slot.slot_number }}</strong></td>
+                                    <td>{{ slot.start_time|time:"H:i" }}</td>
+                                    <td>{{ slot.end_time|time:"H:i" }}</td>
+                                    <td>
+                                        {% if slot.is_break %}
+                                        <span class="badge badge-warning">Break</span>
+                                        {% else %}
+                                        <span class="badge badge-success">Class</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <form method="POST" class="d-inline" onsubmit="return confirm('Delete this time slot?');">
+                                            {% csrf_token %}
+                                            <input type="hidden" name="action" value="delete">
+                                            <input type="hidden" name="slot_id" value="{{ slot.id }}">
+                                            <button type="submit" class="btn btn-danger btn-sm">
+                                                <i class="fas fa-trash"></i>
+                                            </button>
+                                        </form>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                        {% else %}
+                        <div class="alert alert-info">
+                            <i class="fas fa-info-circle mr-2"></i>
+                            No time slots configured. Click "Create Default Slots" to set up the standard 8-period schedule.
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Add New Slot -->
+            <div class="col-md-4">
+                <div class="card card-primary">
+                    <div class="card-header">
+                        <h3 class="card-title"><i class="fas fa-plus mr-2"></i>Add Time Slot</h3>
+                    </div>
+                    <form method="POST">
+                        {% csrf_token %}
+                        <input type="hidden" name="action" value="add">
+                        <div class="card-body">
+                            <div class="form-group">
+                                <label>Period Number</label>
+                                {{ form.slot_number }}
+                            </div>
+                            <div class="form-group">
+                                <label>Start Time</label>
+                                {{ form.start_time }}
+                            </div>
+                            <div class="form-group">
+                                <label>End Time</label>
+                                {{ form.end_time }}
+                            </div>
+                            <div class="form-group">
+                                <div class="form-check">
+                                    {{ form.is_break }}
+                                    <label class="form-check-label" for="id_is_break">
+                                        This is a break (not a class period)
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="card-footer">
+                            <button type="submit" class="btn btn-primary btn-block">
+                                <i class="fas fa-save mr-1"></i> Add Slot
+                            </button>
+                        </div>
+                    </form>
+                </div>
+                
+                <!-- Info Card -->
+                <div class="card card-outline card-info">
+                    <div class="card-header">
+                        <h3 class="card-title"><i class="fas fa-info-circle mr-2"></i>Default Schedule</h3>
+                    </div>
+                    <div class="card-body">
+                        <small>
+                            <ul class="list-unstyled mb-0">
+                                <li><strong>Period 1:</strong> 08:30 - 09:20</li>
+                                <li><strong>Period 2:</strong> 09:25 - 10:15</li>
+                                <li><strong>Period 3:</strong> 10:30 - 11:20</li>
+                                <li><strong>Period 4:</strong> 11:25 - 12:15</li>
+                                <li class="text-muted"><em>Lunch: 12:15 - 13:10</em></li>
+                                <li><strong>Period 5:</strong> 13:10 - 14:00</li>
+                                <li><strong>Period 6:</strong> 14:05 - 14:55</li>
+                                <li><strong>Period 7:</strong> 15:00 - 15:50</li>
+                                <li><strong>Period 8:</strong> 15:55 - 16:45</li>
+                            </ul>
+                        </small>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="row mt-3">
+            <div class="col-12">
+                <a href="{% url 'manage_timetables' %}" class="btn btn-secondary">
+                    <i class="fas fa-arrow-left mr-1"></i> Back to Timetables
+                </a>
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock content %}

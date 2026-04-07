@@ -1,0 +1,1 @@
+web: newrelic-admin run-program gunicorn college_management_system.wsgi

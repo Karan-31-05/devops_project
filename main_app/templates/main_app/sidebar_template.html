@@ -1,0 +1,700 @@
+{% load static %}
+<aside class="main-sidebar sidebar-dark-info elevation-4">
+    <!-- HOD/ADMIN SIDEBAR (shown when HOD is in admin mode or hasn't toggled yet) -->
+    {% if request.user.is_hod and request.session.hod_view_mode != 'faculty' %}
+    <a href="{% url 'admin_home' %}" class="brand-link">
+        <img src="{% static 'dist/img/virusx.png' %}" alt="LOGO" class="brand-image">
+        <span class="brand-text font-weight-light">CSE DEPT Admin</span>
+    </a>
+    <div class="sidebar" style="background-image: linear-gradient(to right top, #0b3574, #033f91, #004aae, #0054cc, #125eeb);">
+        <div class="user-panel mt-3 pb-3 mb-3 d-flex">
+            <div class="image">
+                <img src="{{ request.user.profile_pic }}" class="img-circle elevation-2" alt="User Image">
+            </div>
+            <div class="info">
+                <a href="#" class="d-block">{{ request.user.full_name }}</a>
+            </div>
+        </div>
+        <nav class="mt-2">
+            <ul class="nav nav-pills nav-sidebar flex-column" data-widget="treeview" role="menu" data-accordion="false">
+                <li class="nav-item">
+                    <a href="{% url 'admin_home' %}" class="nav-link {% if 'admin/home' in request.path %}active{% endif %}">
+                        <i class="nav-icon fas fa-home"></i>
+                        <p>Dashboard</p>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="{% url 'admin_view_profile' %}" class="nav-link {% if 'admin/profile' in request.path %}active{% endif %}">
+                        <i class="nav-icon fas fa-user"></i>
+                        <p>Profile</p>
+                    </a>
+                </li>
+
+                <!-- Faculty Management -->
+                <li class="nav-item has-treeview {% if 'faculty' in request.path or 'staff/add' in request.path or 'staff/manage' in request.path %}menu-open{% endif %}">
+                    <a href="#" class="nav-link">
+                        <i class="nav-icon fas fa-chalkboard-teacher"></i>
+                        <p>Faculty <i class="fas fa-angle-left right"></i></p>
+                    </a>
+                    <ul class="nav nav-treeview">
+                        <li class="nav-item">
+                            <a href="{% url 'add_faculty' %}" class="nav-link {% if 'faculty/add' in request.path %}active{% endif %}">
+                                <i class="far fa-circle nav-icon"></i>
+                                <p>Add Faculty</p>
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a href="{% url 'manage_faculty' %}" class="nav-link {% if 'faculty/manage' in request.path %}active{% endif %}">
+                                <i class="far fa-circle nav-icon"></i>
+                                <p>Manage Faculty</p>
+                            </a>
+                        </li>
+                    </ul>
+                </li>
+
+                <!-- Student Management -->
+                <li class="nav-item has-treeview {% if 'student/add' in request.path or 'student/manage' in request.path or 'student/edit' in request.path or 'student/bulk-upload' in request.path or 'promotions' in request.path %}menu-open{% endif %}">
+                    <a href="#" class="nav-link">
+                        <i class="nav-icon fas fa-user-graduate"></i>
+                        <p>Students <i class="fas fa-angle-left right"></i></p>
+                    </a>
+                    <ul class="nav nav-treeview">
+                        <li class="nav-item">
+                            <a href="{% url 'add_student' %}" class="nav-link {% if 'student/add' in request.path %}active{% endif %}">
+                                <i class="far fa-circle nav-icon"></i>
+                                <p>Add Student</p>
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a href="{% url 'bulk_upload_students' %}" class="nav-link {% if 'student/bulk-upload' in request.path %}active{% endif %}">
+                                <i class="far fa-circle nav-icon"></i>
+                                <p>Bulk Upload</p>
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a href="{% url 'manage_student' %}" class="nav-link {% if 'student/manage' in request.path %}active{% endif %}">
+                                <i class="far fa-circle nav-icon"></i>
+                                <p>Manage Students</p>
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a href="{% url 'manage_promotions' %}" class="nav-link {% if 'promotions' in request.path %}active{% endif %}">
+                                <i class="far fa-circle nav-icon"></i>
+                                <p>Bulk Promotion</p>
+                            </a>
+                        </li>
+                    </ul>
+                </li>
+
+                <!-- Course Management -->
+                <li class="nav-item has-treeview {% if 'course/' in request.path %}menu-open{% endif %}">
+                    <a href="#" class="nav-link">
+                        <i class="nav-icon fas fa-book"></i>
+                        <p>Courses <i class="fas fa-angle-left right"></i></p>
+                    </a>
+                    <ul class="nav nav-treeview">
+                        <li class="nav-item">
+                            <a href="{% url 'add_course' %}" class="nav-link {% if 'course/add' in request.path %}active{% endif %}">
+                                <i class="far fa-circle nav-icon"></i>
+                                <p>Add Course</p>
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a href="{% url 'manage_course' %}" class="nav-link {% if 'course/manage' in request.path %}active{% endif %}">
+                                <i class="far fa-circle nav-icon"></i>
+                                <p>Manage Courses</p>
+                            </a>
+                        </li>
+                    </ul>
+                </li>
+
+                <!-- Course Assignment -->
+                <li class="nav-item has-treeview {% if 'course-assignment' in request.path or 'course-allocation' in request.path %}menu-open{% endif %}">
+                    <a href="#" class="nav-link">
+                        <i class="nav-icon fas fa-link"></i>
+                        <p>Assignments <i class="fas fa-angle-left right"></i></p>
+                    </a>
+                    <ul class="nav nav-treeview">
+                        <li class="nav-item">
+                            <a href="{% url 'semester_course_assignment' %}" class="nav-link {% if 'semester/course-assignment' in request.path %}active{% endif %}">
+                                <i class="far fa-circle nav-icon text-warning"></i>
+                                <p>Semester Assignment</p>
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a href="{% url 'manage_course_assignment' %}" class="nav-link {% if 'course-assignment/manage' in request.path %}active{% endif %}">
+                                <i class="far fa-circle nav-icon"></i>
+                                <p>Manage Assignments</p>
+                            </a>
+                        </li>
+                    </ul>
+                </li>
+
+                <!-- Academic Settings -->
+                <li class="nav-item has-treeview {% if 'academic-year' in request.path or 'regulation' in request.path or 'session' in request.path or 'semester' in request.path or 'program-batches' in request.path %}menu-open{% endif %}">
+                    <a href="#" class="nav-link">
+                        <i class="nav-icon fas fa-cog"></i>
+                        <p>Academic <i class="fas fa-angle-left right"></i></p>
+                    </a>
+                    <ul class="nav nav-treeview">
+                        <li class="nav-item">
+                            <a href="{% url 'add_academic_year' %}" class="nav-link {% if 'academic-year/add' in request.path %}active{% endif %}">
+                                <i class="far fa-circle nav-icon"></i>
+                                <p>Add Academic Year</p>
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a href="{% url 'manage_academic_year' %}" class="nav-link {% if 'academic-year/manage' in request.path or 'semester' in request.path %}active{% endif %}">
+                                <i class="far fa-circle nav-icon"></i>
+                                <p>Manage Years & Semesters</p>
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a href="{% url 'add_regulation' %}" class="nav-link {% if 'regulation/add' in request.path %}active{% endif %}">
+                                <i class="far fa-circle nav-icon"></i>
+                                <p>Add Regulation</p>
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a href="{% url 'manage_regulation' %}" class="nav-link {% if 'regulation/manage' in request.path %}active{% endif %}">
+                                <i class="far fa-circle nav-icon"></i>
+                                <p>Manage Regulations</p>
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a href="{% url 'add_program' %}" class="nav-link {% if 'program/add' in request.path %}active{% endif %}">
+                                <i class="far fa-circle nav-icon"></i>
+                                <p>Add Program</p>
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a href="{% url 'manage_programs' %}" class="nav-link {% if 'program/manage' in request.path %}active{% endif %}">
+                                <i class="far fa-circle nav-icon"></i>
+                                <p>Manage Programs</p>
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a href="{% url 'manage_program_batches' %}" class="nav-link {% if 'program-batches' in request.path %}active{% endif %}">
+                                <i class="far fa-circle nav-icon text-info"></i>
+                                <p>Manage Batches</p>
+                            </a>
+                        </li>
+                    </ul>
+                </li>
+
+                <!-- Events -->
+                <li class="nav-item has-treeview {% if 'event/' in request.path %}menu-open{% endif %}">
+                    <a href="#" class="nav-link">
+                        <i class="nav-icon fas fa-calendar"></i>
+                        <p>Events <i class="fas fa-angle-left right"></i></p>
+                    </a>
+                    <ul class="nav nav-treeview">
+                        <li class="nav-item">
+                            <a href="{% url 'add_event' %}" class="nav-link {% if 'event/add' in request.path %}active{% endif %}">
+                                <i class="far fa-circle nav-icon"></i>
+                                <p>Add Event</p>
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a href="{% url 'manage_event' %}" class="nav-link {% if 'event/manage' in request.path %}active{% endif %}">
+                                <i class="far fa-circle nav-icon"></i>
+                                <p>Manage Events</p>
+                            </a>
+                        </li>
+                    </ul>
+                </li>
+
+                <!-- Attendance -->
+                <li class="nav-item">
+                    <a href="{% url 'admin_view_attendance' %}" class="nav-link {% if 'attendance/view' in request.path %}active{% endif %}">
+                        <i class="nav-icon fas fa-calendar-check"></i>
+                        <p>Attendance</p>
+                    </a>
+                </li>
+
+                <!-- Leave & Feedback -->
+                <li class="nav-item has-treeview {% if 'leave/' in request.path or 'feedback/' in request.path %}menu-open{% endif %}">
+                    <a href="#" class="nav-link">
+                        <i class="nav-icon fas fa-clipboard-list"></i>
+                        <p>Requests <i class="fas fa-angle-left right"></i></p>
+                    </a>
+                    <ul class="nav nav-treeview">
+                        <li class="nav-item">
+                            <a href="{% url 'view_leave_requests' %}" class="nav-link {% if 'leave/view' in request.path %}active{% endif %}">
+                                <i class="far fa-circle nav-icon"></i>
+                                <p>Leave Requests</p>
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a href="{% url 'view_feedbacks' %}" class="nav-link {% if 'feedback/view' in request.path %}active{% endif %}">
+                                <i class="far fa-circle nav-icon"></i>
+                                <p>Feedbacks</p>
+                            </a>
+                        </li>
+                    </ul>
+                </li>
+
+                <!-- Publications -->
+                <li class="nav-item">
+                    <a href="{% url 'verify_publications' %}" class="nav-link {% if 'publications/verify' in request.path %}active{% endif %}">
+                        <i class="nav-icon fas fa-newspaper"></i>
+                        <p>Publications</p>
+                    </a>
+                </li>
+
+                <!-- Question Papers -->
+                <li class="nav-item has-treeview {% if 'question-paper' in request.path %}menu-open{% endif %}">
+                    <a href="#" class="nav-link">
+                        <i class="nav-icon fas fa-file-alt"></i>
+                        <p>Question Papers <i class="fas fa-angle-left right"></i></p>
+                    </a>
+                    <ul class="nav nav-treeview">
+                        <li class="nav-item">
+                            <a href="{% url 'assign_question_paper' %}" class="nav-link {% if 'question-paper/assign' in request.path %}active{% endif %}">
+                                <i class="far fa-circle nav-icon"></i>
+                                <p>Assign QP Task</p>
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a href="{% url 'manage_qp_assignments' %}" class="nav-link {% if 'question-paper/manage' in request.path %}active{% endif %}">
+                                <i class="far fa-circle nav-icon"></i>
+                                <p>Manage QP Tasks</p>
+                            </a>
+                        </li>
+                    </ul>
+                </li>
+
+                <!-- Timetable Management -->
+                <li class="nav-item has-treeview {% if 'timetable' in request.path %}menu-open{% endif %}">
+                    <a href="#" class="nav-link">
+                        <i class="nav-icon fas fa-calendar-alt"></i>
+                        <p>Timetable <i class="fas fa-angle-left right"></i></p>
+                    </a>
+                    <ul class="nav nav-treeview">
+                        <li class="nav-item">
+                            <a href="{% url 'add_timetable' %}" class="nav-link {% if 'timetable/add' in request.path %}active{% endif %}">
+                                <i class="far fa-circle nav-icon"></i>
+                                <p>Create Timetable</p>
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a href="{% url 'manage_timetables' %}" class="nav-link {% if 'timetable/manage' in request.path %}active{% endif %}">
+                                <i class="far fa-circle nav-icon"></i>
+                                <p>Manage Timetables</p>
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a href="{% url 'manage_time_slots' %}" class="nav-link {% if 'timetable/time-slots' in request.path %}active{% endif %}">
+                                <i class="far fa-circle nav-icon"></i>
+                                <p>Time Slots</p>
+                            </a>
+                        </li>
+                    </ul>
+                </li>
+
+                <!-- Lab Issues -->
+                <li class="nav-item">
+                    <a href="{% url 'view_lab_issues' %}" class="nav-link {% if 'lab-issues' in request.path %}active{% endif %}">
+                        <i class="nav-icon fas fa-tools"></i>
+                        <p>Lab Issues</p>
+                    </a>
+                </li>
+
+                <!-- Announcements -->
+                <li class="nav-item has-treeview {% if 'announcement' in request.path %}menu-open{% endif %}">
+                    <a href="#" class="nav-link">
+                        <i class="nav-icon fas fa-bullhorn"></i>
+                        <p>Announcements <i class="fas fa-angle-left right"></i></p>
+                    </a>
+                    <ul class="nav nav-treeview">
+                        <li class="nav-item">
+                            <a href="{% url 'add_announcement' %}" class="nav-link {% if 'announcement/add' in request.path %}active{% endif %}">
+                                <i class="far fa-circle nav-icon"></i>
+                                <p>Add Announcement</p>
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a href="{% url 'manage_announcement' %}" class="nav-link {% if 'announcement/manage' in request.path %}active{% endif %}">
+                                <i class="far fa-circle nav-icon"></i>
+                                <p>Manage</p>
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a href="{% url 'announcements' %}" class="nav-link {% if request.path == '/announcements/' %}active{% endif %}">
+                                <i class="far fa-circle nav-icon"></i>
+                                <p>View All</p>
+                            </a>
+                        </li>
+                    </ul>
+                </li>
+
+                <!-- Notifications -->
+                <li class="nav-item">
+                    <a href="{% url 'send_notification_page' %}" class="nav-link {% if 'notify' in request.path %}active{% endif %}">
+                        <i class="nav-icon fas fa-bell"></i>
+                        <p>Send Notifications</p>
+                    </a>
+                </li>
+
+                <!-- LMS (Moodle) Integration -->
+                <li class="nav-item has-treeview {% if '/lms/' in request.path %}menu-open{% endif %}">
+                    <a href="#" class="nav-link">
+                        <i class="nav-icon fas fa-graduation-cap"></i>
+                        <p>LMS (Moodle) <i class="fas fa-angle-left right"></i></p>
+                    </a>
+                    <ul class="nav nav-treeview">
+                        <li class="nav-item">
+                            <a href="{% url 'lms_dashboard' %}" class="nav-link {% if '/lms/dashboard' in request.path %}active{% endif %}">
+                                <i class="far fa-circle nav-icon"></i>
+                                <p>Dashboard</p>
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a href="{% url 'lms_user_mappings' %}" class="nav-link {% if '/lms/mappings/users' in request.path %}active{% endif %}">
+                                <i class="far fa-circle nav-icon"></i>
+                                <p>User Mappings</p>
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a href="{% url 'lms_course_mappings' %}" class="nav-link {% if '/lms/mappings/courses' in request.path %}active{% endif %}">
+                                <i class="far fa-circle nav-icon"></i>
+                                <p>Course Mappings</p>
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a href="{% url 'lms_grade_report' %}" class="nav-link {% if '/lms/grade-report' in request.path %}active{% endif %}">
+                                <i class="far fa-circle nav-icon"></i>
+                                <p>Grade Report</p>
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a href="{% url 'lms_sync_logs' %}" class="nav-link {% if '/lms/logs' in request.path %}active{% endif %}">
+                                <i class="far fa-circle nav-icon"></i>
+                                <p>Sync Logs</p>
+                            </a>
+                        </li>
+                    </ul>
+                </li>
+            </ul>
+        </nav>
+    </div>
+
+    <!-- FACULTY/GUEST SIDEBAR (also shown for HOD in faculty mode) -->
+    {% elif request.user.role == 'FACULTY' or request.user.role == 'GUEST' or request.session.hod_view_mode == 'faculty' %}
+    <a href="{% url 'staff_home' %}" class="brand-link">
+        <img src="{% static 'dist/img/virusx.png' %}" alt="LOGO" class="brand-image">
+        <span class="brand-text font-weight-light">{% if request.user.is_hod %}HOD Faculty View{% else %}CSE Faculty Panel{% endif %}</span>
+    </a>
+    <div class="sidebar" style="background-image: linear-gradient(to right top, #0b3574, #033f91, #004aae, #0054cc, #125eeb);">
+        <div class="user-panel mt-3 pb-3 mb-3 d-flex">
+            <div class="image">
+                <img src="{{ request.user.profile_pic }}" class="img-circle elevation-2" alt="User Image">
+            </div>
+            <div class="info">
+                <a href="#" class="d-block">{{ request.user.full_name }}</a>
+            </div>
+        </div>
+        <nav class="mt-2">
+            <ul class="nav nav-pills nav-sidebar flex-column" data-widget="treeview" role="menu" data-accordion="false">
+                <li class="nav-item">
+                    <a href="{% url 'staff_home' %}" class="nav-link {% if 'staff/home' in request.path %}active{% endif %}">
+                        <i class="nav-icon fas fa-home"></i>
+                        <p>Dashboard</p>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="{% url 'staff_view_profile' %}" class="nav-link {% if 'staff/profile' in request.path %}active{% endif %}">
+                        <i class="nav-icon fas fa-user"></i>
+                        <p>Profile</p>
+                    </a>
+                </li>
+
+                <!-- Attendance -->
+                <li class="nav-item has-treeview {% if 'attendance' in request.path %}menu-open{% endif %}">
+                    <a href="#" class="nav-link">
+                        <i class="nav-icon fas fa-calendar-check"></i>
+                        <p>Attendance <i class="fas fa-angle-left right"></i></p>
+                    </a>
+                    <ul class="nav nav-treeview">
+                        <li class="nav-item">
+                            <a href="{% url 'staff_take_attendance' %}" class="nav-link {% if 'attendance/take' in request.path %}active{% endif %}">
+                                <i class="far fa-circle nav-icon"></i>
+                                <p>Take Attendance</p>
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a href="{% url 'staff_update_attendance' %}" class="nav-link {% if 'attendance/update' in request.path %}active{% endif %}">
+                                <i class="far fa-circle nav-icon"></i>
+                                <p>Update Attendance</p>
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a href="{% url 'staff_view_attendance_report' %}" class="nav-link {% if 'attendance/report' in request.path %}active{% endif %}">
+                                <i class="far fa-circle nav-icon"></i>
+                                <p>Attendance Report</p>
+                            </a>
+                        </li>
+                    </ul>
+                </li>
+
+                <!-- Students -->
+                <li class="nav-item">
+                    <a href="{% url 'staff_view_students' %}" class="nav-link {% if 'staff/students' in request.path %}active{% endif %}">
+                        <i class="nav-icon fas fa-user-graduate"></i>
+                        <p>My Students</p>
+                    </a>
+                </li>
+
+                <!-- Publications -->
+                <li class="nav-item has-treeview {% if 'publication' in request.path %}menu-open{% endif %}">
+                    <a href="#" class="nav-link">
+                        <i class="nav-icon fas fa-newspaper"></i>
+                        <p>Publications <i class="fas fa-angle-left right"></i></p>
+                    </a>
+                    <ul class="nav nav-treeview">
+                        <li class="nav-item">
+                            <a href="{% url 'staff_add_publication' %}" class="nav-link {% if 'publication/add' in request.path %}active{% endif %}">
+                                <i class="far fa-circle nav-icon"></i>
+                                <p>Add Publication</p>
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a href="{% url 'staff_view_publications' %}" class="nav-link {% if 'publication/view' in request.path %}active{% endif %}">
+                                <i class="far fa-circle nav-icon"></i>
+                                <p>My Publications</p>
+                            </a>
+                        </li>
+                    </ul>
+                </li>
+
+                <!-- Question Papers -->
+                <li class="nav-item">
+                    <a href="{% url 'staff_list_structured_qps' %}" class="nav-link {% if 'structured-qp' in request.path %}active{% endif %}">
+                        <i class="nav-icon fas fa-file-alt"></i>
+                        <p>Question Papers</p>
+                    </a>
+                </li>
+
+                <!-- Timetable -->
+                <li class="nav-item">
+                    <a href="{% url 'staff_view_timetable' %}" class="nav-link {% if 'staff/timetable' in request.path %}active{% endif %}">
+                        <i class="nav-icon fas fa-calendar-alt"></i>
+                        <p>My Schedule</p>
+                    </a>
+                </li>
+
+                <!-- Leave -->
+                <li class="nav-item">
+                    <a href="{% url 'staff_apply_leave' %}" class="nav-link {% if 'apply/leave' in request.path %}active{% endif %}">
+                        <i class="nav-icon fas fa-calendar-minus"></i>
+                        <p>Apply Leave</p>
+                    </a>
+                </li>
+
+                <!-- Feedback -->
+                <li class="nav-item">
+                    <a href="{% url 'staff_feedback' %}" class="nav-link {% if 'staff/feedback' in request.path %}active{% endif %}">
+                        <i class="nav-icon fas fa-comment-alt"></i>
+                        <p>Feedback</p>
+                    </a>
+                </li>
+
+                <!-- Notifications -->
+                <li class="nav-item">
+                    <a href="{% url 'staff_view_notification' %}" class="nav-link {% if 'view/notification' in request.path %}active{% endif %}">
+                        <i class="nav-icon fas fa-bell"></i>
+                        <p>Notifications</p>
+                    </a>
+                </li>
+
+                <!-- Announcements -->
+                <li class="nav-item">
+                    <a href="{% url 'announcements' %}" class="nav-link {% if '/announcements/' in request.path %}active{% endif %}">
+                        <i class="nav-icon fas fa-bullhorn"></i>
+                        <p>Announcements</p>
+                    </a>
+                </li>
+
+                <!-- LMS (Moodle) -->
+                <li class="nav-item has-treeview {% if '/lms/' in request.path %}menu-open{% endif %}">
+                    <a href="#" class="nav-link">
+                        <i class="nav-icon fas fa-graduation-cap"></i>
+                        <p>LMS (Moodle) <i class="fas fa-angle-left right"></i></p>
+                    </a>
+                    <ul class="nav nav-treeview">
+                        <li class="nav-item">
+                            <a href="{% url 'lms_faculty_courses' %}" class="nav-link {% if '/lms/faculty/courses' in request.path %}active{% endif %}">
+                                <i class="far fa-circle nav-icon"></i>
+                                <p>My Moodle Courses</p>
+                            </a>
+                        </li>
+                    </ul>
+                </li>
+            </ul>
+        </nav>
+    </div>
+
+    <!-- STUDENT SIDEBAR -->
+    {% elif request.user.role == 'STUDENT' %}
+    <a href="{% url 'student_home' %}" class="brand-link">
+        <img src="{% static 'dist/img/virusx.png' %}" alt="LOGO" class="brand-image">
+        <span class="brand-text font-weight-light">CSE Student Panel</span>
+    </a>
+    <div class="sidebar" style="background-image: linear-gradient(to right top, #0b3574, #033f91, #004aae, #0054cc, #125eeb);">
+        <div class="user-panel mt-3 pb-3 mb-3 d-flex">
+            <div class="image">
+                <img src="{{ request.user.profile_pic }}" class="img-circle elevation-2" alt="User Image">
+            </div>
+            <div class="info">
+                <a href="#" class="d-block">{{ request.user.full_name }}</a>
+            </div>
+        </div>
+        <nav class="mt-2">
+            <ul class="nav nav-pills nav-sidebar flex-column" data-widget="treeview" role="menu" data-accordion="false">
+                <li class="nav-item">
+                    <a href="{% url 'student_home' %}" class="nav-link {% if 'student/home' in request.path %}active{% endif %}">
+                        <i class="nav-icon fas fa-home"></i>
+                        <p>Dashboard</p>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="{% url 'student_view_profile' %}" class="nav-link {% if 'student/profile' in request.path %}active{% endif %}">
+                        <i class="nav-icon fas fa-user"></i>
+                        <p>Profile</p>
+                    </a>
+                </li>
+
+                <!-- Courses -->
+                <li class="nav-item">
+                    <a href="{% url 'student_view_courses' %}" class="nav-link {% if 'student/courses' in request.path %}active{% endif %}">
+                        <i class="nav-icon fas fa-book"></i>
+                        <p>My Courses</p>
+                    </a>
+                </li>
+
+                <!-- Timetable -->
+                <li class="nav-item">
+                    <a href="{% url 'student_view_timetable' %}" class="nav-link {% if 'student/timetable' in request.path %}active{% endif %}">
+                        <i class="nav-icon fas fa-calendar-alt"></i>
+                        <p>My Timetable</p>
+                    </a>
+                </li>
+
+                <!-- Attendance -->
+                <li class="nav-item">
+                    <a href="{% url 'student_view_attendance' %}" class="nav-link {% if 'view/attendance' in request.path %}active{% endif %}">
+                        <i class="nav-icon fas fa-calendar-check"></i>
+                        <p>Attendance</p>
+                    </a>
+                </li>
+
+                <!-- Achievements -->
+                <li class="nav-item has-treeview {% if 'achievement' in request.path %}menu-open{% endif %}">
+                    <a href="#" class="nav-link">
+                        <i class="nav-icon fas fa-trophy"></i>
+                        <p>Achievements <i class="fas fa-angle-left right"></i></p>
+                    </a>
+                    <ul class="nav nav-treeview">
+                        <li class="nav-item">
+                            <a href="{% url 'student_add_achievement' %}" class="nav-link {% if 'achievement/add' in request.path %}active{% endif %}">
+                                <i class="far fa-circle nav-icon"></i>
+                                <p>Add Achievement</p>
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a href="{% url 'student_view_achievements' %}" class="nav-link {% if 'achievement/view' in request.path %}active{% endif %}">
+                                <i class="far fa-circle nav-icon"></i>
+                                <p>My Achievements</p>
+                            </a>
+                        </li>
+                    </ul>
+                </li>
+
+                <!-- Events -->
+                <li class="nav-item has-treeview {% if 'events' in request.path %}menu-open{% endif %}">
+                    <a href="#" class="nav-link">
+                        <i class="nav-icon fas fa-calendar"></i>
+                        <p>Events <i class="fas fa-angle-left right"></i></p>
+                    </a>
+                    <ul class="nav nav-treeview">
+                        <li class="nav-item">
+                            <a href="{% url 'view_events' %}" class="nav-link {% if 'student/events' in request.path and 'my-registrations' not in request.path %}active{% endif %}">
+                                <i class="far fa-circle nav-icon"></i>
+                                <p>Browse Events</p>
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a href="{% url 'my_event_registrations' %}" class="nav-link {% if 'my-registrations' in request.path %}active{% endif %}">
+                                <i class="far fa-circle nav-icon"></i>
+                                <p>My Registrations</p>
+                            </a>
+                        </li>
+                    </ul>
+                </li>
+
+                <!-- Leave -->
+                <li class="nav-item">
+                    <a href="{% url 'student_apply_leave' %}" class="nav-link {% if 'apply/leave' in request.path %}active{% endif %}">
+                        <i class="nav-icon fas fa-calendar-minus"></i>
+                        <p>Apply Leave</p>
+                    </a>
+                </li>
+
+                <!-- Feedback -->
+                <li class="nav-item">
+                    <a href="{% url 'student_feedback' %}" class="nav-link {% if 'student/feedback' in request.path %}active{% endif %}">
+                        <i class="nav-icon fas fa-comment-alt"></i>
+                        <p>Feedback</p>
+                    </a>
+                </li>
+
+                <!-- Notifications -->
+                <li class="nav-item">
+                    <a href="{% url 'student_view_notification' %}" class="nav-link {% if 'view/notification' in request.path %}active{% endif %}">
+                        <i class="nav-icon fas fa-bell"></i>
+                        <p>Notifications</p>
+                    </a>
+                </li>
+
+                <!-- Question Papers -->
+                <li class="nav-item">
+                    <a href="{% url 'student_view_released_qps' %}" class="nav-link {% if 'question-papers' in request.path %}active{% endif %}">
+                        <i class="nav-icon fas fa-file-alt"></i>
+                        <p>Question Papers</p>
+                    </a>
+                </li>
+
+                <!-- Announcements -->
+                <li class="nav-item">
+                    <a href="{% url 'announcements' %}" class="nav-link {% if '/announcements/' in request.path %}active{% endif %}">
+                        <i class="nav-icon fas fa-bullhorn"></i>
+                        <p>Announcements</p>
+                    </a>
+                </li>
+
+                <!-- LMS (Moodle) -->
+                <li class="nav-item has-treeview {% if '/lms/' in request.path %}menu-open{% endif %}">
+                    <a href="#" class="nav-link">
+                        <i class="nav-icon fas fa-graduation-cap"></i>
+                        <p>LMS (Moodle) <i class="fas fa-angle-left right"></i></p>
+                    </a>
+                    <ul class="nav nav-treeview">
+                        <li class="nav-item">
+                            <a href="{% url 'lms_student_courses' %}" class="nav-link {% if '/lms/student/courses' in request.path %}active{% endif %}">
+                                <i class="far fa-circle nav-icon"></i>
+                                <p>My Moodle Courses</p>
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a href="{% url 'lms_student_grades' %}" class="nav-link {% if '/lms/student/grades' in request.path %}active{% endif %}">
+                                <i class="far fa-circle nav-icon"></i>
+                                <p>My Grades</p>
+                            </a>
+                        </li>
+                    </ul>
+                </li>
+            </ul>
+        </nav>
+    </div>
+    {% endif %}
+</aside>

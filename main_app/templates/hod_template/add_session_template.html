@@ -1,0 +1,66 @@
+{% extends 'main_app/base.html' %}
+{% load static %}
+{% block page_title %}{{page_title}}{% endblock page_title %}
+
+{% block content %}
+
+<section class="content">
+    <div class="container-fluid">
+        <div class="row">
+            <div class="col-md-6 offset-md-3">
+                <!-- general form elements -->
+                <div class="card card-primary">
+                    <div class="card-header">
+                        <h3 class="card-title">{{page_title}}</h3>
+                    </div>
+                    <form method="POST">
+                        {% csrf_token %}
+                        <div class="card-body">
+                            {% if form.non_field_errors %}
+                            <div class="alert alert-danger">
+                                {{ form.non_field_errors }}
+                            </div>
+                            {% endif %}
+                            
+                            <div class="form-group">
+                                <label for="{{ form.year.id_for_label }}">Academic Year</label>
+                                {{ form.year }}
+                                {% if form.year.errors %}
+                                    <div class="invalid-feedback d-block">{{ form.year.errors }}</div>
+                                {% endif %}
+                                <small class="form-text text-muted">Select the academic year (e.g., 2025-26)</small>
+                            </div>
+                            
+                            <div class="alert alert-info">
+                                <i class="fas fa-info-circle"></i>
+                                <strong>How Status Works:</strong>
+                                <ul class="mb-0 mt-2">
+                                    <li><span class="badge badge-info">Upcoming</span> - Until first odd semester starts</li>
+                                    <li><span class="badge badge-success">Active</span> - When semesters are running (includes 15-day grace period)</li>
+                                    <li><span class="badge badge-secondary">Archived</span> - After all semesters end</li>
+                                </ul>
+                            </div>
+                            
+                            <div class="alert alert-warning">
+                                <i class="fas fa-arrow-right"></i>
+                                <strong>Next Step:</strong> After creating the academic year, add semesters with specific dates for each year of study (1st, 2nd, 3rd, 4th year students).
+                            </div>
+                        </div>
+                        
+                        <div class="card-footer">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-save"></i> Save Academic Year
+                            </button>
+                            <a href="{% url 'manage_academic_year' %}" class="btn btn-secondary">
+                                <i class="fas fa-arrow-left"></i> Back
+                            </a>
+                        </div>
+                    </form>
+                </div>
+                <!-- /.card -->
+
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock content %}

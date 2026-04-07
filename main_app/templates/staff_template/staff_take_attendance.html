@@ -1,0 +1,432 @@
+{% extends 'main_app/base.html' %}
+{% load static %}
+{% block page_title %}{{page_title}}{% endblock page_title %}
+{% block content %}
+
+<section class="content">
+    <div class="container-fluid">
+        <div class="row">
+            <div class="col-md-12">
+                <!-- general form elements -->
+                <div class="card card-dark">
+                    <div class="card-header">
+                        <h3 class="card-title">{{page_title}}</h3>
+                    </div>
+
+                    <!-- /.card-header -->
+                    <!-- form start -->
+                    <div class="card-body">
+
+
+
+                        <div class="form-group">
+                            <label>Subject</label>
+                            <select name="subject" class="form-control" id='subject'>
+                                <option value="">----</option>
+                                {% for assignment in assignments  %}
+                                <option value="{{assignment.id}}">{{assignment.course.course_code}} - {{assignment.course.title}} ({{assignment.batch_label}})</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+
+
+                        <div class="form-group">
+                            <label>Academic Year</label>
+                            <select name="session" id='session' class="form-control">
+                                <option value="">----</option>
+                                {% for assignment in assignments  %}
+                                <option value="{{assignment.academic_year.id}}">{{assignment.academic_year.year}} </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        {% comment %}
+
+                        <div>
+                            <label>Attendance Date</label>
+                            <input type="date" class='form-control' name="attendance_date" id='attendance_date' id="">
+                        </div>
+                        {% endcomment %}
+
+                    </div>
+                    <!-- /.card-body -->
+
+                    <div class="card-footer">
+                        <button type="button" id='fetch_student' class="btn btn-success btn-block">Fetch Students</button>
+                        <div class="form-group" id="student_data">
+
+                        </div>
+                    </div>
+                </div>
+                <!-- /.card -->
+
+            </div>
+        </div>
+    </div>
+</section>
+
+<style>
+/* Quick Attendance Styles */
+.attendance-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 10px;
+    margin: 15px 0;
+}
+
+.student-card {
+    border: 2px solid #28a745;
+    border-radius: 8px;
+    padding: 10px 15px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    background: #d4edda;
+    user-select: none;
+}
+
+.student-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+}
+
+.student-card.absent {
+    border-color: #dc3545;
+    background: #f8d7da;
+}
+
+.student-card .student-name {
+    font-weight: 600;
+    font-size: 14px;
+}
+
+.student-card .student-roll {
+    font-size: 12px;
+    color: #666;
+}
+
+.student-card .status-badge {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 12px;
+    font-size: 11px;
+    font-weight: 600;
+    margin-top: 5px;
+}
+
+.student-card .status-badge.present {
+    background: #28a745;
+    color: white;
+}
+
+.student-card .status-badge.absent {
+    background: #dc3545;
+    color: white;
+}
+
+.quick-actions {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin-bottom: 15px;
+    padding: 15px;
+    background: #f8f9fa;
+    border-radius: 8px;
+}
+
+.quick-actions .btn {
+    flex: 1;
+    min-width: 150px;
+}
+
+.attendance-summary {
+    padding: 15px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border-radius: 8px;
+    margin-bottom: 15px;
+}
+
+.attendance-summary .stat {
+    text-align: center;
+}
+
+.attendance-summary .stat-value {
+    font-size: 28px;
+    font-weight: bold;
+}
+
+.attendance-summary .stat-label {
+    font-size: 12px;
+    opacity: 0.9;
+}
+
+/* Search box */
+.student-search {
+    margin-bottom: 15px;
+}
+
+.student-search input {
+    border-radius: 20px;
+    padding-left: 20px;
+}
+
+/* Keyboard hint */
+.keyboard-hint {
+    font-size: 12px;
+    color: #6c757d;
+    margin-top: 10px;
+}
+
+.keyboard-hint kbd {
+    background: #eee;
+    border: 1px solid #ccc;
+    border-radius: 3px;
+    padding: 2px 6px;
+    font-size: 11px;
+}
+</style>
+
+{% endblock content %}
+
+
+{% block custom_js %}
+<script>
+    $(document).ready(function () {
+        var studentData = [];
+
+        $("#fetch_student").click(function () {
+            var subject = $("#subject").val()
+            var session = $("#session").val()
+            $("#student_data").html(null)
+            
+            if (subject.length == 0 || session.length == 0) {
+                alert("Please select session and subject");
+                return false;
+            }
+            
+            $.ajax({
+                url: "{% url 'get_students' %}",
+                type: 'POST',
+                data: {
+                    assignment: subject,
+                    session: session
+                }
+            }).done(function (response) {
+                var json_data = JSON.parse(response)
+                if (json_data.length < 1) {
+                    alert("No students found for this selection")
+                    return;
+                }
+                
+                studentData = json_data.map(s => ({...s, present: true}));
+                renderAttendanceUI();
+                
+            }).fail(function (response) {
+                alert("Error in fetching students")
+            })
+        });
+
+        function renderAttendanceUI() {
+            var presentCount = studentData.filter(s => s.present).length;
+            var absentCount = studentData.length - presentCount;
+            var percentage = Math.round((presentCount / studentData.length) * 100);
+            
+            var html = `
+                <hr/>
+                
+                <!-- Date Selection -->
+                <div class="form-group">
+                    <label><i class="fas fa-calendar-alt"></i> Attendance Date</label>
+                    <input type="date" class="form-control" id="attendance_date" 
+                           value="${new Date().toISOString().split('T')[0]}" style="max-width: 300px;">
+                </div>
+                
+                <!-- Summary -->
+                <div class="attendance-summary">
+                    <div class="row">
+                        <div class="col-4 stat">
+                            <div class="stat-value">${studentData.length}</div>
+                            <div class="stat-label">Total Students</div>
+                        </div>
+                        <div class="col-4 stat">
+                            <div class="stat-value" id="present-count">${presentCount}</div>
+                            <div class="stat-label">Present</div>
+                        </div>
+                        <div class="col-4 stat">
+                            <div class="stat-value" id="absent-count">${absentCount}</div>
+                            <div class="stat-label">Absent</div>
+                        </div>
+                    </div>
+                    <div class="progress mt-3" style="height: 8px;">
+                        <div class="progress-bar bg-success" id="attendance-bar" 
+                             style="width: ${percentage}%"></div>
+                    </div>
+                </div>
+                
+                <!-- Quick Actions -->
+                <div class="quick-actions">
+                    <button class="btn btn-success" id="mark-all-present">
+                        <i class="fas fa-check-double"></i> All Present
+                    </button>
+                    <button class="btn btn-danger" id="mark-all-absent">
+                        <i class="fas fa-times"></i> All Absent
+                    </button>
+                    <button class="btn btn-secondary" id="invert-selection">
+                        <i class="fas fa-exchange-alt"></i> Invert
+                    </button>
+                </div>
+                
+                <!-- Search -->
+                <div class="student-search">
+                    <input type="text" class="form-control" id="student-search" 
+                           placeholder="🔍 Search student by name or roll number...">
+                </div>
+                
+                <p class="text-muted mb-2">
+                    <i class="fas fa-info-circle"></i> 
+                    <strong>Click on a student card to toggle Present/Absent.</strong> 
+                    All students are marked present by default.
+                </p>
+                
+                <!-- Student Grid -->
+                <div class="attendance-grid" id="student-grid">
+                    ${renderStudentCards()}
+                </div>
+                
+                <div class="keyboard-hint">
+                    <kbd>Tip</kbd> Click any card to toggle status. Green = Present, Red = Absent.
+                </div>
+                
+                <!-- Save Button -->
+                <div class="form-group mt-4">
+                    <button id="save_attendance" class="btn btn-primary btn-lg btn-block">
+                        <i class="fas fa-save"></i> Save Attendance
+                    </button>
+                </div>
+            `;
+            
+            $("#student_data").html(html);
+            bindEvents();
+        }
+
+        function renderStudentCards() {
+            return studentData.map((student, index) => `
+                <div class="student-card ${student.present ? '' : 'absent'}" 
+                     data-index="${index}" data-id="${student.id}">
+                    <div class="student-name">${student.name}</div>
+                    <div class="student-roll">${student.roll || ''}</div>
+                    <span class="status-badge ${student.present ? 'present' : 'absent'}">
+                        ${student.present ? '✓ Present' : '✗ Absent'}
+                    </span>
+                </div>
+            `).join('');
+        }
+
+        function updateSummary() {
+            var presentCount = studentData.filter(s => s.present).length;
+            var absentCount = studentData.length - presentCount;
+            var percentage = Math.round((presentCount / studentData.length) * 100);
+            
+            $('#present-count').text(presentCount);
+            $('#absent-count').text(absentCount);
+            $('#attendance-bar').css('width', percentage + '%');
+        }
+
+        function bindEvents() {
+            // Toggle individual student
+            $(document).off('click', '.student-card').on('click', '.student-card', function() {
+                var index = $(this).data('index');
+                studentData[index].present = !studentData[index].present;
+                
+                $(this).toggleClass('absent', !studentData[index].present);
+                $(this).find('.status-badge')
+                    .toggleClass('present', studentData[index].present)
+                    .toggleClass('absent', !studentData[index].present)
+                    .text(studentData[index].present ? '✓ Present' : '✗ Absent');
+                
+                updateSummary();
+            });
+            
+            // Mark all present
+            $('#mark-all-present').off('click').on('click', function() {
+                studentData.forEach(s => s.present = true);
+                $('#student-grid').html(renderStudentCards());
+                updateSummary();
+            });
+            
+            // Mark all absent
+            $('#mark-all-absent').off('click').on('click', function() {
+                studentData.forEach(s => s.present = false);
+                $('#student-grid').html(renderStudentCards());
+                updateSummary();
+            });
+            
+            // Invert selection
+            $('#invert-selection').off('click').on('click', function() {
+                studentData.forEach(s => s.present = !s.present);
+                $('#student-grid').html(renderStudentCards());
+                updateSummary();
+            });
+            
+            // Search filter
+            $('#student-search').off('keyup').on('keyup', function() {
+                var query = $(this).val().toLowerCase();
+                $('.student-card').each(function() {
+                    var name = $(this).find('.student-name').text().toLowerCase();
+                    var roll = $(this).find('.student-roll').text().toLowerCase();
+                    $(this).toggle(name.includes(query) || roll.includes(query));
+                });
+            });
+            
+            // Save attendance
+            $('#save_attendance').off('click').on('click', function() {
+                var btn = $(this);
+                var attendance_date = $('#attendance_date').val();
+                var subject = $("#subject").val();
+                var session = $("#session").val();
+                
+                if (!attendance_date || attendance_date.length < 10) {
+                    alert("Please select a date");
+                    return false;
+                }
+                
+                btn.attr("disabled", "disabled");
+                btn.html('<i class="fas fa-spinner fa-spin"></i> Saving...');
+                
+                var student_ids = studentData.map(s => ({
+                    id: s.id,
+                    status: s.present ? 1 : 0
+                }));
+                
+                $.ajax({
+                    url: "{% url 'save_attendance' %}",
+                    type: 'POST',
+                    data: {
+                        date: attendance_date,
+                        student_ids: JSON.stringify(student_ids),
+                        assignment: subject,
+                        session: session
+                    }
+                }).done(function (response) {
+                    if (response == 'OK') {
+                        // Show success message
+                        btn.removeClass('btn-primary').addClass('btn-success');
+                        btn.html('<i class="fas fa-check"></i> Attendance Saved!');
+                        
+                        setTimeout(function() {
+                            location.reload();
+                        }, 1500);
+                    } else {
+                        alert("Error. Please try again");
+                        btn.removeAttr("disabled");
+                        btn.html('<i class="fas fa-save"></i> Save Attendance');
+                    }
+                }).fail(function (response) {
+                    alert("Error in saving attendance");
+                    btn.removeAttr("disabled");
+                    btn.html('<i class="fas fa-save"></i> Save Attendance');
+                });
+            });
+        }
+    })
+</script>
+{% endblock custom_js %}

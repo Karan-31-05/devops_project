@@ -1,0 +1,219 @@
+{% extends 'main_app/base.html' %}
+{% load static %}
+{% block page_title %}{{ page_title }}{% endblock page_title %}
+
+{% block content %}
+<section class="content">
+<div class="container-fluid">
+
+    <!-- Connection Status Banner -->
+    {% if not is_configured %}
+    <div class="alert alert-warning">
+        <i class="fas fa-exclamation-triangle mr-2"></i>
+        <strong>Moodle not configured.</strong>
+        Set <code>MOODLE_BASE_URL</code> and <code>MOODLE_API_TOKEN</code> in your Django settings to enable integration.
+    </div>
+    {% else %}
+    <div class="alert alert-info">
+        <i class="fas fa-link mr-2"></i>
+        Connected to <strong>{{ moodle_url }}</strong>
+        <a href="{% url 'lms_test_connection' %}" class="btn btn-sm btn-outline-primary ml-3">
+            <i class="fas fa-plug mr-1"></i> Test Connection
+        </a>
+        <a href="{{ moodle_url }}" target="_blank" class="btn btn-sm btn-outline-secondary ml-2">
+            <i class="fas fa-external-link-alt mr-1"></i> Open Moodle
+        </a>
+    </div>
+    {% endif %}
+
+    <!-- Stats Row -->
+    <div class="row">
+        <div class="col-lg-3 col-6">
+            <div class="small-box bg-info">
+                <div class="inner">
+                    <h3>{{ synced_users }}</h3>
+                    <p>Synced Users</p>
+                </div>
+                <div class="icon"><i class="fas fa-users"></i></div>
+                <a href="{% url 'lms_user_mappings' %}" class="small-box-footer">
+                    View mappings <i class="fas fa-arrow-circle-right"></i>
+                </a>
+            </div>
+        </div>
+        <div class="col-lg-3 col-6">
+            <div class="small-box bg-success">
+                <div class="inner">
+                    <h3>{{ synced_courses }}</h3>
+                    <p>Synced Courses</p>
+                </div>
+                <div class="icon"><i class="fas fa-book"></i></div>
+                <a href="{% url 'lms_course_mappings' %}" class="small-box-footer">
+                    View mappings <i class="fas fa-arrow-circle-right"></i>
+                </a>
+            </div>
+        </div>
+        <div class="col-lg-3 col-6">
+            <div class="small-box bg-purple">
+                <div class="inner">
+                    <h3>{{ total_enrolments }}</h3>
+                    <p>Active Enrolments</p>
+                </div>
+                <div class="icon"><i class="fas fa-user-plus"></i></div>
+                <span class="small-box-footer">&nbsp;</span>
+            </div>
+        </div>
+        <div class="col-lg-3 col-6">
+            <div class="small-box bg-warning">
+                <div class="inner">
+                    <h3>{{ total_grade_items }}</h3>
+                    <p>Grade Items Cached</p>
+                </div>
+                <div class="icon"><i class="fas fa-chart-bar"></i></div>
+                <a href="{% url 'lms_grade_report' %}" class="small-box-footer">
+                    Grade report <i class="fas fa-arrow-circle-right"></i>
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Pending Sync Info -->
+    {% if unsynced_faculty or unsynced_students or unsynced_assignments %}
+    <div class="row">
+        <div class="col-12">
+            <div class="callout callout-warning">
+                <h5><i class="fas fa-sync-alt mr-2"></i>Pending Sync</h5>
+                <p>
+                    <strong>{{ unsynced_faculty }}</strong> faculty,
+                    <strong>{{ unsynced_students }}</strong> students, and
+                    <strong>{{ unsynced_assignments }}</strong> course assignments
+                    have not been synced to Moodle yet.
+                </p>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Error Summary -->
+    {% if error_users or error_courses %}
+    <div class="row">
+        <div class="col-12">
+            <div class="callout callout-danger">
+                <h5><i class="fas fa-exclamation-circle mr-2"></i>Sync Errors</h5>
+                <p>
+                    <strong>{{ error_users }}</strong> user sync errors,
+                    <strong>{{ error_courses }}</strong> course sync errors.
+                    <a href="{% url 'lms_sync_logs' %}">View logs</a> for details.
+                </p>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Manual Sync Actions -->
+    {% if is_configured %}
+    <div class="row">
+        <div class="col-md-12">
+            <div class="card card-dark">
+                <div class="card-header">
+                    <h3 class="card-title"><i class="fas fa-sync mr-2"></i>Manual Sync Actions</h3>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-3">
+                            <form method="post" action="{% url 'lms_sync_all_users' %}">
+                                {% csrf_token %}
+                                <button type="submit" class="btn btn-primary btn-block"
+                                        onclick="return confirm('Sync all faculty & students to Moodle?')">
+                                    <i class="fas fa-users mr-1"></i> Sync All Users
+                                </button>
+                                <small class="text-muted">Creates Moodle accounts for all faculty & active students</small>
+                            </form>
+                        </div>
+                        <div class="col-md-3">
+                            <form method="post" action="{% url 'lms_sync_all_courses' %}">
+                                {% csrf_token %}
+                                <button type="submit" class="btn btn-success btn-block"
+                                        onclick="return confirm('Sync all active course assignments to Moodle?')">
+                                    <i class="fas fa-book mr-1"></i> Sync All Courses
+                                </button>
+                                <small class="text-muted">Creates Moodle courses for all active assignments</small>
+                            </form>
+                        </div>
+                        <div class="col-md-3">
+                            <form method="post" action="{% url 'lms_sync_enrolments' %}">
+                                {% csrf_token %}
+                                <button type="submit" class="btn btn-info btn-block"
+                                        onclick="return confirm('Enrol students into all synced Moodle courses?')">
+                                    <i class="fas fa-user-plus mr-1"></i> Sync Enrolments
+                                </button>
+                                <small class="text-muted">Enrolls students into their respective Moodle courses</small>
+                            </form>
+                        </div>
+                        <div class="col-md-3">
+                            <form method="post" action="{% url 'lms_pull_grades' %}">
+                                {% csrf_token %}
+                                <button type="submit" class="btn btn-warning btn-block"
+                                        onclick="return confirm('Pull all grades from Moodle?')">
+                                    <i class="fas fa-download mr-1"></i> Pull Grades
+                                </button>
+                                <small class="text-muted">Fetches & caches all student grades from Moodle</small>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Recent Logs -->
+    <div class="row">
+        <div class="col-md-12">
+            <div class="card card-dark">
+                <div class="card-header">
+                    <h3 class="card-title"><i class="fas fa-history mr-2"></i>Recent Activity</h3>
+                    <div class="card-tools">
+                        <a href="{% url 'lms_sync_logs' %}" class="btn btn-tool">
+                            View All <i class="fas fa-arrow-right"></i>
+                        </a>
+                    </div>
+                </div>
+                <div class="card-body table-responsive p-0" style="max-height: 400px;">
+                    <table class="table table-hover table-striped text-nowrap">
+                        <thead>
+                            <tr>
+                                <th>Time</th>
+                                <th>Action</th>
+                                <th>Status</th>
+                                <th>Detail</th>
+                                <th>By</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for log in recent_logs %}
+                            <tr>
+                                <td>{{ log.created_at|date:"M d, H:i" }}</td>
+                                <td>{{ log.get_action_display }}</td>
+                                <td>
+                                    {% if log.status == 'SUCCESS' %}
+                                    <span class="badge badge-success">Success</span>
+                                    {% else %}
+                                    <span class="badge badge-danger">Failed</span>
+                                    {% endif %}
+                                </td>
+                                <td>{{ log.detail|truncatewords:15 }}</td>
+                                <td>{{ log.triggered_by.full_name|default:"System" }}</td>
+                            </tr>
+                            {% empty %}
+                            <tr><td colspan="5" class="text-center text-muted">No sync activity yet.</td></tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+</div>
+</section>
+{% endblock content %}

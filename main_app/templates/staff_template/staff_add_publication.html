@@ -1,0 +1,101 @@
+{% extends 'main_app/base.html' %}
+{% load static %}
+{% block page_title %}{{page_title}}{% endblock page_title %}
+
+{% block content %}
+<section class="content">
+    <div class="container-fluid">
+        <div class="row">
+            <div class="col-md-12">
+                <div class="card card-primary">
+                    <div class="card-header">
+                        <h3 class="card-title">
+                            <i class="fas fa-file-alt"></i> {{page_title}}
+                        </h3>
+                    </div>
+                    <form method="POST" enctype="multipart/form-data">
+                        {% csrf_token %}
+                        <div class="card-body">
+                            {% if messages %}
+                                {% for message in messages %}
+                                    <div class="alert alert-{% if message.tags %}{{ message.tags }}{% else %}info{% endif %} alert-dismissible fade show" role="alert">
+                                        {{ message }}
+                                        <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                                            <span aria-hidden="true">&times;</span>
+                                        </button>
+                                    </div>
+                                {% endfor %}
+                            {% endif %}
+
+                            {% for field in form %}
+                            <div class="form-group">
+                                {{field.errors}}
+                                {{field.label_tag}}
+                                {{field}}
+                            </div>
+                            {% endfor %}
+                        </div>
+                        <div class="card-footer">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-save"></i> Save Publication
+                            </button>
+                            <a href="{% url 'staff_view_publications' %}" class="btn btn-secondary">
+                                <i class="fas fa-list"></i> View All Publications
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Recent Publications -->
+        {% if publications %}
+        <div class="row">
+            <div class="col-md-12">
+                <div class="card card-info">
+                    <div class="card-header">
+                        <h3 class="card-title">
+                            <i class="fas fa-history"></i> Recent Publications
+                        </h3>
+                    </div>
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table table-bordered table-striped">
+                                <thead>
+                                    <tr>
+                                        <th>#</th>
+                                        <th>Title</th>
+                                        <th>Type</th>
+                                        <th>Journal/Conference</th>
+                                        <th>Year</th>
+                                        <th>Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for pub in publications|slice:":5" %}
+                                    <tr>
+                                        <td>{{ forloop.counter }}</td>
+                                        <td>{{ pub.title|truncatewords:10 }}</td>
+                                        <td>{{ pub.get_publication_type_display }}</td>
+                                        <td>{{ pub.journal_name|default:pub.conference_name|default:"-" }}</td>
+                                        <td>{{ pub.publication_date|date:"Y" }}</td>
+                                        <td>
+                                            {% if pub.is_verified %}
+                                                <span class="badge badge-success">Verified</span>
+                                            {% else %}
+                                                <span class="badge badge-warning">Pending</span>
+                                            {% endif %}
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</section>
+{% endblock content %}

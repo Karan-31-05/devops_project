@@ -1,0 +1,308 @@
+{% extends 'main_app/base.html' %}
+{% load static %}
+{% block page_title %}{{page_title}}{% endblock page_title %}
+
+{% block content %}
+<!-- Flatpickr CSS -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+<style>
+.flatpickr-calendar {
+    background: #fff;
+    box-shadow: 0 3px 13px rgba(0,0,0,0.3);
+    border-radius: 8px;
+}
+.flatpickr-day.selected, .flatpickr-day.selected:hover {
+    background: #3699ff;
+    border-color: #3699ff;
+}
+.flatpickr-day:hover {
+    background: #e6e6e6;
+}
+.semester-info {
+    color: #3699ff;
+    font-weight: 500;
+}
+</style>
+
+<section class="content">
+    <div class="container-fluid">
+        <div class="row">
+            <div class="col-md-8 offset-md-2">
+                <div class="card card-warning">
+                    <div class="card-header">
+                        <h3 class="card-title"><i class="fas fa-edit"></i> {{page_title}}</h3>
+                    </div>
+                    <form method="POST" id="editSemesterForm">
+                        {% csrf_token %}
+                        <div class="card-body">
+                            
+                            <div class="alert alert-info">
+                                <i class="fas fa-info-circle"></i>
+                                Editing semester for: <strong>{{ academic_year.year }}</strong>
+                            </div>
+
+                            <div class="form-group">
+                                <label>Semester Number <span class="text-danger">*</span></label>
+                                <select name="semester_number" id="semester_number" class="form-control" required>
+                                    {% for i in "12345678" %}
+                                    <option value="{{ forloop.counter }}" 
+                                        {% if forloop.counter == semester.semester_number %}selected{% endif %}
+                                        {% if forloop.counter in existing_semesters %}disabled{% endif %}>
+                                        Semester {{ forloop.counter }}
+                                        {% if forloop.counter in existing_semesters %} (Already exists){% endif %}
+                                    </option>
+                                    {% endfor %}
+                                </select>
+                                <small class="semester-info" id="semesterInfo"></small>
+                            </div>
+
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="form-group">
+                                        <label>Start Date <span class="text-danger">*</span></label>
+                                        <input type="text" name="start_date" id="start_date" 
+                                               class="form-control" placeholder="Select start date" 
+                                               value="{{ semester.start_date|date:'Y-m-d' }}" required readonly>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="form-group">
+                                        <label>End Date <span class="text-danger">*</span></label>
+                                        <input type="text" name="end_date" id="end_date" 
+                                               class="form-control" placeholder="Select end date" 
+                                               value="{{ semester.end_date|date:'Y-m-d' }}" required readonly>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="callout callout-secondary">
+                                <small>
+                                    <strong>Current Status:</strong> 
+                                    {% with semester.status_display as status %}
+                                    <span class="badge badge-{{ status.1 }}">{{ status.0 }}</span>
+                                    {% endwith %}
+                                    <br>
+                                    <strong>Year of Study:</strong> {{ semester.year_of_study_display }}
+                                    <br>
+                                    <strong>Type:</strong> {{ semester.semester_type_display }}
+                                </small>
+                            </div>
+
+                            <!-- Program-Specific Date Overrides -->
+                            {% if programs_with_overrides %}
+                            <div class="card card-outline card-primary mt-3">
+                                <div class="card-header py-2">
+                                    <h6 class="card-title mb-0">
+                                        <i class="fas fa-calendar-check"></i> Program-Specific Date Overrides
+                                        <small class="text-muted ml-2">(leave blank to use default dates above)</small>
+                                    </h6>
+                                    <div class="card-tools">
+                                        <button type="button" class="btn btn-xs btn-outline-secondary" id="copyToAllBtn">
+                                            <i class="fas fa-copy"></i> Copy default dates to all programs
+                                        </button>
+                                        <button type="button" class="btn btn-xs btn-outline-danger ml-1" id="clearAllBtn">
+                                            <i class="fas fa-times"></i> Clear all overrides
+                                        </button>
+                                    </div>
+                                </div>
+                                <div class="card-body p-0">
+                                    <div class="table-responsive">
+                                        <table class="table table-sm table-bordered mb-0" id="programDatesTable">
+                                            <thead class="thead-light">
+                                                <tr>
+                                                    <th style="width:35%">Program</th>
+                                                    <th style="width:10%">Level</th>
+                                                    <th style="width:22%">Start Date</th>
+                                                    <th style="width:22%">End Date</th>
+                                                    <th style="width:11%">Actions</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {% for item in programs_with_overrides %}
+                                                <tr data-program-id="{{ item.program.id }}">
+                                                    <td>
+                                                        <small><strong>{{ item.program.get_degree_display }}</strong> {{ item.program.name }}{% if item.program.specialization %} – {{ item.program.specialization }}{% endif %}</small>
+                                                    </td>
+                                                    <td>
+                                                        <span class="badge {% if item.program.level == 'UG' %}badge-primary{% else %}badge-success{% endif %}">{{ item.program.level }}</span>
+                                                    </td>
+                                                    <td>
+                                                        <input type="text" 
+                                                               name="prog_start_{{ item.program.id }}"
+                                                               id="prog_start_{{ item.program.id }}"
+                                                               class="form-control form-control-sm prog-start-input"
+                                                               placeholder="Same as default"
+                                                               value="{{ item.start }}"
+                                                               readonly>
+                                                    </td>
+                                                    <td>
+                                                        <input type="text"
+                                                               name="prog_end_{{ item.program.id }}"
+                                                               id="prog_end_{{ item.program.id }}"
+                                                               class="form-control form-control-sm prog-end-input"
+                                                               placeholder="Same as default"
+                                                               value="{{ item.end }}"
+                                                               readonly>
+                                                    </td>
+                                                    <td class="text-center">
+                                                        <button type="button" class="btn btn-xs btn-outline-info copy-default-btn" 
+                                                                data-program-id="{{ item.program.id }}" title="Copy default dates to this program">
+                                                            <i class="fas fa-copy"></i>
+                                                        </button>
+                                                        <button type="button" class="btn btn-xs btn-outline-danger clear-row-btn" 
+                                                                data-program-id="{{ item.program.id }}" title="Clear override for this program">
+                                                            <i class="fas fa-times"></i>
+                                                        </button>
+                                                    </td>
+                                                </tr>
+                                                {% endfor %}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
+                            {% endif %}
+
+                        </div>
+
+                        <div class="card-footer">
+                            <button type="submit" class="btn btn-warning">
+                                <i class="fas fa-save"></i> Update Semester
+                            </button>
+                            <a href="{% url 'manage_academic_year' %}" class="btn btn-secondary">
+                                <i class="fas fa-arrow-left"></i> Back to Academic Years
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Flatpickr JS -->
+<script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    var academicYearText = '{{ academic_year.year }}';
+    
+    function getAcademicYearRange() {
+        if (academicYearText && academicYearText.indexOf('-') > -1) {
+            var parts = academicYearText.split('-');
+            var startYear = parseInt(parts[0]);
+            var endYear = startYear + 1;
+            return {
+                startYear: startYear,
+                endYear: endYear,
+                minDate: startYear + '-01-01',
+                maxDate: endYear + '-12-31'
+            };
+        }
+        return null;
+    }
+    
+    function getYearSuffix(num) {
+        var suffixes = {1: '1st', 2: '2nd', 3: '3rd', 4: '4th'};
+        return suffixes[num] || num + 'th';
+    }
+    
+    function updateSemesterInfo() {
+        var semNum = parseInt(document.getElementById('semester_number').value);
+        var infoEl = document.getElementById('semesterInfo');
+        if (semNum) {
+            var yearOfStudy = Math.ceil(semNum / 2);
+            var semType = (semNum % 2 === 1) ? 'Odd' : 'Even';
+            infoEl.innerHTML = '<strong>' + getYearSuffix(yearOfStudy) + ' Year</strong> | ' + semType + ' Semester';
+        } else {
+            infoEl.innerHTML = '';
+        }
+    }
+    
+    // Initialize default date pickers
+    var range = getAcademicYearRange();
+    var pickerConfig = {
+        dateFormat: 'Y-m-d',
+        altInput: true,
+        altFormat: 'd M Y',
+        allowInput: false
+    };
+    
+    if (range) {
+        pickerConfig.minDate = range.minDate;
+        pickerConfig.maxDate = range.maxDate;
+    }
+    
+    var endPicker = flatpickr('#end_date', pickerConfig);
+    var startPicker = flatpickr('#start_date', Object.assign({}, pickerConfig, {
+        onChange: function(selectedDates) {
+            if (selectedDates[0]) {
+                endPicker.set('minDate', selectedDates[0]);
+            }
+        }
+    }));
+    
+    // Initialize program-specific date pickers
+    var programStartPickers = {};
+    var programEndPickers = {};
+
+    document.querySelectorAll('.prog-start-input').forEach(function(el) {
+        var pid = el.id.replace('prog_start_', '');
+        var endEl = document.getElementById('prog_end_' + pid);
+        var epicker = flatpickr(endEl, Object.assign({}, pickerConfig));
+        programEndPickers[pid] = epicker;
+        programStartPickers[pid] = flatpickr(el, Object.assign({}, pickerConfig, {
+            onChange: function(selectedDates) {
+                if (selectedDates[0]) {
+                    programEndPickers[pid].set('minDate', selectedDates[0]);
+                }
+            }
+        }));
+    });
+
+    // "Copy default dates to all" button
+    document.getElementById('copyToAllBtn') && document.getElementById('copyToAllBtn').addEventListener('click', function() {
+        var defaultStart = document.querySelector('#start_date')._flatpickr ? document.querySelector('#start_date')._flatpickr.input.value : document.querySelector('#start_date').value;
+        var defaultEnd = document.querySelector('#end_date')._flatpickr ? document.querySelector('#end_date')._flatpickr.input.value : document.querySelector('#end_date').value;
+        // Use the hidden input values (the actual YYYY-MM-DD values)
+        var startVal = document.querySelector('input[name="start_date"]').value;
+        var endVal = document.querySelector('input[name="end_date"]').value;
+        for (var pid in programStartPickers) {
+            programStartPickers[pid].setDate(startVal, true);
+            programEndPickers[pid].setDate(endVal, true);
+        }
+    });
+
+    // "Clear all" button
+    document.getElementById('clearAllBtn') && document.getElementById('clearAllBtn').addEventListener('click', function() {
+        for (var pid in programStartPickers) {
+            programStartPickers[pid].clear();
+            programEndPickers[pid].clear();
+        }
+    });
+
+    // Per-row copy button
+    document.querySelectorAll('.copy-default-btn').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+            var pid = this.dataset.programId;
+            var startVal = document.querySelector('input[name="start_date"]').value;
+            var endVal = document.querySelector('input[name="end_date"]').value;
+            if (programStartPickers[pid]) programStartPickers[pid].setDate(startVal, true);
+            if (programEndPickers[pid]) programEndPickers[pid].setDate(endVal, true);
+        });
+    });
+
+    // Per-row clear button
+    document.querySelectorAll('.clear-row-btn').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+            var pid = this.dataset.programId;
+            if (programStartPickers[pid]) programStartPickers[pid].clear();
+            if (programEndPickers[pid]) programEndPickers[pid].clear();
+        });
+    });
+
+    // Update semester info on change
+    document.getElementById('semester_number').addEventListener('change', updateSemesterInfo);
+    updateSemesterInfo();
+});
+</script>
+{% endblock content %}

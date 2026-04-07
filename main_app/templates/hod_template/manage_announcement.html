@@ -1,0 +1,74 @@
+{% extends 'main_app/base.html' %}
+{% load static %}
+{% block page_title %}{{page_title}}{% endblock page_title %}
+
+{% block content %}
+<section class="content">
+    <div class="container-fluid">
+        <div class="row">
+            <div class="col-md-12">
+                <div class="card">
+                    <div class="card-header">
+                        <h3 class="card-title">{{page_title}}</h3>
+                        <div class="card-tools">
+                            <a href="{% url 'add_announcement' %}" class="btn btn-primary btn-sm">
+                                <i class="fas fa-plus"></i> Add New
+                            </a>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <table id="example2" class="table table-bordered table-hover">
+                            <thead class="thead-dark">
+                                <tr>
+                                    <th>#</th>
+                                    <th>Title</th>
+                                    <th>Target</th>
+                                    <th>Priority</th>
+                                    <th>Posted</th>
+                                    <th>Status</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for announcement in announcements %}
+                                <tr>
+                                    <td>{{ forloop.counter }}</td>
+                                    <td>{{ announcement.title|truncatewords:10 }}</td>
+                                    <td>{{ announcement.get_audience_display }}</td>
+                                    <td>
+                                        {% if announcement.priority == 'URGENT' %}
+                                        <span class="badge badge-dark">Urgent</span>
+                                        {% elif announcement.priority == 'HIGH' %}
+                                        <span class="badge badge-danger">High</span>
+                                        {% elif announcement.priority == 'NORMAL' %}
+                                        <span class="badge badge-warning">Normal</span>
+                                        {% else %}
+                                        <span class="badge badge-info">Low</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>{{ announcement.created_at|date:"Y-m-d H:i" }}</td>
+                                    <td>
+                                        {% if announcement.is_active %}
+                                        <span class="badge badge-success">Active</span>
+                                        {% else %}
+                                        <span class="badge badge-secondary">Inactive</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <a href="{% url 'delete_announcement' announcement.id %}" class="btn btn-danger btn-sm" onclick="return confirm('Are you sure?')">Delete</a>
+                                    </td>
+                                </tr>
+                                {% empty %}
+                                <tr>
+                                    <td colspan="7" class="text-center">No announcements found. <a href="{% url 'add_announcement' %}">Add one</a></td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock content %}

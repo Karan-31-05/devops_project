@@ -1,0 +1,172 @@
+{% extends 'main_app/base.html' %}
+{% load static %}
+
+{% block page_title %}{{ page_title }}{% endblock page_title %}
+
+{% block content %}
+<section class="content">
+    <div class="container-fluid">
+        <!-- Header -->
+        <div class="row mb-3">
+            <div class="col-md-8">
+                <h3><i class="fas fa-upload text-primary"></i> Upload Question Paper</h3>
+                <p class="text-muted">Upload an existing question paper document</p>
+            </div>
+            <div class="col-md-4 text-right">
+                <a href="{% url 'staff_list_structured_qps' %}" class="btn btn-secondary">
+                    <i class="fas fa-arrow-left"></i> Back to Dashboard
+                </a>
+            </div>
+        </div>
+
+        <div class="row">
+            <div class="col-lg-8">
+                <div class="card card-outline card-primary">
+                    <div class="card-header">
+                        <h5 class="card-title mb-0">
+                            <i class="fas fa-file-upload"></i> Upload Document
+                        </h5>
+                    </div>
+                    <form method="post" enctype="multipart/form-data">
+                        {% csrf_token %}
+                        <div class="card-body">
+                            <!-- Course Selection -->
+                            <div class="form-group">
+                                <label for="id_course">Course <span class="text-danger">*</span></label>
+                                {{ form.course }}
+                                {% if form.course.errors %}
+                                <div class="text-danger small">{{ form.course.errors }}</div>
+                                {% endif %}
+                            </div>
+                            
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="form-group">
+                                        <label for="id_academic_year">Academic Year <span class="text-danger">*</span></label>
+                                        {{ form.academic_year }}
+                                        {% if form.academic_year.errors %}
+                                        <div class="text-danger small">{{ form.academic_year.errors }}</div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="form-group">
+                                        <label for="id_semester">Semester <span class="text-danger">*</span></label>
+                                        {{ form.semester }}
+                                        {% if form.semester.errors %}
+                                        <div class="text-danger small">{{ form.semester.errors }}</div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="form-group">
+                                        <label for="id_regulation">Regulation <span class="text-danger">*</span></label>
+                                        {{ form.regulation }}
+                                        {% if form.regulation.errors %}
+                                        <div class="text-danger small">{{ form.regulation.errors }}</div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="form-group">
+                                        <label for="id_exam_month_year">Exam Month/Year <span class="text-danger">*</span></label>
+                                        {{ form.exam_month_year }}
+                                        {% if form.exam_month_year.errors %}
+                                        <div class="text-danger small">{{ form.exam_month_year.errors }}</div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- File Upload -->
+                            <div class="form-group">
+                                <label for="id_uploaded_document">Question Paper Document <span class="text-danger">*</span></label>
+                                <div class="custom-file">
+                                    {{ form.uploaded_document }}
+                                </div>
+                                <small class="form-text text-muted">
+                                    <i class="fas fa-info-circle"></i> 
+                                    Accepted formats: .doc, .docx, .pdf (Max 10MB)
+                                </small>
+                                {% if form.uploaded_document.errors %}
+                                <div class="text-danger small">{{ form.uploaded_document.errors }}</div>
+                                {% endif %}
+                            </div>
+                        </div>
+                        
+                        <div class="card-footer">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-upload"></i> Upload Question Paper
+                            </button>
+                            <a href="{% url 'staff_list_structured_qps' %}" class="btn btn-secondary">
+                                <i class="fas fa-times"></i> Cancel
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+            
+            <div class="col-lg-4">
+                <!-- Help Card -->
+                <div class="card card-outline card-info">
+                    <div class="card-header">
+                        <h5 class="card-title mb-0">
+                            <i class="fas fa-question-circle"></i> Upload Guidelines
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <ul class="mb-0 pl-3">
+                            <li class="mb-2">Upload your question paper in <strong>Word (.doc, .docx)</strong> or <strong>PDF</strong> format</li>
+                            <li class="mb-2">Maximum file size: <strong>10 MB</strong></li>
+                            <li class="mb-2">Ensure the document is properly formatted before uploading</li>
+                            <li class="mb-2">Uploaded QPs will be saved as <span class="badge badge-info">Draft</span> status</li>
+                            <li class="mb-2">You can submit for review after uploading</li>
+                        </ul>
+                    </div>
+                </div>
+                
+                <!-- Alternative Option -->
+                <div class="card card-outline card-success">
+                    <div class="card-header">
+                        <h5 class="card-title mb-0">
+                            <i class="fas fa-lightbulb"></i> Alternative
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <p class="text-muted">You can also create a structured question paper using our form builder:</p>
+                        <a href="{% url 'staff_create_structured_qp' %}" class="btn btn-success btn-block">
+                            <i class="fas fa-plus"></i> Create Structured QP
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock content %}
+
+{% block custom_js %}
+<script>
+$(document).ready(function() {
+    // Initialize Select2 for course dropdown
+    if ($.fn.select2) {
+        $('.select2').select2({
+            theme: 'bootstrap4',
+            placeholder: 'Select a course...',
+            allowClear: true
+        });
+    }
+    
+    // Show filename when file is selected
+    $('input[type="file"]').on('change', function() {
+        var fileName = $(this).val().split('\\').pop();
+        if (fileName) {
+            $(this).next('.custom-file-label').html(fileName);
+        }
+    });
+});
+</script>
+{% endblock custom_js %}

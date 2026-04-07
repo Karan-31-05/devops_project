@@ -1,0 +1,116 @@
+{% extends 'main_app/base.html' %}
+{% load static %}
+{% block page_title %}{{page_title}}{% endblock page_title %}
+
+{% block content %}
+<section class="content">
+    <div class="container-fluid">
+        <!-- Pending Publications -->
+        <div class="row">
+            <div class="col-md-12">
+                <div class="card card-warning">
+                    <div class="card-header">
+                        <h3 class="card-title">Pending Verification</h3>
+                    </div>
+                    <div class="card-body">
+                        <table id="example2" class="table table-bordered table-hover">
+                            <thead class="thead-dark">
+                                <tr>
+                                    <th>#</th>
+                                    <th>Faculty</th>
+                                    <th>Title</th>
+                                    <th>Journal</th>
+                                    <th>Type</th>
+                                    <th>Indexing</th>
+                                    <th>Year</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for pub in unverified_publications %}
+                                <tr>
+                                    <td>{{ forloop.counter }}</td>
+                                    <td>{{ pub.faculty.user.full_name }}</td>
+                                    <td>{{ pub.title|truncatewords:8 }}</td>
+                                    <td>{{ pub.journal_name|truncatewords:5 }}</td>
+                                    <td>{{ pub.get_pub_type_display }}</td>
+                                    <td>{{ pub.get_indexing_display }}</td>
+                                    <td>{{ pub.year }}</td>
+                                    <td>
+                                        <a href="{% url 'approve_publication' pub.id %}" class="btn btn-success btn-sm" onclick="return confirm('Approve this publication?')">
+                                            <i class="fas fa-check"></i> Approve
+                                        </a>
+                                        {% if pub.proof_file %}
+                                        <a href="{{ pub.proof_file.url }}" target="_blank" class="btn btn-info btn-sm">
+                                            <i class="fas fa-file"></i> View Proof
+                                        </a>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% empty %}
+                                <tr>
+                                    <td colspan="8" class="text-center">No pending publications.</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Verified Publications -->
+        <div class="row">
+            <div class="col-md-12">
+                <div class="card card-success">
+                    <div class="card-header">
+                        <h3 class="card-title">Verified Publications</h3>
+                    </div>
+                    <div class="card-body">
+                        <table class="table table-bordered table-hover">
+                            <thead class="thead-dark">
+                                <tr>
+                                    <th>#</th>
+                                    <th>Faculty</th>
+                                    <th>Title</th>
+                                    <th>Journal</th>
+                                    <th>Type</th>
+                                    <th>Indexing</th>
+                                    <th>Year</th>
+                                    <th>Proof</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for pub in verified_publications %}
+                                <tr>
+                                    <td>{{ forloop.counter }}</td>
+                                    <td>{{ pub.faculty.user.full_name }}</td>
+                                    <td>{{ pub.title|truncatewords:8 }}</td>
+                                    <td>{{ pub.journal_name|truncatewords:5 }}</td>
+                                    <td>{{ pub.get_pub_type_display }}</td>
+                                    <td>{{ pub.get_indexing_display }}</td>
+                                    <td>{{ pub.year }}</td>
+                                    <td>
+                                        {% if pub.proof_file %}
+                                        <a href="{{ pub.proof_file.url }}" target="_blank" class="btn btn-info btn-sm">
+                                            <i class="fas fa-file"></i> View
+                                        </a>
+                                        {% else %}
+                                        -
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% empty %}
+                                <tr>
+                                    <td colspan="8" class="text-center">No verified publications yet.</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock content %}

@@ -1,0 +1,77 @@
+{% extends 'main_app/base.html' %}
+{% load static %}
+{% block page_title %}{{page_title}}{% endblock page_title %}
+
+{% block content %}
+<section class="content">
+    <div class="container-fluid">
+        <div class="row">
+            <div class="col-md-12">
+                <div class="card">
+                    <div class="card-header">
+                        <h3 class="card-title">{{page_title}}</h3>
+                        <div class="card-tools">
+                            <a href="{% url 'add_regulation' %}" class="btn btn-primary btn-sm">
+                                <i class="fas fa-plus"></i> Add Regulation
+                            </a>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <table id="example2" class="table table-bordered table-hover">
+                            <thead class="thead-dark">
+                                <tr>
+                                    <th>#</th>
+                                    <th>Name</th>
+                                    <th>Year</th>
+                                    <th>Course Categories</th>
+                                    <th>Active Students</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for regulation in regulations %}
+                                <tr>
+                                    <td>{{ forloop.counter }}</td>
+                                    <td>{{ regulation.name|default:regulation }}</td>
+                                    <td>{{ regulation.year }}</td>
+                                    <td>
+                                        {% for cat in regulation.course_categories.all %}
+                                            <span class="badge badge-info" title="{{ cat.get_code_display }}">{{ cat.code }}</span>
+                                        {% empty %}
+                                            <span class="text-muted">-</span>
+                                        {% endfor %}
+                                    </td>
+                                    <td>
+                                        {% if regulation.active_student_count > 0 %}
+                                        <span class="badge badge-success">{{ regulation.active_student_count }} Students</span>
+                                        {% else %}
+                                        <span class="badge badge-secondary">No Active Students</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <a href="{% url 'manage_regulation_courses' regulation.id %}" class="btn btn-sm btn-info" title="Course Plan">
+                                            <i class="fas fa-book"></i>
+                                        </a>
+                                        <a href="{% url 'edit_regulation' regulation.id %}" class="btn btn-sm btn-warning">
+                                            <i class="fas fa-edit"></i>
+                                        </a>
+                                        <a href="{% url 'delete_regulation' regulation.id %}" class="btn btn-sm btn-danger" 
+                                           onclick="return confirm('Are you sure you want to delete this regulation?')">
+                                            <i class="fas fa-trash"></i>
+                                        </a>
+                                    </td>
+                                </tr>
+                                {% empty %}
+                                <tr>
+                                    <td colspan="7" class="text-center">No regulations found.</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock content %}

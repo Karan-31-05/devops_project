@@ -1,0 +1,75 @@
+{% extends 'main_app/base.html' %}
+{% load static %}
+{% block page_title %}{{ page_title }}{% endblock page_title %}
+
+{% block content %}
+<section class="content">
+<div class="container-fluid">
+    <div class="card card-dark">
+        <div class="card-header">
+            <h3 class="card-title"><i class="fas fa-book mr-2"></i>Course → Moodle Mappings</h3>
+            <div class="card-tools">
+                <a href="{% url 'lms_dashboard' %}" class="btn btn-tool">
+                    <i class="fas fa-arrow-left"></i> Dashboard
+                </a>
+            </div>
+        </div>
+        <div class="card-body table-responsive p-0">
+            <table class="table table-hover table-striped text-nowrap">
+                <thead>
+                    <tr>
+                        <th>Course Code</th>
+                        <th>Course Title</th>
+                        <th>Faculty</th>
+                        <th>Batch</th>
+                        <th>Semester</th>
+                        <th>Moodle ID</th>
+                        <th>Shortname</th>
+                        <th>Status</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for m in mappings %}
+                    <tr>
+                        <td>{{ m.course_assignment.course.course_code }}</td>
+                        <td>{{ m.course_assignment.course.title|truncatewords:5 }}</td>
+                        <td>{{ m.course_assignment.faculty.user.full_name }}</td>
+                        <td>{{ m.course_assignment.batch_label }}</td>
+                        <td>{{ m.course_assignment.semester }}</td>
+                        <td>
+                            {% if m.moodle_course_id %}
+                            <a href="{{ moodle_url }}/course/view.php?id={{ m.moodle_course_id }}" target="_blank">
+                                #{{ m.moodle_course_id }}
+                            </a>
+                            {% else %}—{% endif %}
+                        </td>
+                        <td><code>{{ m.moodle_shortname }}</code></td>
+                        <td>
+                            {% if m.sync_status == 'SYNCED' %}
+                            <span class="badge badge-success">Synced</span>
+                            {% elif m.sync_status == 'ERROR' %}
+                            <span class="badge badge-danger" title="{{ m.error_message }}">Error</span>
+                            {% else %}
+                            <span class="badge badge-warning">Pending</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if m.moodle_course_id %}
+                            <a href="{{ moodle_url }}/course/view.php?id={{ m.moodle_course_id }}" 
+                               target="_blank" class="btn btn-xs btn-outline-primary" title="Open in Moodle">
+                                <i class="fas fa-external-link-alt"></i>
+                            </a>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="9" class="text-center text-muted">No course mappings yet. Run "Sync All Courses" from the dashboard.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+</section>
+{% endblock content %}

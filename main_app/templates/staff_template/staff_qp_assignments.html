@@ -1,0 +1,246 @@
+{% extends 'main_app/base.html' %}
+{% load static %}
+{% block page_title %}{{ page_title }}{% endblock page_title %}
+
+{% block content %}
+<section class="content">
+    <div class="container-fluid">
+        <!-- New Structured QP Option Banner -->
+        <div class="row mb-4">
+            <div class="col-lg-12">
+                <div class="alert alert-info alert-dismissible fade show">
+                    <button type="button" class="close" data-dismiss="alert">
+                        <span>&times;</span>
+                    </button>
+                    <h5><i class="fas fa-lightbulb"></i> New Feature: Create Structured Question Papers</h5>
+                    <p class="mb-2">Want to create a question paper with Anna University R2023 format automatically?</p>
+                    <a href="{% url 'staff_list_structured_qps' %}" class="btn btn-sm btn-info">
+                        <i class="fas fa-file-alt"></i> View My Structured QPs
+                    </a>
+                    <a href="{% url 'staff_create_structured_qp' %}" class="btn btn-sm btn-success">
+                        <i class="fas fa-plus"></i> Create New Structured QP
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Statistics Cards -->
+        <div class="row">
+            <div class="col-lg-2 col-6">
+                <div class="small-box bg-info">
+                    <div class="inner">
+                        <h3>{{ stats.total }}</h3>
+                        <p>Total</p>
+                    </div>
+                    <div class="icon">
+                        <i class="fas fa-file-alt"></i>
+                    </div>
+                </div>
+            </div>
+            <div class="col-lg-3 col-6">
+                <div class="small-box bg-warning">
+                    <div class="inner">
+                        <h3>{{ stats.pending }}</h3>
+                        <p>Pending Submission</p>
+                    </div>
+                    <div class="icon">
+                        <i class="fas fa-clock"></i>
+                    </div>
+                </div>
+            </div>
+            <div class="col-lg-2 col-6">
+                <div class="small-box bg-primary">
+                    <div class="inner">
+                        <h3>{{ stats.submitted }}</h3>
+                        <p>Under Review</p>
+                    </div>
+                    <div class="icon">
+                        <i class="fas fa-search"></i>
+                    </div>
+                </div>
+            </div>
+            <div class="col-lg-2 col-6">
+                <div class="small-box bg-success">
+                    <div class="inner">
+                        <h3>{{ stats.approved }}</h3>
+                        <p>Approved</p>
+                    </div>
+                    <div class="icon">
+                        <i class="fas fa-check-circle"></i>
+                    </div>
+                </div>
+            </div>
+            <div class="col-lg-3 col-6">
+                <div class="small-box bg-danger">
+                    <div class="inner">
+                        <h3>{{ stats.rejected }}</h3>
+                        <p>Needs Revision</p>
+                    </div>
+                    <div class="icon">
+                        <i class="fas fa-times-circle"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Assignments Card -->
+        <div class="card card-primary">
+            <div class="card-header">
+                <h3 class="card-title">
+                    <i class="fas fa-file-alt mr-2"></i>{{ page_title }}
+                </h3>
+            </div>
+            <div class="card-body">
+                {% if messages %}
+                    {% for message in messages %}
+                        <div class="alert alert-{% if message.tags %}{{ message.tags }}{% else %}info{% endif %} alert-dismissible fade show">
+                            {{ message }}
+                            <button type="button" class="close" data-dismiss="alert">
+                                <span>&times;</span>
+                            </button>
+                        </div>
+                    {% endfor %}
+                {% endif %}
+
+                {% if assignments %}
+                <div class="table-responsive">
+                    <table class="table table-bordered table-hover" id="qp-table">
+                        <thead class="thead-dark">
+                            <tr>
+                                <th>#</th>
+                                <th>Course</th>
+                                <th>Exam Type</th>
+                                <th>Academic Year</th>
+                                <th>Deadline</th>
+                                <th>Status</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for assignment in assignments %}
+                            <tr class="{% if assignment.is_overdue and assignment.status not in 'APPROVED,SUBMITTED' %}table-danger{% elif assignment.status == 'REJECTED' %}table-warning{% endif %}">
+                                <td>{{ forloop.counter }}</td>
+                                <td>
+                                    <strong>{{ assignment.course.course_code }}</strong>
+                                    <br>
+                                    <small class="text-muted">{{ assignment.course.title|truncatechars:35 }}</small>
+                                </td>
+                                <td>
+                                    <span class="badge badge-{% if assignment.exam_type == 'ENDSEM' %}danger{% elif assignment.exam_type == 'CAT1' or assignment.exam_type == 'CAT2' %}info{% else %}secondary{% endif %}">
+                                        {{ assignment.get_exam_type_display }}
+                                    </span>
+                                </td>
+                                <td>
+                                    {{ assignment.academic_year.year }}
+                                    {% if assignment.semester %}
+                                    <br><small>Sem {{ assignment.semester.semester_number }}</small>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {{ assignment.deadline|date:"d M Y" }}
+                                    {% if assignment.is_overdue and assignment.status not in 'APPROVED,SUBMITTED' %}
+                                    <br><span class="badge badge-danger"><i class="fas fa-exclamation-triangle"></i> Overdue</span>
+                                    {% elif assignment.days_remaining <= 3 and assignment.days_remaining >= 0 and assignment.status not in 'APPROVED,SUBMITTED' %}
+                                    <br><span class="badge badge-warning"><i class="fas fa-clock"></i> {{ assignment.days_remaining }} days left</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <span class="badge badge-{% if assignment.status == 'APPROVED' %}success{% elif assignment.status == 'SUBMITTED' or assignment.status == 'UNDER_REVIEW' %}info{% elif assignment.status == 'REJECTED' %}danger{% elif assignment.status == 'IN_PROGRESS' %}primary{% else %}warning{% endif %} p-2">
+                                        {{ assignment.get_status_display }}
+                                    </span>
+                                    {% if assignment.status == 'REJECTED' and assignment.review_comments %}
+                                    <br><small class="text-danger mt-1">
+                                        <i class="fas fa-comment"></i> {{ assignment.review_comments|truncatechars:50 }}
+                                    </small>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if assignment.status == 'ASSIGNED' or assignment.status == 'IN_PROGRESS' or assignment.status == 'REJECTED' %}
+                                    <a href="{% url 'staff_submit_question_paper' assignment.id %}" class="btn btn-sm btn-primary" title="Submit QP">
+                                        <i class="fas fa-upload"></i> Submit
+                                    </a>
+                                    {% elif assignment.status == 'SUBMITTED' or assignment.status == 'UNDER_REVIEW' %}
+                                    <span class="text-info"><i class="fas fa-hourglass-half"></i> Waiting Review</span>
+                                    {% elif assignment.status == 'APPROVED' %}
+                                    <span class="text-success"><i class="fas fa-check"></i> Completed</span>
+                                    {% endif %}
+                                    
+                                    <a href="{% url 'staff_view_qp_details' assignment.id %}" class="btn btn-sm btn-outline-secondary ml-1" title="View Details">
+                                        <i class="fas fa-eye"></i>
+                                    </a>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="text-center py-5">
+                    <i class="fas fa-inbox fa-4x text-muted mb-3"></i>
+                    <h4 class="text-muted">No Question Paper Assignments</h4>
+                    <p class="text-muted">You don't have any question paper tasks assigned yet.</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Help Card -->
+        <div class="card card-info collapsed-card">
+            <div class="card-header">
+                <h3 class="card-title"><i class="fas fa-question-circle mr-2"></i>Help & Guidelines</h3>
+                <div class="card-tools">
+                    <button type="button" class="btn btn-tool" data-card-widget="collapse">
+                        <i class="fas fa-plus"></i>
+                    </button>
+                </div>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-4">
+                        <h5><i class="fas fa-upload text-primary mr-2"></i>Submission Guidelines</h5>
+                        <ul class="small">
+                            <li>Upload question paper in <strong>.doc, .docx, or .pdf</strong> format</li>
+                            <li>Maximum file size: <strong>10 MB</strong></li>
+                            <li>Include answer key if required</li>
+                            <li>Submit before the deadline</li>
+                        </ul>
+                    </div>
+                    <div class="col-md-4">
+                        <h5><i class="fas fa-info-circle text-info mr-2"></i>Status Meanings</h5>
+                        <ul class="small">
+                            <li><span class="badge badge-warning">Assigned</span> - New task, pending your action</li>
+                            <li><span class="badge badge-primary">In Progress</span> - You've started working</li>
+                            <li><span class="badge badge-info">Submitted</span> - Under HOD review</li>
+                            <li><span class="badge badge-success">Approved</span> - QP accepted</li>
+                            <li><span class="badge badge-danger">Rejected</span> - Needs revision</li>
+                        </ul>
+                    </div>
+                    <div class="col-md-4">
+                        <h5><i class="fas fa-lightbulb text-warning mr-2"></i>Tips</h5>
+                        <ul class="small">
+                            <li>Check instructions carefully before creating QP</li>
+                            <li>Follow Anna University question paper format</li>
+                            <li>Ensure Bloom's taxonomy coverage</li>
+                            <li>Resubmit if rejected with corrections</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock content %}
+
+{% block custom_js %}
+<script>
+$(document).ready(function() {
+    $('#qp-table').DataTable({
+        "order": [[4, "asc"]],  // Sort by deadline
+        "pageLength": 10,
+        "language": {
+            "emptyTable": "No question paper assignments found"
+        }
+    });
+});
+</script>
+{% endblock custom_js %}

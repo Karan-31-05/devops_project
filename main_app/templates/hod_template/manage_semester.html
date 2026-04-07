@@ -1,0 +1,74 @@
+{% extends 'main_app/base.html' %}
+{% load static %}
+{% block page_title %}{{page_title}}{% endblock page_title %}
+
+{% block content %}
+<section class="content">
+    <div class="container-fluid">
+        <div class="row">
+            <div class="col-md-12">
+                <div class="card">
+                    <div class="card-header">
+                        <h3 class="card-title">{{page_title}}</h3>
+                        <div class="card-tools">
+                            <a href="{% url 'add_semester' %}" class="btn btn-primary btn-sm">
+                                <i class="fas fa-plus"></i> Add Semester
+                            </a>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <table id="example2" class="table table-bordered table-hover">
+                            <thead class="thead-dark">
+                                <tr>
+                                    <th>#</th>
+                                    <th>Academic Year</th>
+                                    <th>Year of Study</th>
+                                    <th>Semester</th>
+                                    <th>Type</th>
+                                    <th>Start Date</th>
+                                    <th>End Date</th>
+                                    <th>Status</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for semester in semesters %}
+                                <tr>
+                                    <td>{{ forloop.counter }}</td>
+                                    <td>{{ semester.academic_year.year }}</td>
+                                    <td>{{ semester.get_year_of_study_display }}</td>
+                                    <td>Semester {{ semester.semester_number }}</td>
+                                    <td>
+                                        {% if semester.semester_type == 'ODD' %}
+                                        <span class="badge badge-info">Odd</span>
+                                        {% else %}
+                                        <span class="badge badge-warning">Even</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>{{ semester.start_date|date:"Y-m-d" }}</td>
+                                    <td>{{ semester.end_date|date:"Y-m-d" }}</td>
+                                    <td>
+                                        {% if semester.is_current %}
+                                        <span class="badge badge-success">Current</span>
+                                        {% else %}
+                                        <span class="badge badge-secondary">Inactive</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <a href="{% url 'delete_semester' semester.id %}" onclick="return confirm('Are you sure?')" class="btn btn-danger btn-sm">Delete</a>
+                                    </td>
+                                </tr>
+                                {% empty %}
+                                <tr>
+                                    <td colspan="9" class="text-center">No semesters found. <a href="{% url 'add_semester' %}">Add one</a></td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock content %}

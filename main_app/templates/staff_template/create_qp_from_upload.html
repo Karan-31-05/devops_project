@@ -1,0 +1,155 @@
+{% extends 'main_app/base.html' %}
+{% block content %}
+
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-md-8 mx-auto">
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h4 class="mb-0">📤 Create Question Paper from File Upload</h4>
+                </div>
+                <div class="card-body">
+                    <div class="alert alert-info" role="alert">
+                        <i class="fas fa-info-circle"></i>
+                        <strong>Supported Formats:</strong> PDF or DOCX files. The system will automatically extract questions, marks, and structure.
+                    </div>
+
+                    <form method="POST" enctype="multipart/form-data" class="needs-validation">
+                        {% csrf_token %}
+                        <input type="hidden" name="step" value="1">
+                        
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label for="id_course" class="form-label"><strong>Course</strong> <span class="text-danger">*</span></label>
+                                {{ form.course }}
+                            </div>
+                            <div class="col-md-6">
+                                <label for="id_exam_month_year" class="form-label"><strong>Exam Month/Year</strong> <span class="text-danger">*</span></label>
+                                {{ form.exam_month_year }}
+                            </div>
+                        </div>
+
+                        <div class="row mb-3">
+                            <div class="col-md-4">
+                                <label for="id_academic_year" class="form-label"><strong>Academic Year</strong> <span class="text-danger">*</span></label>
+                                {{ form.academic_year }}
+                            </div>
+                            <div class="col-md-4">
+                                <label for="id_semester" class="form-label"><strong>Semester</strong> <span class="text-danger">*</span></label>
+                                {{ form.semester }}
+                            </div>
+                            <div class="col-md-4">
+                                <label for="id_regulation" class="form-label"><strong>Regulation</strong> <span class="text-danger">*</span></label>
+                                {{ form.regulation }}
+                            </div>
+                        </div>
+
+                        <hr>
+                        <h5 class="mb-3">Course Outcomes (Optional - Helpful for mapping)</h5>
+
+                        <div class="mb-3">
+                            <label for="id_co1_description" class="form-label">CO1 Description</label>
+                            {{ form.co1_description }}
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="id_co2_description" class="form-label">CO2 Description</label>
+                            {{ form.co2_description }}
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="id_co3_description" class="form-label">CO3 Description</label>
+                            {{ form.co3_description }}
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="id_co4_description" class="form-label">CO4 Description</label>
+                            {{ form.co4_description }}
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="id_co5_description" class="form-label">CO5 Description</label>
+                            {{ form.co5_description }}
+                        </div>
+
+                        <hr>
+                        <h5 class="mb-3">Upload Question Paper</h5>
+
+                        <div class="mb-3">
+                            <label for="id_qp_file" class="form-label"><strong>Question Paper File</strong> <span class="text-danger">*</span></label>
+                            <div class="input-group">
+                                <input type="file" class="form-control" id="id_qp_file" name="qp_file" accept=".pdf,.docx" required>
+                                <span class="input-group-text"><i class="fas fa-file"></i></span>
+                            </div>
+                            <small class="form-text text-muted">
+                                Maximum file size: 10MB. Supported: PDF, DOCX
+                            </small>
+                        </div>
+
+                        {% if form.non_field_errors %}
+                            <div class="alert alert-danger" role="alert">
+                                <strong>Errors:</strong>
+                                <ul class="mb-0">
+                                    {% for error in form.non_field_errors %}
+                                        <li>{{ error }}</li>
+                                    {% endfor %}
+                                </ul>
+                            </div>
+                        {% endif %}
+
+                        {% for field in form %}
+                            {% if field.errors %}
+                                <div class="alert alert-danger mt-2" role="alert">
+                                    <strong>{{ field.label }} Error:</strong>
+                                    <ul class="mb-0">
+                                        {% for error in field.errors %}
+                                            <li>{{ error }}</li>
+                                        {% endfor %}
+                                    </ul>
+                                </div>
+                            {% endif %}
+                        {% endfor %}
+
+                        <div class="d-flex gap-2 mt-4">
+                            <button type="submit" class="btn btn-primary btn-lg">
+                                <i class="fas fa-arrow-right"></i> Upload & Extract
+                            </button>
+                            <a href="{% url 'staff_list_structured_qps' %}" class="btn btn-secondary btn-lg">
+                                <i class="fas fa-times"></i> Cancel
+                            </a>
+                        </div>
+                    </form>
+
+                    <div class="alert alert-success mt-4" role="alert">
+                        <h6><i class="fas fa-lightbulb"></i> How it works:</h6>
+                        <ol class="mb-0">
+                            <li>Upload your question paper (PDF or DOCX)</li>
+                            <li>System automatically extracts questions and marks</li>
+                            <li>Review extracted questions and map Course Outcomes & Bloom's levels</li>
+                            <li>Automatic validation (mark distribution, Bloom's %, repetition detection)</li>
+                            <li>Submit for HOD review - same workflow as structured QPs</li>
+                        </ol>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .form-control, .form-select {
+        padding: 0.75rem;
+        border-radius: 0.375rem;
+    }
+    .card {
+        border-radius: 0.5rem;
+        box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+    }
+    .btn-lg {
+        padding: 0.75rem 1.5rem;
+        font-size: 1rem;
+    }
+</style>
+
+{% endblock %}

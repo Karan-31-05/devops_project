@@ -1,0 +1,110 @@
+{% extends 'main_app/base.html' %}
+{% load static %}
+{% block page_title %}Edit Program - {{ program.code }}{% endblock page_title %}
+
+{% block content %}
+<section class="content">
+    <div class="container-fluid">
+        <div class="row">
+            <div class="col-md-8">
+                <div class="card card-warning">
+                    <div class="card-header">
+                        <h3 class="card-title">Edit Academic Program: {{ program.code }}</h3>
+                    </div>
+                    <form method="POST">
+                        {% csrf_token %}
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-md-4">
+                                    <div class="form-group">
+                                        <label>Program Code *</label>
+                                        {{ form.code }}
+                                    </div>
+                                </div>
+                                <div class="col-md-8">
+                                    <div class="form-group">
+                                        <label>Program Name *</label>
+                                        {{ form.name }}
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="row">
+                                <div class="col-md-4">
+                                    <div class="form-group">
+                                        <label>Degree *</label>
+                                        {{ form.degree }}
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="form-group">
+                                        <label>Program Type *</label>
+                                        {{ form.level }}
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="form-group">
+                                        <label>Duration (Years) *</label>
+                                        {{ form.duration_years }}
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="row">
+                                <div class="col-md-8">
+                                    <div class="form-group">
+                                        <label>Specialization</label>
+                                        {{ form.specialization }}
+                                        <small class="text-muted">e.g., Operations Research, Big Data Analytics</small>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="form-group">
+                                        <label>Total Semesters *</label>
+                                        {{ form.total_semesters }}
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            {% if not form.regulation.is_hidden %}
+                            <div class="form-group">
+                                <label>Applicable Regulation</label>
+                                {{ form.regulation }}
+                            </div>
+                            {% endif %}
+                        </div>
+                        <div class="card-footer">
+                            <button type="submit" class="btn btn-warning">
+                                <i class="fas fa-save mr-1"></i> Update Program
+                            </button>
+                            <a href="{% url 'manage_programs' %}" class="btn btn-secondary">
+                                <i class="fas fa-arrow-left mr-1"></i> Back to List
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+            
+            <div class="col-md-4">
+                <div class="card card-info">
+                    <div class="card-header">
+                        <h3 class="card-title"><i class="fas fa-info-circle mr-1"></i> Program Details</h3>
+                    </div>
+                    <div class="card-body">
+                        <dl>
+                            <dt>Current Full Name:</dt>
+                            <dd>{{ program.full_name }}</dd>
+                            
+                            <dt>Created:</dt>
+                            <dd>{{ program.created_at|date:"M d, Y" }}</dd>
+                            
+                            <dt>Students Enrolled:</dt>
+                            <dd>{{ student_count }} student{{ student_count|pluralize }}</dd>
+                        </dl>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock content %}

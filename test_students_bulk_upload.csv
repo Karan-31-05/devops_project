@@ -1,0 +1,9 @@
+register_no,full_name,email,gender,batch,branch,program,entry_type
+1999000001,Stud 1.1,test1.1@fake.invalid,M,N,CSE,B.E,REGULAR
+1999000002,Stud 1.2,test1.2@fake.invalid,F,P,CSE,B.E,REGULAR
+1999000003,Stud 1.3,test1.3@fake.invalid,M,Q,CSE,B.E,REGULAR
+1999000004,Stud 1.4,test1.4@fake.invalid,F,N,CSE,B.E,REGULAR
+1999000005,Stud 1.5,test1.5@fake.invalid,M,P,CSE,B.E,REGULAR
+1999000006,Stud 1.6,test1.6@fake.invalid,F,Q,CSE,B.E,REGULAR
+1999000007,Stud 1.7,test1.7@fake.invalid,M,N,CSE,B.E,REGULAR
+1999000008,Stud 1.8,test1.8@fake.invalid,F,P,CSE,B.E,LATERAL

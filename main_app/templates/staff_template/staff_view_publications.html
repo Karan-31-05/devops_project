@@ -1,0 +1,108 @@
+{% extends 'main_app/base.html' %}
+{% load static %}
+{% block page_title %}{{page_title}}{% endblock page_title %}
+
+{% block content %}
+<section class="content">
+    <div class="container-fluid">
+        <div class="row">
+            <div class="col-md-12">
+                <div class="card card-primary">
+                    <div class="card-header">
+                        <h3 class="card-title">
+                            <i class="fas fa-file-alt"></i> {{page_title}}
+                        </h3>
+                        <div class="card-tools">
+                            <a href="{% url 'staff_add_publication' %}" class="btn btn-light btn-sm">
+                                <i class="fas fa-plus"></i> Add New Publication
+                            </a>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        {% if messages %}
+                            {% for message in messages %}
+                                <div class="alert alert-{% if message.tags %}{{ message.tags }}{% else %}info{% endif %} alert-dismissible fade show" role="alert">
+                                    {{ message }}
+                                    <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                                        <span aria-hidden="true">&times;</span>
+                                    </button>
+                                </div>
+                            {% endfor %}
+                        {% endif %}
+
+                        {% if publications %}
+                        <div class="table-responsive">
+                            <table class="table table-bordered table-striped" id="publicationsTable">
+                                <thead class="bg-primary">
+                                    <tr>
+                                        <th>#</th>
+                                        <th>Title</th>
+                                        <th>Type</th>
+                                        <th>Journal/Conference</th>
+                                        <th>Publication Date</th>
+                                        <th>DOI/ISBN</th>
+                                        <th>Impact Factor</th>
+                                        <th>Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for pub in publications %}
+                                    <tr>
+                                        <td>{{ forloop.counter }}</td>
+                                        <td>
+                                            <strong>{{ pub.title }}</strong>
+                                            {% if pub.abstract %}
+                                            <br><small class="text-muted">{{ pub.abstract|truncatewords:15 }}</small>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            <span class="badge badge-{% if pub.publication_type == 'JOURNAL' %}primary{% elif pub.publication_type == 'CONFERENCE' %}info{% elif pub.publication_type == 'BOOK' %}success{% else %}secondary{% endif %}">
+                                                {{ pub.get_publication_type_display }}
+                                            </span>
+                                        </td>
+                                        <td>{{ pub.journal_name|default:pub.conference_name|default:"-" }}</td>
+                                        <td>{{ pub.publication_date|date:"d-m-Y" }}</td>
+                                        <td>{{ pub.doi|default:pub.isbn|default:"-" }}</td>
+                                        <td>{{ pub.impact_factor|default:"-" }}</td>
+                                        <td>
+                                            {% if pub.is_verified %}
+                                                <span class="badge badge-success"><i class="fas fa-check"></i> Verified</span>
+                                            {% else %}
+                                                <span class="badge badge-warning"><i class="fas fa-clock"></i> Pending</span>
+                                            {% endif %}
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                        {% else %}
+                        <div class="alert alert-info">
+                            <i class="fas fa-info-circle"></i> No publications found. 
+                            <a href="{% url 'staff_add_publication' %}">Add your first publication</a>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock content %}
+
+{% block custom_js %}
+<script>
+    $(document).ready(function() {
+        $('#publicationsTable').DataTable({
+            "paging": true,
+            "lengthChange": true,
+            "searching": true,
+            "ordering": true,
+            "info": true,
+            "autoWidth": false,
+            "responsive": true,
+            "order": [[4, "desc"]]
+        });
+    });
+</script>
+{% endblock custom_js %}

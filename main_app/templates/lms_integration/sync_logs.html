@@ -1,0 +1,62 @@
+{% extends 'main_app/base.html' %}
+{% load static %}
+{% block page_title %}{{ page_title }}{% endblock page_title %}
+
+{% block content %}
+<section class="content">
+<div class="container-fluid">
+    <div class="card card-dark">
+        <div class="card-header">
+            <h3 class="card-title"><i class="fas fa-history mr-2"></i>Moodle Sync Logs</h3>
+            <div class="card-tools">
+                <a href="{% url 'lms_dashboard' %}" class="btn btn-tool">
+                    <i class="fas fa-arrow-left"></i> Back to Dashboard
+                </a>
+            </div>
+        </div>
+        <div class="card-body table-responsive p-0">
+            <table class="table table-hover table-striped text-nowrap">
+                <thead>
+                    <tr>
+                        <th>Time</th>
+                        <th>Action</th>
+                        <th>Status</th>
+                        <th>Detail</th>
+                        <th>Error</th>
+                        <th>Triggered By</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for log in logs %}
+                    <tr>
+                        <td>{{ log.created_at|date:"Y-m-d H:i:s" }}</td>
+                        <td>{{ log.get_action_display }}</td>
+                        <td>
+                            {% if log.status == 'SUCCESS' %}
+                            <span class="badge badge-success">Success</span>
+                            {% else %}
+                            <span class="badge badge-danger">Failed</span>
+                            {% endif %}
+                        </td>
+                        <td>{{ log.detail|truncatewords:20 }}</td>
+                        <td>
+                            {% if log.error_message %}
+                            <span class="text-danger" title="{{ log.error_message }}">
+                                {{ log.error_message|truncatewords:10 }}
+                            </span>
+                            {% else %}
+                            <span class="text-muted">—</span>
+                            {% endif %}
+                        </td>
+                        <td>{{ log.triggered_by.full_name|default:"System" }}</td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="6" class="text-center text-muted">No logs yet.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+</section>
+{% endblock content %}

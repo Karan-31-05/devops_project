@@ -1,0 +1,187 @@
+{% extends 'main_app/base.html' %}
+{% load static %}
+{% block page_title %}{{page_title}}{% endblock page_title %}
+
+{% block content %}
+<section class="content">
+    <div class="container-fluid">
+        <!-- Header Card -->
+        <div class="row">
+            <div class="col-md-12">
+                <div class="card card-success">
+                    <div class="card-header">
+                        <h3 class="card-title">
+                            <i class="fas fa-key"></i> Answer Key - {{ qp.course.course_code }} - {{ qp.course.title }}
+                        </h3>
+                        <div class="card-tools">
+                            <a href="{% url 'student_view_qp_detail' schedule.id %}" class="btn btn-primary btn-sm">
+                                <i class="fas fa-file-alt"></i> View Questions
+                            </a>
+                            <a href="{% url 'student_view_released_qps' %}" class="btn btn-light btn-sm">
+                                <i class="fas fa-arrow-left"></i> Back to List
+                            </a>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-3">
+                                <strong>Exam Period:</strong> {{ qp.exam_month_year }}
+                            </div>
+                            <div class="col-md-3">
+                                <strong>Exam Date:</strong> {{ schedule.exam_date|date:"d M Y" }}
+                            </div>
+                            <div class="col-md-3">
+                                <strong>Faculty:</strong> {{ qp.faculty.user.full_name }}
+                            </div>
+                            <div class="col-md-3">
+                                <strong>Regulation:</strong> R{{ qp.regulation.year }}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="alert alert-success">
+            <i class="fas fa-check-circle"></i>
+            <strong>Answer Key Released!</strong> Use these answers for reference and self-assessment.
+        </div>
+
+        <!-- Part A Answers -->
+        {% if part_a_questions %}
+        <div class="row">
+            <div class="col-md-12">
+                <div class="card">
+                    <div class="card-header bg-primary">
+                        <h3 class="card-title">
+                            <i class="fas fa-list-ol"></i> PART A - Answers
+                        </h3>
+                    </div>
+                    <div class="card-body">
+                        {% for question in part_a_questions %}
+                        <div class="card mb-3">
+                            <div class="card-header bg-light">
+                                <strong>Q{{ question.question_number }}.</strong> {{ question.question_text }}
+                                <span class="badge badge-info float-right">{{ question.marks }} marks</span>
+                            </div>
+                            <div class="card-body">
+                                <div class="bg-success-light p-3 rounded" style="background-color: #d4edda;">
+                                    <strong><i class="fas fa-check text-success"></i> Answer:</strong>
+                                    <div class="mt-2">{{ question.answer|linebreaks }}</div>
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Part B Answers -->
+        {% if part_b_questions %}
+        <div class="row">
+            <div class="col-md-12">
+                <div class="card">
+                    <div class="card-header bg-success">
+                        <h3 class="card-title">
+                            <i class="fas fa-list-ol"></i> PART B - Answers
+                        </h3>
+                    </div>
+                    <div class="card-body">
+                        {% for question in part_b_questions %}
+                        <div class="card mb-3 {% if question.is_or_option %}border-warning{% endif %}">
+                            <div class="card-header {% if question.is_or_option %}bg-warning{% else %}bg-light{% endif %}">
+                                <strong>Q{{ question.question_number }}{{ question.option_label }}.</strong> 
+                                {{ question.question_text|truncatewords:20 }}
+                                <span class="badge badge-info float-right">{{ question.marks }} marks</span>
+                                {% if question.is_or_option and question.option_label == '(b)' %}
+                                <span class="badge badge-warning ml-2">(OR Option)</span>
+                                {% endif %}
+                            </div>
+                            <div class="card-body">
+                                <div class="mb-2">
+                                    <strong>Full Question:</strong><br>
+                                    {{ question.question_text }}
+                                    {% if question.has_subdivisions %}
+                                    <ul class="mt-2">
+                                        {% if question.subdivision_1_text %}
+                                        <li>{{ question.subdivision_1_text }} ({{ question.subdivision_1_marks }} marks)</li>
+                                        {% endif %}
+                                        {% if question.subdivision_2_text %}
+                                        <li>{{ question.subdivision_2_text }} ({{ question.subdivision_2_marks }} marks)</li>
+                                        {% endif %}
+                                    </ul>
+                                    {% endif %}
+                                </div>
+                                <hr>
+                                <div class="bg-success-light p-3 rounded" style="background-color: #d4edda;">
+                                    <strong><i class="fas fa-check text-success"></i> Answer:</strong>
+                                    <div class="mt-2">{{ question.answer|linebreaks }}</div>
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Part C Answers -->
+        {% if part_c_questions %}
+        <div class="row">
+            <div class="col-md-12">
+                <div class="card">
+                    <div class="card-header bg-warning">
+                        <h3 class="card-title">
+                            <i class="fas fa-list-ol"></i> PART C - Answers
+                        </h3>
+                    </div>
+                    <div class="card-body">
+                        {% for question in part_c_questions %}
+                        <div class="card mb-3">
+                            <div class="card-header bg-light">
+                                <strong>Q{{ question.question_number }}.</strong> {{ question.question_text|truncatewords:20 }}
+                                <span class="badge badge-info float-right">{{ question.marks }} marks</span>
+                            </div>
+                            <div class="card-body">
+                                <div class="mb-2">
+                                    <strong>Full Question:</strong><br>
+                                    {{ question.question_text }}
+                                </div>
+                                <hr>
+                                <div class="bg-success-light p-3 rounded" style="background-color: #d4edda;">
+                                    <strong><i class="fas fa-check text-success"></i> Answer:</strong>
+                                    <div class="mt-2">{{ question.answer|linebreaks }}</div>
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
+        {% if not part_a_questions and not part_b_questions and not part_c_questions %}
+        <div class="alert alert-warning">
+            <i class="fas fa-exclamation-triangle"></i>
+            No answers have been added for this question paper yet.
+        </div>
+        {% endif %}
+
+        <!-- Footer with navigation -->
+        <div class="row">
+            <div class="col-md-12 text-center mb-4">
+                <a href="{% url 'student_view_qp_detail' schedule.id %}" class="btn btn-primary">
+                    <i class="fas fa-file-alt"></i> View Question Paper
+                </a>
+                <a href="{% url 'student_view_released_qps' %}" class="btn btn-secondary">
+                    <i class="fas fa-arrow-left"></i> Back to Question Papers
+                </a>
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock content %}

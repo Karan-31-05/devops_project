@@ -1,0 +1,245 @@
+{% extends 'main_app/base.html' %}
+{% load static %}
+{% block page_title %}{{ page_title }}{% endblock page_title %}
+
+{% block content %}
+<section class="content">
+    <div class="container-fluid">
+        <div class="row">
+            <div class="col-md-8">
+                <div class="card card-primary">
+                    <div class="card-header">
+                        <h3 class="card-title"><i class="fas fa-file-alt mr-2"></i>{{ page_title }}</h3>
+                    </div>
+                    <div class="card-body">
+                        <!-- Course Details -->
+                        <div class="row mb-4">
+                            <div class="col-md-6">
+                                <table class="table table-sm table-borderless">
+                                    <tr>
+                                        <th width="40%">Course Code:</th>
+                                        <td><strong>{{ qp_assignment.course.course_code }}</strong></td>
+                                    </tr>
+                                    <tr>
+                                        <th>Course Title:</th>
+                                        <td>{{ qp_assignment.course.title }}</td>
+                                    </tr>
+                                    <tr>
+                                        <th>Credits:</th>
+                                        <td>{{ qp_assignment.course.credits|default:"N/A" }}</td>
+                                    </tr>
+                                    <tr>
+                                        <th>Regulation:</th>
+                                        <td>{{ qp_assignment.regulation.name|default:"N/A" }}</td>
+                                    </tr>
+                                </table>
+                            </div>
+                            <div class="col-md-6">
+                                <table class="table table-sm table-borderless">
+                                    <tr>
+                                        <th width="40%">Exam Type:</th>
+                                        <td>
+                                            <span class="badge badge-{% if qp_assignment.exam_type == 'ENDSEM' %}danger{% elif qp_assignment.exam_type == 'CAT1' or qp_assignment.exam_type == 'CAT2' %}info{% else %}secondary{% endif %} p-2">
+                                                {{ qp_assignment.get_exam_type_display }}
+                                            </span>
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <th>Academic Year:</th>
+                                        <td>{{ qp_assignment.academic_year.year }}</td>
+                                    </tr>
+                                    <tr>
+                                        <th>Semester:</th>
+                                        <td>{{ qp_assignment.semester.semester_number|default:"N/A" }}</td>
+                                    </tr>
+                                    <tr>
+                                        <th>Deadline:</th>
+                                        <td>
+                                            <span class="{% if qp_assignment.is_overdue %}text-danger font-weight-bold{% elif qp_assignment.days_remaining <= 3 %}text-warning{% else %}text-success{% endif %}">
+                                                {{ qp_assignment.deadline|date:"d M Y" }}
+                                            </span>
+                                        </td>
+                                    </tr>
+                                </table>
+                            </div>
+                        </div>
+
+                        <hr>
+
+                        <!-- Status Section -->
+                        <div class="row mb-4">
+                            <div class="col-md-6">
+                                <div class="info-box {% if qp_assignment.status == 'APPROVED' %}bg-success{% elif qp_assignment.status == 'SUBMITTED' or qp_assignment.status == 'UNDER_REVIEW' %}bg-info{% elif qp_assignment.status == 'REJECTED' %}bg-danger{% else %}bg-warning{% endif %}">
+                                    <span class="info-box-icon"><i class="fas fa-clipboard-check"></i></span>
+                                    <div class="info-box-content">
+                                        <span class="info-box-text">Current Status</span>
+                                        <span class="info-box-number">{{ qp_assignment.get_status_display }}</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="info-box bg-secondary">
+                                    <span class="info-box-icon"><i class="fas fa-calendar-alt"></i></span>
+                                    <div class="info-box-content">
+                                        <span class="info-box-text">Days Remaining</span>
+                                        <span class="info-box-number">
+                                            {% if qp_assignment.is_overdue %}
+                                            <span class="text-danger">Overdue</span>
+                                            {% elif qp_assignment.status == 'APPROVED' %}
+                                            Completed
+                                            {% else %}
+                                            {{ qp_assignment.days_remaining }} days
+                                            {% endif %}
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Instructions -->
+                        {% if qp_assignment.instructions %}
+                        <div class="callout callout-info">
+                            <h5><i class="fas fa-clipboard-list mr-2"></i>Instructions</h5>
+                            <p class="mb-0">{{ qp_assignment.instructions }}</p>
+                        </div>
+                        {% endif %}
+
+                        <!-- Submitted Files -->
+                        {% if qp_assignment.question_paper %}
+                        <div class="alert alert-success">
+                            <h5><i class="fas fa-file-alt mr-2"></i>Submitted Files</h5>
+                            <p class="mb-2"><strong>Submitted on:</strong> {{ qp_assignment.submitted_at|date:"d M Y, h:i A"|default:"N/A" }}</p>
+                            <a href="{{ qp_assignment.question_paper.url }}" class="btn btn-success" target="_blank">
+                                <i class="fas fa-download mr-1"></i> Download Question Paper
+                            </a>
+                            {% if qp_assignment.answer_key %}
+                            <a href="{{ qp_assignment.answer_key.url }}" class="btn btn-info ml-2" target="_blank">
+                                <i class="fas fa-download mr-1"></i> Download Answer Key
+                            </a>
+                            {% endif %}
+                        </div>
+                        {% else %}
+                        <div class="alert alert-warning">
+                            <i class="fas fa-exclamation-triangle mr-2"></i>
+                            You have not submitted the question paper yet.
+                        </div>
+                        {% endif %}
+
+                        <!-- Review Information -->
+                        {% if qp_assignment.status == 'APPROVED' or qp_assignment.status == 'REJECTED' %}
+                        <div class="callout callout-{% if qp_assignment.status == 'APPROVED' %}success{% else %}danger{% endif %}">
+                            <h5><i class="fas fa-comment-alt mr-2"></i>Review Feedback</h5>
+                            {% if qp_assignment.reviewed_at %}
+                            <p class="mb-1"><strong>Reviewed on:</strong> {{ qp_assignment.reviewed_at|date:"d M Y, h:i A" }}</p>
+                            {% endif %}
+                            {% if qp_assignment.reviewed_by %}
+                            <p class="mb-1"><strong>Reviewed by:</strong> {{ qp_assignment.reviewed_by.full_name }}</p>
+                            {% endif %}
+                            {% if qp_assignment.review_comments %}
+                            <p class="mb-0"><strong>Comments:</strong> {{ qp_assignment.review_comments }}</p>
+                            {% else %}
+                            <p class="mb-0 text-muted">No comments provided.</p>
+                            {% endif %}
+                        </div>
+                        {% endif %}
+
+                        <!-- Faculty Notes -->
+                        {% if qp_assignment.faculty_notes %}
+                        <div class="callout callout-secondary">
+                            <h5><i class="fas fa-sticky-note mr-2"></i>Your Notes</h5>
+                            <p class="mb-0">{{ qp_assignment.faculty_notes }}</p>
+                        </div>
+                        {% endif %}
+                    </div>
+                    <div class="card-footer">
+                        {% if qp_assignment.status != 'APPROVED' %}
+                        <a href="{% url 'staff_submit_question_paper' qp_assignment.id %}" class="btn btn-primary">
+                            <i class="fas fa-upload mr-1"></i> {% if qp_assignment.question_paper %}Resubmit{% else %}Submit{% endif %} Question Paper
+                        </a>
+                        {% endif %}
+                        <a href="{% url 'staff_view_qp_assignments' %}" class="btn btn-secondary">
+                            <i class="fas fa-arrow-left mr-1"></i> Back to List
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Sidebar -->
+            <div class="col-md-4">
+                <!-- Timeline -->
+                <div class="card card-info">
+                    <div class="card-header">
+                        <h3 class="card-title"><i class="fas fa-history mr-2"></i>Timeline</h3>
+                    </div>
+                    <div class="card-body">
+                        <div class="timeline timeline-inverse">
+                            <div class="time-label">
+                                <span class="bg-primary">Assigned</span>
+                            </div>
+                            <div>
+                                <i class="fas fa-plus bg-primary"></i>
+                                <div class="timeline-item">
+                                    <span class="time"><i class="far fa-clock"></i> {{ qp_assignment.created_at|date:"d M Y" }}</span>
+                                    <h3 class="timeline-header">Task Assigned</h3>
+                                    <div class="timeline-body">
+                                        Question paper task assigned to you
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            {% if qp_assignment.submitted_at %}
+                            <div class="time-label">
+                                <span class="bg-info">Submitted</span>
+                            </div>
+                            <div>
+                                <i class="fas fa-upload bg-info"></i>
+                                <div class="timeline-item">
+                                    <span class="time"><i class="far fa-clock"></i> {{ qp_assignment.submitted_at|date:"d M Y" }}</span>
+                                    <h3 class="timeline-header">Question Paper Submitted</h3>
+                                </div>
+                            </div>
+                            {% endif %}
+                            
+                            {% if qp_assignment.reviewed_at %}
+                            <div class="time-label">
+                                <span class="bg-{% if qp_assignment.status == 'APPROVED' %}success{% else %}danger{% endif %}">{{ qp_assignment.get_status_display }}</span>
+                            </div>
+                            <div>
+                                <i class="fas fa-{% if qp_assignment.status == 'APPROVED' %}check{% else %}times{% endif %} bg-{% if qp_assignment.status == 'APPROVED' %}success{% else %}danger{% endif %}"></i>
+                                <div class="timeline-item">
+                                    <span class="time"><i class="far fa-clock"></i> {{ qp_assignment.reviewed_at|date:"d M Y" }}</span>
+                                    <h3 class="timeline-header">Review Complete</h3>
+                                </div>
+                            </div>
+                            {% endif %}
+                            
+                            <div>
+                                <i class="far fa-clock bg-gray"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Deadline Card -->
+                <div class="card card-{% if qp_assignment.is_overdue %}danger{% elif qp_assignment.days_remaining <= 3 %}warning{% else %}success{% endif %}">
+                    <div class="card-header">
+                        <h3 class="card-title"><i class="fas fa-calendar-check mr-2"></i>Deadline</h3>
+                    </div>
+                    <div class="card-body text-center">
+                        <h2 class="mb-1">{{ qp_assignment.deadline|date:"d M Y" }}</h2>
+                        {% if qp_assignment.status == 'APPROVED' %}
+                        <p class="mb-0 text-success"><i class="fas fa-check-circle"></i> Completed</p>
+                        {% elif qp_assignment.is_overdue %}
+                        <p class="mb-0 text-danger"><i class="fas fa-exclamation-triangle"></i> Overdue!</p>
+                        {% elif qp_assignment.days_remaining == 0 %}
+                        <p class="mb-0 text-warning"><i class="fas fa-clock"></i> Due Today!</p>
+                        {% else %}
+                        <p class="mb-0"><i class="fas fa-clock"></i> {{ qp_assignment.days_remaining }} days remaining</p>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock content %}

@@ -1,0 +1,445 @@
+{% extends 'main_app/base.html' %}
+{% load static %}
+{% load custom_filters %}
+{% block page_title %}{{ page_title }}{% endblock page_title %}
+
+{% block custom_css %}
+<style>
+    .timetable-cell {
+        min-height: 80px;
+        cursor: pointer;
+        transition: all 0.2s;
+        position: relative;
+        vertical-align: middle;
+    }
+    .timetable-cell:hover {
+        background-color: #f0f7ff !important;
+    }
+    .timetable-cell.has-entry {
+        background-color: #e8f4fd;
+    }
+    .timetable-cell .course-code {
+        font-weight: bold;
+        font-size: 14px;
+        color: #007bff;
+    }
+    .timetable-cell .faculty-name {
+        font-size: 11px;
+        color: #666;
+        margin-top: 3px;
+    }
+    .timetable-cell .special-note {
+        font-style: italic;
+        color: #6c757d;
+    }
+    .timetable-cell .edit-btn {
+        position: absolute;
+        top: 2px;
+        right: 2px;
+        opacity: 0;
+        transition: opacity 0.2s;
+    }
+    .timetable-cell:hover .edit-btn {
+        opacity: 1;
+    }
+    .time-slot-header {
+        font-size: 11px;
+        white-space: nowrap;
+    }
+    .day-header {
+        background-color: #343a40;
+        color: white;
+        font-weight: bold;
+    }
+    .slot-header {
+        background-color: #6c757d;
+        color: white;
+        font-weight: bold;
+    }
+    .search-input {
+        width: 100%;
+    }
+    #faculty-results {
+        max-height: 200px;
+        overflow-y: auto;
+    }
+    .faculty-item {
+        cursor: pointer;
+        padding: 8px 12px;
+    }
+    .faculty-item:hover {
+        background-color: #f8f9fa;
+    }
+    .lunch-break {
+        background-color: #fffde7 !important;
+        font-style: italic;
+        color: #6c757d;
+    }
+</style>
+{% endblock custom_css %}
+
+{% block content %}
+<section class="content">
+    <div class="container-fluid">
+        <!-- Header -->
+        <div class="row mb-3">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header">
+                        <h3 class="card-title">
+                            <i class="fas fa-calendar-alt mr-2"></i>{{ page_title }}
+                        </h3>
+                        <div class="card-tools">
+                            <span class="badge badge-info mr-2">{{ timetable.academic_year }}</span>
+                            <span class="badge badge-primary mr-2">Semester {{ timetable.semester.semester_number }}</span>
+                            <span class="badge badge-success">Year {{ timetable.year }} - Batch {{ timetable.batch }}</span>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <strong>Effective From:</strong> {{ timetable.effective_from|date:"d M Y" }}
+                                {% if timetable.regulation %}
+                                | <strong>Regulation:</strong> {{ timetable.regulation }}
+                                {% endif %}
+                            </div>
+                            <div>
+                                <a href="{% url 'view_timetable' timetable.id %}" class="btn btn-info btn-sm mr-2">
+                                    <i class="fas fa-eye mr-1"></i> View Only
+                                </a>
+                                <a href="{% url 'manage_timetables' %}" class="btn btn-secondary btn-sm">
+                                    <i class="fas fa-arrow-left mr-1"></i> Back to List
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Instructions -->
+        <div class="alert alert-info">
+            <i class="fas fa-info-circle mr-2"></i>
+            <strong>Instructions:</strong> Click on any cell to add/edit the subject and teacher. 
+            Enter course code or select from dropdown, then search and select the faculty.
+        </div>
+
+        <!-- Timetable Grid -->
+        <div class="card">
+            <div class="card-body table-responsive p-0">
+                <table class="table table-bordered table-sm mb-0" id="timetable-grid">
+                    <thead>
+                        <tr>
+                            <th class="day-header" style="width: 100px;">Day</th>
+                            {% for slot in time_slots %}
+                            <th class="slot-header text-center">
+                                <div>Period {{ slot.slot_number }}</div>
+                                <div class="time-slot-header">{{ slot.start_time|time:"H:i" }} - {{ slot.end_time|time:"H:i" }}</div>
+                            </th>
+                            {% endfor %}
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for day_code, day_name in days %}
+                        <tr>
+                            <td class="day-header">{{ day_name }}</td>
+                            {% for slot in time_slots %}
+                            {% with entry_key=day_code|add:"_"|add:slot.slot_number|stringformat:"i" %}
+                            {% with entry=entry_lookup|default_if_none:"" %}
+                            <td class="timetable-cell {% if entry_lookup and entry_key in entry_lookup %}has-entry{% endif %}" 
+                                data-day="{{ day_code }}" 
+                                data-slot="{{ slot.slot_number }}"
+                                onclick="openEntryModal('{{ day_code }}', {{ slot.slot_number }})">
+                                {% if entry_lookup and entry_key in entry_lookup %}
+                                    {% with cell_entry=entry_lookup|get_item:entry_key %}
+                                    <div class="course-code">{{ cell_entry.display_text }}</div>
+                                    {% if cell_entry.faculty %}
+                                    <div class="faculty-name">{{ cell_entry.faculty.user.full_name }}</div>
+                                    {% endif %}
+                                    {% endwith %}
+                                {% else %}
+                                    <span class="text-muted">+</span>
+                                {% endif %}
+                                <button class="btn btn-xs btn-outline-primary edit-btn" type="button">
+                                    <i class="fas fa-edit"></i>
+                                </button>
+                            </td>
+                            {% endwith %}
+                            {% endwith %}
+                            {% endfor %}
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Course Legend -->
+        <div class="card mt-3">
+            <div class="card-header">
+                <h3 class="card-title"><i class="fas fa-book mr-2"></i>Available Courses (Year {{ timetable.year }})</h3>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    {% for course in courses %}
+                    <div class="col-md-4 col-lg-3 mb-2">
+                        <small><strong>{{ course.course_code }}</strong> - {{ course.title|truncatechars:30 }}</small>
+                    </div>
+                    {% empty %}
+                    <div class="col-12">
+                        <p class="text-muted">No courses found for this year.</p>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Entry Modal -->
+<div class="modal fade" id="entryModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="fas fa-edit mr-2"></i>Edit Entry - <span id="modal-day-slot"></span>
+                </h5>
+                <button type="button" class="close" data-dismiss="modal">
+                    <span>&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="entry-day">
+                <input type="hidden" id="entry-slot">
+                
+                <div class="form-group">
+                    <label>Course Code</label>
+                    <select class="form-control" id="entry-course">
+                        <option value="">-- Select Course or Leave Empty --</option>
+                        {% for course in courses %}
+                        <option value="{{ course.course_code }}">{{ course.course_code }} - {{ course.title }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label>Faculty</label>
+                    <input type="text" class="form-control" id="faculty-search" placeholder="Search faculty by name...">
+                    <input type="hidden" id="entry-faculty-id">
+                    <div id="selected-faculty" class="mt-2" style="display: none;">
+                        <span class="badge badge-primary" id="faculty-badge"></span>
+                        <button type="button" class="btn btn-xs btn-link text-danger" onclick="clearFaculty()">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                    <div id="faculty-results" class="list-group mt-2" style="display: none;"></div>
+                </div>
+                
+                <div class="form-group">
+                    <label>Special Note (Optional)</label>
+                    <input type="text" class="form-control" id="entry-special-note" 
+                           placeholder="e.g., GFL, SFL, Open Elective, Lab-MBA">
+                    <small class="text-muted">Use for special classes that don't have a course code</small>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-danger" onclick="deleteEntry()">
+                    <i class="fas fa-trash mr-1"></i> Clear
+                </button>
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" onclick="saveEntry()">
+                    <i class="fas fa-save mr-1"></i> Save
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock content %}
+
+{% block custom_js %}
+<script>
+const timetableId = {{ timetable.id }};
+const dayNames = {
+    'MON': 'Monday',
+    'TUE': 'Tuesday', 
+    'WED': 'Wednesday',
+    'THU': 'Thursday',
+    'FRI': 'Friday'
+};
+
+// Store current entries
+let currentEntries = {};
+{% for key, entry in entry_lookup.items %}
+currentEntries['{{ key }}'] = {
+    course_code: '{{ entry.course.course_code|default:"" }}',
+    faculty_id: {{ entry.faculty.id|default:"null" }},
+    faculty_name: '{{ entry.faculty.user.full_name|default:"" }}',
+    special_note: '{{ entry.special_note|default:"" }}'
+};
+{% endfor %}
+
+function openEntryModal(day, slot) {
+    const key = day + '_' + slot;
+    const entry = currentEntries[key] || {};
+    
+    $('#entry-day').val(day);
+    $('#entry-slot').val(slot);
+    $('#modal-day-slot').text(dayNames[day] + ' - Period ' + slot);
+    
+    $('#entry-course').val(entry.course_code || '');
+    $('#entry-faculty-id').val(entry.faculty_id || '');
+    $('#entry-special-note').val(entry.special_note || '');
+    $('#faculty-search').val('');
+    
+    if (entry.faculty_name) {
+        $('#faculty-badge').text(entry.faculty_name);
+        $('#selected-faculty').show();
+    } else {
+        $('#selected-faculty').hide();
+    }
+    
+    $('#faculty-results').hide();
+    $('#entryModal').modal('show');
+}
+
+// Faculty search
+let searchTimeout;
+$('#faculty-search').on('input', function() {
+    const search = $(this).val();
+    clearTimeout(searchTimeout);
+    
+    if (search.length < 2) {
+        $('#faculty-results').hide();
+        return;
+    }
+    
+    searchTimeout = setTimeout(function() {
+        $.get('{% url "get_all_faculty" %}', {search: search}, function(data) {
+            let html = '';
+            data.faculty.forEach(function(f) {
+                html += `<a href="#" class="list-group-item list-group-item-action faculty-item" 
+                           onclick="selectFaculty(${f.id}, '${f.name}'); return false;">
+                           <strong>${f.name}</strong> <small class="text-muted">(${f.staff_id})</small>
+                         </a>`;
+            });
+            if (!html) {
+                html = '<div class="list-group-item text-muted">No faculty found</div>';
+            }
+            $('#faculty-results').html(html).show();
+        });
+    }, 300);
+});
+
+function selectFaculty(id, name) {
+    $('#entry-faculty-id').val(id);
+    $('#faculty-badge').text(name);
+    $('#selected-faculty').show();
+    $('#faculty-search').val('');
+    $('#faculty-results').hide();
+}
+
+function clearFaculty() {
+    $('#entry-faculty-id').val('');
+    $('#selected-faculty').hide();
+}
+
+function saveEntry() {
+    const day = $('#entry-day').val();
+    const slot = $('#entry-slot').val();
+    const courseCode = $('#entry-course').val();
+    const facultyId = $('#entry-faculty-id').val();
+    const specialNote = $('#entry-special-note').val();
+    
+    $.ajax({
+        url: '{% url "save_timetable_entry" %}',
+        method: 'POST',
+        contentType: 'application/json',
+        data: JSON.stringify({
+            timetable_id: timetableId,
+            day: day,
+            slot_number: parseInt(slot),
+            course_code: courseCode,
+            faculty_id: facultyId ? parseInt(facultyId) : null,
+            special_note: specialNote
+        }),
+        success: function(response) {
+            if (response.success) {
+                // Update cell display
+                const cell = $(`td[data-day="${day}"][data-slot="${slot}"]`);
+                let html = '';
+                
+                if (response.display_text) {
+                    html = `<div class="course-code">${response.display_text}</div>`;
+                    if (response.faculty_name) {
+                        html += `<div class="faculty-name">${response.faculty_name}</div>`;
+                    }
+                    cell.addClass('has-entry');
+                } else {
+                    html = '<span class="text-muted">+</span>';
+                    cell.removeClass('has-entry');
+                }
+                
+                html += '<button class="btn btn-xs btn-outline-primary edit-btn" type="button"><i class="fas fa-edit"></i></button>';
+                cell.html(html);
+                
+                // Update local cache
+                currentEntries[day + '_' + slot] = {
+                    course_code: courseCode,
+                    faculty_id: facultyId ? parseInt(facultyId) : null,
+                    faculty_name: response.faculty_name || '',
+                    special_note: specialNote
+                };
+                
+                $('#entryModal').modal('hide');
+                toastr.success('Entry saved successfully!');
+            } else {
+                toastr.error('Failed to save entry');
+            }
+        },
+        error: function(xhr) {
+            toastr.error('Error saving entry: ' + (xhr.responseJSON?.error || 'Unknown error'));
+        }
+    });
+}
+
+function deleteEntry() {
+    const day = $('#entry-day').val();
+    const slot = $('#entry-slot').val();
+    
+    if (!confirm('Are you sure you want to clear this entry?')) return;
+    
+    $.ajax({
+        url: '{% url "delete_timetable_entry" %}',
+        method: 'POST',
+        contentType: 'application/json',
+        data: JSON.stringify({
+            timetable_id: timetableId,
+            day: day,
+            slot_number: parseInt(slot)
+        }),
+        success: function(response) {
+            if (response.success) {
+                const cell = $(`td[data-day="${day}"][data-slot="${slot}"]`);
+                cell.removeClass('has-entry');
+                cell.html('<span class="text-muted">+</span><button class="btn btn-xs btn-outline-primary edit-btn" type="button"><i class="fas fa-edit"></i></button>');
+                
+                delete currentEntries[day + '_' + slot];
+                
+                $('#entryModal').modal('hide');
+                toastr.success('Entry cleared!');
+            }
+        },
+        error: function(xhr) {
+            toastr.error('Error: ' + (xhr.responseJSON?.error || 'Unknown error'));
+        }
+    });
+}
+
+// Close faculty results when clicking outside
+$(document).click(function(e) {
+    if (!$(e.target).closest('#faculty-search, #faculty-results').length) {
+        $('#faculty-results').hide();
+    }
+});
+</script>
+{% endblock custom_js %}

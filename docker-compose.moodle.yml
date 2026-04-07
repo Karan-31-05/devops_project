@@ -1,0 +1,72 @@
+# =============================================================================
+# Moodle LMS + MariaDB for College ERP Integration
+# =============================================================================
+# Usage:
+#   docker compose -f docker-compose.moodle.yml up -d
+#
+# Moodle:  http://localhost:8080
+# Admin:   admin / Admin@1234
+#
+# First boot takes ~5 min (Moodle install + DB setup).
+# After first boot, run:   python setup_moodle.py
+# =============================================================================
+
+services:
+  moodle-db:
+    image: mariadb:11
+    container_name: moodle-db
+    environment:
+      MARIADB_ROOT_PASSWORD: root_pass_123
+      MARIADB_DATABASE: moodle
+      MARIADB_USER: moodle_user
+      MARIADB_PASSWORD: moodle_pass
+    command: >
+      --character-set-server=utf8mb4
+      --collation-server=utf8mb4_unicode_ci
+      --innodb-file-per-table=1
+      --innodb-buffer-pool-size=256M
+    volumes:
+      - moodle_db_data:/var/lib/mysql
+    ports:
+      - '3307:3306'
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--su-mysql", "--connect", "--innodb_initialized"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+    restart: unless-stopped
+
+  moodle:
+    build:
+      context: ./moodle
+      dockerfile: Dockerfile
+    container_name: moodle
+    depends_on:
+      moodle-db:
+        condition: service_healthy
+    environment:
+      MOODLE_URL: "http://localhost:8080"
+      MOODLE_DB_HOST: moodle-db
+      MOODLE_DB_PORT: 3306
+      MOODLE_DB_NAME: moodle
+      MOODLE_DB_USER: moodle_user
+      MOODLE_DB_PASS: moodle_pass
+      MOODLE_ADMIN_USER: admin
+      MOODLE_ADMIN_PASS: "Admin@1234"
+      MOODLE_ADMIN_EMAIL: admin@college.edu
+      MOODLE_SITE_NAME: "CSE Department LMS"
+      MOODLE_SITE_SHORT: "CSE-LMS"
+    volumes:
+      - moodle_data:/var/www/html
+      - moodle_moodledata:/var/www/moodledata
+    ports:
+      - '8080:80'
+    restart: unless-stopped
+
+volumes:
+  moodle_db_data:
+    driver: local
+  moodle_data:
+    driver: local
+  moodle_moodledata:
+    driver: local

@@ -1,0 +1,66 @@
+{% extends 'main_app/base.html' %}
+{% load static %}
+{% block page_title %}{{page_title}}{% endblock page_title %}
+
+{% block content %}
+
+<section class="content">
+    <div class="container-fluid">
+        <div class="row">
+            <div class="col-md-12">
+                <div class="card">
+                    <div class="card-header">
+                        <h3 class="card-title">{{page_title}}</h3>
+                    </div>
+                    <!-- /.card-header -->
+                    <div class="card-body">
+                        {% if messages %}
+                            {% for message in messages %}
+                                <div class="alert alert-{% if message.tags %}{{ message.tags }}{% else %}info{% endif %} alert-dismissible fade show" role="alert">
+                                    {{ message }}
+                                    <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                                        <span aria-hidden="true">&times;</span>
+                                    </button>
+                                </div>
+                            {% endfor %}
+                        {% endif %}
+
+                        {% if registrations %}
+                            <table id="example2" class="table table-bordered table-hover">
+                                <thead class="thead-dark">
+                                    <tr>
+                                        <th>#</th>
+                                        <th>Event Title</th>
+                                        <th>Date & Time</th>
+                                        <th>Location</th>
+                                        <th>Registered On</th>
+                                        <th>Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for registration in registrations %}
+                                    <tr>
+                                        <td>{{ forloop.counter }}</td>
+                                        <td>{{ registration.event.title }}</td>
+                                        <td>{{ registration.event.start_datetime|date:"d-m-Y H:i" }}</td>
+                                        <td>{{ registration.event.venue }}</td>
+                                        <td>{{ registration.registration_time|date:"d-m-Y H:i" }}</td>
+                                        <td>
+                                            <a href="{% url 'unregister_event' registration.event.id %}" class="btn btn-danger btn-sm" onclick="return confirm('Are you sure about this?')">Unregister</a>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        {% else %}
+                            <div class="alert alert-info" role="alert">
+                                You are not registered for any events yet. <a href="{% url 'view_events' %}">Browse events</a>
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock content %}

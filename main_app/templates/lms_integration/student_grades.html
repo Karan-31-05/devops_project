@@ -1,0 +1,67 @@
+{% extends 'main_app/base.html' %}
+{% load static %}
+{% block page_title %}{{ page_title }}{% endblock page_title %}
+
+{% block content %}
+<section class="content">
+<div class="container-fluid">
+    <div class="card card-dark">
+        <div class="card-header">
+            <h3 class="card-title"><i class="fas fa-chart-bar mr-2"></i>My Moodle Grades</h3>
+            <div class="card-tools">
+                <a href="{% url 'lms_student_courses' %}" class="btn btn-tool">
+                    <i class="fas fa-arrow-left"></i> My Courses
+                </a>
+            </div>
+        </div>
+        <div class="card-body">
+            {% if grades %}
+            <div class="table-responsive">
+                <table class="table table-hover table-striped">
+                    <thead>
+                        <tr>
+                            <th>Course</th>
+                            <th>Grade Item</th>
+                            <th>Grade</th>
+                            <th>Max</th>
+                            <th>Percentage</th>
+                            <th>Last Updated</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for g in grades %}
+                        <tr>
+                            <td>
+                                <strong>{{ g.course_mapping.course_assignment.course.course_code }}</strong>
+                                – {{ g.course_mapping.course_assignment.course.title|truncatewords:5 }}
+                            </td>
+                            <td>{{ g.item_name }}</td>
+                            <td><strong>{{ g.grade|default:"—" }}</strong></td>
+                            <td>{{ g.grade_max|default:"—" }}</td>
+                            <td>
+                                {% if g.percentage %}
+                                <div class="progress" style="min-width:80px;">
+                                    <div class="progress-bar {% if g.percentage >= 60 %}bg-success{% elif g.percentage >= 40 %}bg-warning{% else %}bg-danger{% endif %}" 
+                                         style="width:{{ g.percentage }}%">
+                                        {{ g.percentage }}%
+                                    </div>
+                                </div>
+                                {% else %}—{% endif %}
+                            </td>
+                            <td>{{ g.last_fetched|date:"M d, H:i" }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="text-center text-muted py-5">
+                <i class="fas fa-chart-bar fa-3x mb-3"></i>
+                <p>No grades available yet. Grades will appear here after your faculty grades your work in Moodle and the HOD pulls grades.</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+</section>
+{% endblock content %}

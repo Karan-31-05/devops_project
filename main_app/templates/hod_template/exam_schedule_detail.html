@@ -1,0 +1,209 @@
+{% extends 'main_app/base.html' %}
+{% load static %}
+{% block page_title %}{{page_title}}{% endblock page_title %}
+
+{% block content %}
+<section class="content">
+    <div class="container-fluid">
+        <!-- Exam Info Card -->
+        <div class="row">
+            <div class="col-md-12">
+                <div class="card">
+                    <div class="card-header">
+                        <h3 class="card-title">
+                            <i class="fas fa-calendar-alt"></i> Exam Schedule Details
+                        </h3>
+                        <div class="card-tools">
+                            {% if schedule.is_editable %}
+                            <a href="{% url 'edit_exam_schedule' schedule.id %}" class="btn btn-warning btn-sm">
+                                <i class="fas fa-edit"></i> Edit Schedule
+                            </a>
+                            {% endif %}
+                            <a href="{% url 'manage_exam_schedules' %}" class="btn btn-secondary btn-sm">
+                                <i class="fas fa-arrow-left"></i> Back
+                            </a>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <h5>Course Information</h5>
+                                <table class="table table-bordered">
+                                    <tr>
+                                        <th>Course Code</th>
+                                        <td>{{ schedule.structured_qp.course.course_code }}</td>
+                                    </tr>
+                                    <tr>
+                                        <th>Course Title</th>
+                                        <td>{{ schedule.structured_qp.course.title }}</td>
+                                    </tr>
+                                    <tr>
+                                        <th>Prepared By</th>
+                                        <td>{{ schedule.structured_qp.faculty.user.full_name }}</td>
+                                    </tr>
+                                    <tr>
+                                        <th>Exam Period</th>
+                                        <td>{{ schedule.structured_qp.exam_month_year }}</td>
+                                    </tr>
+                                </table>
+                            </div>
+                            <div class="col-md-6">
+                                <h5>Schedule Information</h5>
+                                <table class="table table-bordered">
+                                    <tr>
+                                        <th>Exam Date</th>
+                                        <td>{{ schedule.exam_date|date:"l, d F Y" }}</td>
+                                    </tr>
+                                    <tr>
+                                        <th>Time</th>
+                                        <td>{{ schedule.start_time|time:"H:i" }} - {{ schedule.end_time|time:"H:i" }}</td>
+                                    </tr>
+                                    <tr>
+                                        <th>Duration</th>
+                                        <td>{{ schedule.duration_minutes }} minutes</td>
+                                    </tr>
+                                    <tr>
+                                        <th>Venue</th>
+                                        <td>{{ schedule.venue|default:"Not specified" }}</td>
+                                    </tr>
+                                    <tr>
+                                        <th>Batch Labels</th>
+                                        <td>{{ schedule.batch_labels }}</td>
+                                    </tr>
+                                    <tr>
+                                        <th>Status</th>
+                                        <td>
+                                            {% if schedule.status == 'SCHEDULED' %}
+                                            <span class="badge badge-info badge-lg">{{ schedule.get_status_display }}</span>
+                                            {% elif schedule.status == 'ONGOING' %}
+                                            <span class="badge badge-warning badge-lg">{{ schedule.get_status_display }}</span>
+                                            {% elif schedule.status == 'COMPLETED' %}
+                                            <span class="badge badge-success badge-lg">{{ schedule.get_status_display }}</span>
+                                            {% else %}
+                                            <span class="badge badge-danger badge-lg">{{ schedule.get_status_display }}</span>
+                                            {% endif %}
+                                        </td>
+                                    </tr>
+                                </table>
+                            </div>
+                        </div>
+
+                        <!-- Release Status -->
+                        <div class="row mt-3">
+                            <div class="col-md-12">
+                                <h5>Release Settings</h5>
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <div class="info-box {% if schedule.is_qp_released %}bg-success{% else %}bg-secondary{% endif %}">
+                                            <span class="info-box-icon">
+                                                <i class="fas fa-file-alt"></i>
+                                            </span>
+                                            <div class="info-box-content">
+                                                <span class="info-box-text">Question Paper</span>
+                                                <span class="info-box-number">
+                                                    {% if schedule.is_qp_released %}
+                                                    Released to Students
+                                                    {% elif schedule.release_qp_after_exam %}
+                                                    Will release after exam
+                                                    {% else %}
+                                                    Not set to release
+                                                    {% endif %}
+                                                </span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="info-box {% if schedule.is_answers_released %}bg-success{% else %}bg-secondary{% endif %}">
+                                            <span class="info-box-icon">
+                                                <i class="fas fa-key"></i>
+                                            </span>
+                                            <div class="info-box-content">
+                                                <span class="info-box-text">Answer Key</span>
+                                                <span class="info-box-number">
+                                                    {% if schedule.is_answers_released %}
+                                                    Released to Students
+                                                    {% elif schedule.release_answers_after_exam %}
+                                                    Will release after exam
+                                                    {% else %}
+                                                    Not set to release
+                                                    {% endif %}
+                                                </span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Action Buttons -->
+                        <div class="row mt-3">
+                            <div class="col-md-12">
+                                {% if schedule.status == 'ONGOING' %}
+                                <form method="post" action="{% url 'mark_exam_completed' schedule.id %}" style="display:inline;">
+                                    {% csrf_token %}
+                                    <button type="submit" class="btn btn-success" onclick="return confirm('Mark exam as completed? QP and answers will be released to students based on settings.')">
+                                        <i class="fas fa-check-circle"></i> Mark Exam as Completed
+                                    </button>
+                                </form>
+                                {% endif %}
+                                {% if schedule.status == 'SCHEDULED' %}
+                                <form method="post" action="{% url 'cancel_exam_schedule' schedule.id %}" style="display:inline;">
+                                    {% csrf_token %}
+                                    <button type="submit" class="btn btn-danger" onclick="return confirm('Are you sure you want to cancel this exam?')">
+                                        <i class="fas fa-times-circle"></i> Cancel Exam
+                                    </button>
+                                </form>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Questions Preview -->
+        <div class="row">
+            <div class="col-md-12">
+                <div class="card">
+                    <div class="card-header">
+                        <h3 class="card-title">
+                            <i class="fas fa-list-ol"></i> Question Paper Preview
+                        </h3>
+                    </div>
+                    <div class="card-body">
+                        {% for part_label, part_name in "A:Part A - Short Answer|B:Part B - Descriptive|C:Part C - Problem Solving"|split:"|" %}
+                        {% with part_code=part_label|slice:":1" %}
+                        <h5 class="mt-3">{{ part_name|slice:"2:" }}</h5>
+                        <table class="table table-bordered table-sm">
+                            <thead class="thead-light">
+                                <tr>
+                                    <th width="5%">Q.No</th>
+                                    <th>Question</th>
+                                    <th width="8%">CO</th>
+                                    <th width="8%">Bloom</th>
+                                    <th width="8%">Marks</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for question in questions %}
+                                {% if question.part == part_code %}
+                                <tr>
+                                    <td>{{ question.question_number }}{{ question.option_label }}</td>
+                                    <td>{{ question.question_text|truncatewords:30 }}</td>
+                                    <td>{{ question.course_outcome }}</td>
+                                    <td>{{ question.bloom_level }}</td>
+                                    <td>{{ question.marks }}</td>
+                                </tr>
+                                {% endif %}
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                        {% endwith %}
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock content %}

@@ -1,0 +1,309 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>First Time Login - CSE Department ERP</title>
+    <link rel="stylesheet" href="{% static 'plugins/fontawesome-free/css/all.min.css' %}">
+    <link rel="stylesheet" href="{% static 'plugins/icheck-bootstrap/icheck-bootstrap.min.css' %}">
+    <link rel="stylesheet" href="{% static 'dist/css/adminlte.min.css' %}">
+    <link rel="stylesheet" href="{% static 'plugins/sweetalert2-theme-bootstrap-4/bootstrap-4.min.css' %}">
+    <style>
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+        .login-box {
+            width: 420px;
+        }
+        .card {
+            border-radius: 15px;
+            box-shadow: 0 15px 35px rgba(0,0,0,0.2);
+        }
+        .card-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 15px 15px 0 0 !important;
+            padding: 20px;
+        }
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border: none;
+        }
+        .btn-primary:hover {
+            background: linear-gradient(135deg, #5a6fd6 0%, #6a4190 100%);
+        }
+        .otp-input {
+            letter-spacing: 15px;
+            font-size: 24px;
+            text-align: center;
+            font-weight: bold;
+        }
+        #step2, #step3 {
+            display: none;
+        }
+        .step-indicator {
+            display: flex;
+            justify-content: center;
+            margin-bottom: 20px;
+        }
+        .step {
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            background: #e0e0e0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 10px;
+            font-weight: bold;
+            color: #666;
+        }
+        .step.active {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        .step.completed {
+            background: #28a745;
+            color: white;
+        }
+    </style>
+</head>
+<body class="hold-transition login-page">
+    <div class="login-box">
+        <div class="card">
+            <div class="card-header text-center">
+                <h4 class="text-white mb-0"><i class="fas fa-user-graduate mr-2"></i>Student First Time Login</h4>
+            </div>
+            <div class="card-body">
+                <!-- Step Indicator -->
+                <div class="step-indicator">
+                    <div class="step active" id="step1-indicator">1</div>
+                    <div class="step" id="step2-indicator">2</div>
+                    <div class="step" id="step3-indicator">3</div>
+                </div>
+
+                <!-- Step 1: Enter Register Number -->
+                <div id="step1">
+                    <p class="login-box-msg">Enter your Register Number to receive OTP on your college email</p>
+                    <form id="registerForm">
+                        {% csrf_token %}
+                        <div class="input-group mb-3">
+                            <input type="text" class="form-control" id="register_no" name="register_no" 
+                                   placeholder="10-digit Register Number" maxlength="10" pattern="\d{10}" required>
+                            <div class="input-group-append">
+                                <div class="input-group-text">
+                                    <span class="fas fa-id-card"></span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-12">
+                                <button type="submit" class="btn btn-primary btn-block" id="sendOtpBtn">
+                                    <i class="fas fa-paper-plane mr-2"></i>Send OTP
+                                </button>
+                            </div>
+                        </div>
+                    </form>
+                    <p class="mt-3 mb-1 text-muted text-center small">
+                        OTP will be sent to: <strong>&lt;register_no&gt;@student.annauniv.edu</strong>
+                    </p>
+                </div>
+
+                <!-- Step 2: Enter OTP -->
+                <div id="step2">
+                    <p class="login-box-msg">Enter the 6-digit OTP sent to your college email</p>
+                    <form id="otpForm">
+                        {% csrf_token %}
+                        <input type="hidden" id="otp_register_no" name="register_no">
+                        <div class="input-group mb-3">
+                            <input type="text" class="form-control otp-input" id="otp" name="otp" 
+                                   placeholder="------" maxlength="6" pattern="\d{6}" required>
+                            <div class="input-group-append">
+                                <div class="input-group-text">
+                                    <span class="fas fa-key"></span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-6">
+                                <button type="button" class="btn btn-secondary btn-block" id="resendOtpBtn" disabled>
+                                    Resend <span id="countdown"></span>
+                                </button>
+                            </div>
+                            <div class="col-6">
+                                <button type="submit" class="btn btn-primary btn-block" id="verifyOtpBtn">
+                                    <i class="fas fa-check mr-2"></i>Verify
+                                </button>
+                            </div>
+                        </div>
+                    </form>
+                    <p class="mt-3 mb-1">
+                        <a href="#" id="backToStep1"><i class="fas fa-arrow-left mr-1"></i>Change Register Number</a>
+                    </p>
+                </div>
+
+                <!-- Success Message -->
+                <div id="step3">
+                    <div class="text-center">
+                        <i class="fas fa-check-circle text-success" style="font-size: 60px;"></i>
+                        <h4 class="mt-3">OTP Verified!</h4>
+                        <p>Redirecting to set your password...</p>
+                    </div>
+                </div>
+
+                <hr>
+                <p class="mb-0 text-center">
+                    <a href="{% url 'login_page' %}" class="text-center">
+                        <i class="fas fa-sign-in-alt mr-1"></i>Already have password? Login here
+                    </a>
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <script src="{% static 'plugins/jquery/jquery.min.js' %}"></script>
+    <script src="{% static 'plugins/bootstrap/js/bootstrap.bundle.min.js' %}"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script>
+        let countdownTimer;
+        
+        // Step 1: Send OTP
+        $('#registerForm').on('submit', function(e) {
+            e.preventDefault();
+            const registerNo = $('#register_no').val().trim();
+            
+            if (registerNo.length !== 10 || !/^\d+$/.test(registerNo)) {
+                Swal.fire('Error', 'Please enter a valid 10-digit register number', 'error');
+                return;
+            }
+            
+            $('#sendOtpBtn').prop('disabled', true).html('<i class="fas fa-spinner fa-spin mr-2"></i>Sending...');
+            
+            $.ajax({
+                url: '{% url "send_student_otp" %}',
+                method: 'POST',
+                data: {
+                    register_no: registerNo,
+                    csrfmiddlewaretoken: '{{ csrf_token }}'
+                },
+                success: function(response) {
+                    Swal.fire('Success', response.message, 'success');
+                    $('#otp_register_no').val(registerNo);
+                    showStep(2);
+                    startCountdown(60);
+                },
+                error: function(xhr) {
+                    const error = xhr.responseJSON?.error || 'Failed to send OTP';
+                    Swal.fire('Error', error, 'error');
+                    if (xhr.responseJSON?.redirect) {
+                        setTimeout(() => window.location.href = xhr.responseJSON.redirect, 2000);
+                    }
+                },
+                complete: function() {
+                    $('#sendOtpBtn').prop('disabled', false).html('<i class="fas fa-paper-plane mr-2"></i>Send OTP');
+                }
+            });
+        });
+        
+        // Step 2: Verify OTP
+        $('#otpForm').on('submit', function(e) {
+            e.preventDefault();
+            const otp = $('#otp').val().trim();
+            const registerNo = $('#otp_register_no').val();
+            
+            if (otp.length !== 6 || !/^\d+$/.test(otp)) {
+                Swal.fire('Error', 'Please enter a valid 6-digit OTP', 'error');
+                return;
+            }
+            
+            $('#verifyOtpBtn').prop('disabled', true).html('<i class="fas fa-spinner fa-spin mr-2"></i>Verifying...');
+            
+            $.ajax({
+                url: '{% url "verify_student_otp" %}',
+                method: 'POST',
+                data: {
+                    register_no: registerNo,
+                    otp: otp,
+                    csrfmiddlewaretoken: '{{ csrf_token }}'
+                },
+                success: function(response) {
+                    showStep(3);
+                    setTimeout(() => {
+                        window.location.href = response.redirect;
+                    }, 1500);
+                },
+                error: function(xhr) {
+                    const error = xhr.responseJSON?.error || 'Invalid OTP';
+                    Swal.fire('Error', error, 'error');
+                },
+                complete: function() {
+                    $('#verifyOtpBtn').prop('disabled', false).html('<i class="fas fa-check mr-2"></i>Verify');
+                }
+            });
+        });
+        
+        // Resend OTP
+        $('#resendOtpBtn').on('click', function() {
+            const registerNo = $('#otp_register_no').val();
+            $(this).prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i>');
+            
+            $.ajax({
+                url: '{% url "send_student_otp" %}',
+                method: 'POST',
+                data: {
+                    register_no: registerNo,
+                    csrfmiddlewaretoken: '{{ csrf_token }}'
+                },
+                success: function(response) {
+                    Swal.fire('Success', 'OTP resent successfully', 'success');
+                    startCountdown(60);
+                },
+                error: function(xhr) {
+                    const error = xhr.responseJSON?.error || 'Failed to resend OTP';
+                    Swal.fire('Error', error, 'error');
+                    $('#resendOtpBtn').prop('disabled', false).html('Resend');
+                }
+            });
+        });
+        
+        // Back to Step 1
+        $('#backToStep1').on('click', function(e) {
+            e.preventDefault();
+            showStep(1);
+            clearInterval(countdownTimer);
+        });
+        
+        function showStep(step) {
+            $('#step1, #step2, #step3').hide();
+            $('#step' + step).show();
+            
+            // Update indicators
+            for (let i = 1; i <= 3; i++) {
+                const indicator = $('#step' + i + '-indicator');
+                indicator.removeClass('active completed');
+                if (i < step) indicator.addClass('completed');
+                else if (i === step) indicator.addClass('active');
+            }
+        }
+        
+        function startCountdown(seconds) {
+            let remaining = seconds;
+            $('#resendOtpBtn').prop('disabled', true);
+            
+            countdownTimer = setInterval(() => {
+                remaining--;
+                if (remaining > 0) {
+                    $('#countdown').text('(' + remaining + 's)');
+                } else {
+                    clearInterval(countdownTimer);
+                    $('#resendOtpBtn').prop('disabled', false).html('Resend OTP');
+                    $('#countdown').text('');
+                }
+            }, 1000);
+            
+            $('#countdown').text('(' + remaining + 's)');
+        }
+    </script>
+</body>
+</html>

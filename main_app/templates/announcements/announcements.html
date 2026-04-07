@@ -1,0 +1,175 @@
+{% extends 'main_app/base.html' %}
+{% load static %}
+{% block page_title %}{{page_title}}{% endblock page_title %}
+{% block content %}
+
+<section class="content">
+  <div class="container-fluid">
+
+
+    <!-- ✅ CIR Ticker Announcements (Yellow bar content) -->
+<div class="row">
+  <div class="col-lg-12">
+
+    <div class="card card-warning">
+      <div class="card-header">
+        <h3 class="card-title">
+          <i class="fas fa-bell mr-2"></i>
+          CIR: Announcements
+        </h3>
+      </div>
+
+      <div class="card-body">
+
+        {% if cir_ticker %}
+          <ul class="list-group">
+            {% for item in cir_ticker %}
+              <li class="list-group-item d-flex justify-content-between align-items-center">
+                <span>
+                  {{ item.text }}
+                </span>
+
+                <a href="{{ item.url }}" target="_blank" class="btn btn-sm btn-warning">
+                  <i class="fas fa-external-link-alt mr-1"></i>
+                  Open
+                </a>
+              </li>
+            {% endfor %}
+          </ul>
+        {% else %}
+          <div class="alert alert-warning mb-0">
+            No CIR ticker announcements found.
+          </div>
+        {% endif %}
+
+      </div>
+    </div>
+
+  </div>
+</div>
+<!-- ✅ END CIR Ticker -->
+
+
+<!-- ✅ CIR News & Updates (Cards from News & Events section) -->
+<div class="row">
+  <div class="col-lg-12">
+
+    <div class="card card-warning">
+      <div class="card-header">
+        <h3 class="card-title">
+          <i class="fas fa-newspaper mr-2"></i>
+          CIR: News & Events
+        </h3>
+      </div>
+
+      <div class="card-body">
+
+        {% if cir_news %}
+          <div class="row">
+
+            {% for item in cir_news %}
+              <div class="col-lg-4 col-md-6 mb-3">
+                <div class="card h-100" style="border: 1px solid #eee;">
+
+                  {% if item.image %}
+                    <img src="{{ item.image }}"
+                         alt="CIR News"
+                         class="card-img-top"
+                         style="height: 180px; object-fit: cover;">
+                  {% endif %}
+
+                  <div class="card-body">
+
+                    <h6 class="mb-2" style="font-weight: 700;">
+                      {{ item.title }}
+                    </h6>
+
+                    {% if item.date %}
+                      <span class="badge badge-warning mb-2">
+                        <i class="far fa-calendar-alt mr-1"></i>
+                        {{ item.date }}
+                      </span>
+                    {% endif %}
+
+                    <p class="text-muted mb-2" style="font-size: 13px;">
+                      {{ item.link_text }}
+                    </p>
+
+                    {% if item.url %}
+                      <a href="{{ item.url }}" target="_blank" class="btn btn-sm btn-warning">
+                        <i class="fas fa-external-link-alt mr-1"></i>
+                        View PDF
+                      </a>
+                    {% endif %}
+
+                  </div>
+
+                </div>
+              </div>
+            {% endfor %}
+
+          </div>
+        {% else %}
+          <div class="alert alert-warning mb-0">
+            CIR News not available right now.
+          </div>
+        {% endif %}
+
+      </div>
+    </div>
+
+  </div>
+</div>
+<!-- ✅ END CIR News -->
+
+    <!-- ACOE Updates Card -->
+    <div class="row">
+      <div class="col-lg-12">
+
+        <div class="card card-primary">
+          <div class="card-header">
+            <h3 class="card-title">
+              <i class="fas fa-bullhorn mr-2"></i>
+              ACOE Important Updates
+            </h3>
+          </div>
+
+          <div class="card-body">
+
+            {% if acoe_updates %}
+              {% for item in acoe_updates %}
+                <div class="callout callout-info">
+                  <p style="margin-bottom: 8px;">
+                    {{ item.message }}
+                  </p>
+
+                  {% if item.link_url %}
+                    <a href="{{ item.link_url }}" target="_blank" class="btn btn-sm btn-primary">
+                      <i class="fas fa-external-link-alt mr-1"></i>
+                      {{ item.link_text }}
+                    </a>
+                  {% endif %}
+
+                  <div class="mt-2">
+                    <small class="text-muted">Source: {{ item.source }}</small>
+                  </div>
+                </div>
+              {% endfor %}
+            {% else %}
+              <div class="alert alert-warning">
+                <i class="fas fa-exclamation-triangle mr-2"></i>
+                No updates found from ACOE right now.
+              </div>
+            {% endif %}
+
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+  </div>
+</section>
+
+
+{% endblock content %}

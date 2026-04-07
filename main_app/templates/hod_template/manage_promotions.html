@@ -1,0 +1,531 @@
+{% extends 'main_app/base.html' %}
+{% load static %}
+{% block page_title %}{{ page_title }}{% endblock page_title %}
+
+{% block content %}
+<section class="content">
+    <div class="container-fluid">
+        
+        <!-- Alert for overdue promotions -->
+        {% if overdue_count > 0 %}
+        <div class="alert alert-warning alert-dismissible">
+            <button type="button" class="close" data-dismiss="alert" aria-hidden="true">×</button>
+            <h5><i class="icon fas fa-exclamation-triangle"></i> Pending Promotions!</h5>
+            <strong>{{ overdue_count }}</strong> promotion schedule(s) are overdue. 
+            Consider running auto-promotion or manually promoting students.
+        </div>
+        {% endif %}
+        
+        <!-- Summary Cards -->
+        <div class="row">
+            {% for sem, count in students_by_sem.items %}
+            <div class="col-lg-3 col-6">
+                <div class="small-box {% if sem == 8 %}bg-success{% elif sem|divisibleby:2 %}bg-info{% else %}bg-primary{% endif %}">
+                    <div class="inner">
+                        <h3>{{ count }}</h3>
+                        <p>Semester {{ sem }} {% if sem == 8 %}(Final){% endif %}</p>
+                    </div>
+                    <div class="icon">
+                        <i class="fas fa-user-graduate"></i>
+                    </div>
+                    {% if sem < 8 %}
+                    <a href="#" class="small-box-footer" onclick="showPromotionModal({{ sem }}, {{ sem|add:1 }})">
+                        Promote to Sem {{ sem|add:1 }} <i class="fas fa-arrow-right"></i>
+                    </a>
+                    {% else %}
+                    <a href="#" class="small-box-footer" onclick="showGraduationModal()">
+                        Mark as Graduated <i class="fas fa-graduation-cap"></i>
+                    </a>
+                    {% endif %}
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        
+        <div class="row">
+            <!-- Pending Schedules -->
+            <div class="col-md-6">
+                <div class="card card-primary">
+                    <div class="card-header">
+                        <h3 class="card-title">
+                            <i class="fas fa-clock"></i> Scheduled Promotions
+                        </h3>
+                        <div class="card-tools">
+                            <button type="button" class="btn btn-tool" data-card-widget="collapse">
+                                <i class="fas fa-minus"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="card-body p-0">
+                        {% if pending_schedules %}
+                        <table class="table table-striped">
+                            <thead>
+                                <tr>
+                                    <th>From → To</th>
+                                    <th>Scheduled Date</th>
+                                    <th>Semester</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for schedule in pending_schedules %}
+                                <tr>
+                                    <td>
+                                        <strong>Sem {{ schedule.target_semester_number }}</strong>
+                                        <i class="fas fa-arrow-right text-muted mx-1"></i>
+                                        <strong>Sem {{ schedule.target_semester_number|add:1 }}</strong>
+                                    </td>
+                                    <td>{{ schedule.scheduled_date|date:"M d, Y" }}</td>
+                                    <td>{{ schedule.semester }}</td>
+                                    <td>
+                                        {% if schedule.scheduled_date <= today %}
+                                            <span class="badge badge-warning">Ready</span>
+                                        {% else %}
+                                            <span class="badge badge-info">
+                                                {{ schedule.scheduled_date|timeuntil }}
+                                            </span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                        {% else %}
+                        <div class="text-center p-4">
+                            <i class="fas fa-calendar-check fa-3x text-muted mb-3"></i>
+                            <p class="text-muted">No pending promotion schedules</p>
+                            <button class="btn btn-sm btn-outline-primary" data-toggle="modal" data-target="#scheduleModal">
+                                <i class="fas fa-plus"></i> Create Schedule
+                            </button>
+                        </div>
+                        {% endif %}
+                    </div>
+                    {% if pending_schedules %}
+                    <div class="card-footer">
+                        <button class="btn btn-success btn-block" id="runAutoPromotion">
+                            <i class="fas fa-play"></i> Run Auto-Promotion Now
+                        </button>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+            
+            <!-- Recent Promotions Log -->
+            <div class="col-md-6">
+                <div class="card card-info">
+                    <div class="card-header">
+                        <h3 class="card-title">
+                            <i class="fas fa-history"></i> Recent Promotions
+                        </h3>
+                        <div class="card-tools">
+                            <button type="button" class="btn btn-tool" data-card-widget="collapse">
+                                <i class="fas fa-minus"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="card-body p-0" style="max-height: 400px; overflow-y: auto;">
+                        {% if recent_promotions %}
+                        <table class="table table-sm">
+                            <thead>
+                                <tr>
+                                    <th>Student</th>
+                                    <th>Promotion</th>
+                                    <th>Type</th>
+                                    <th>Date</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for promo in recent_promotions %}
+                                <tr>
+                                    <td>
+                                        <small>{{ promo.student.register_no }}</small><br>
+                                        {{ promo.student.user.first_name }}
+                                    </td>
+                                    <td>
+                                        Sem {{ promo.from_semester }} → {{ promo.to_semester }}<br>
+                                        <small class="text-muted">
+                                            Year {{ promo.from_year }} → {{ promo.to_year }}
+                                        </small>
+                                    </td>
+                                    <td>
+                                        <span class="badge badge-{% if promo.promotion_type == 'AUTO' %}success{% else %}primary{% endif %}">
+                                            {{ promo.promotion_type }}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <small>{{ promo.promoted_at|date:"M d" }}</small>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                        {% else %}
+                        <div class="text-center p-4">
+                            <i class="fas fa-list fa-3x text-muted mb-3"></i>
+                            <p class="text-muted">No promotion history yet</p>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Quick Actions -->
+        <div class="row">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header">
+                        <h3 class="card-title">
+                            <i class="fas fa-bolt"></i> Quick Actions
+                        </h3>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-4">
+                                <button class="btn btn-outline-primary btn-block mb-2" data-toggle="modal" data-target="#scheduleModal">
+                                    <i class="fas fa-calendar-plus"></i> Create Promotion Schedule
+                                </button>
+                            </div>
+                            <div class="col-md-4">
+                                <button class="btn btn-outline-success btn-block mb-2" id="bulkPromoteBtn">
+                                    <i class="fas fa-users"></i> Bulk Promote Students
+                                </button>
+                            </div>
+                            <div class="col-md-4">
+                                <button class="btn btn-outline-warning btn-block mb-2" id="graduateBtn">
+                                    <i class="fas fa-graduation-cap"></i> Mark Graduates
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+    </div>
+</section>
+
+<!-- Promotion Modal -->
+<div class="modal fade" id="promotionModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-primary">
+                <h5 class="modal-title">
+                    <i class="fas fa-arrow-up"></i> Promote Students
+                </h5>
+                <button type="button" class="close text-white" data-dismiss="modal">
+                    <span>&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <label>From Semester</label>
+                        <select id="fromSemester" class="form-control">
+                            <option value="">Select...</option>
+                            {% for sem in "1234567"|make_list %}
+                            <option value="{{ sem }}">Semester {{ sem }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-6">
+                        <label>To Semester <small class="text-muted">(auto-set: From + 1)</small></label>
+                        <select id="toSemester" class="form-control" disabled>
+                            <option value="">— auto —</option>
+                            {% for sem in "2345678"|make_list %}
+                            <option value="{{ sem }}">Semester {{ sem }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+                
+                <button class="btn btn-info mb-3" id="loadStudentsBtn">
+                    <i class="fas fa-sync"></i> Load Students
+                </button>
+                
+                <div id="studentsList" style="max-height: 300px; overflow-y: auto;">
+                    <p class="text-muted text-center">Select semesters and click "Load Students"</p>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <span id="selectedCount" class="mr-auto">0 students selected</span>
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" id="confirmPromotion">
+                    <i class="fas fa-check"></i> Promote Selected
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Schedule Modal -->
+<div class="modal fade" id="scheduleModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-info">
+                <h5 class="modal-title">
+                    <i class="fas fa-calendar-plus"></i> Create Promotion Schedule
+                </h5>
+                <button type="button" class="close text-white" data-dismiss="modal">
+                    <span>&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label>Target Semester (to be promoted)</label>
+                    <select id="schedSemester" class="form-control">
+                        <option value="">Select...</option>
+                        {% for sem in "1234567"|make_list %}
+                        <option value="{{ sem }}">Semester {{ sem }} students → Semester {{ sem|add:"1" }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Linked Semester Period</label>
+                    <select id="schedSemesterId" class="form-control">
+                        <option value="">Select semester period...</option>
+                        <!-- Will be populated via JS -->
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Scheduled Date</label>
+                    <input type="date" id="schedDate" class="form-control">
+                    <small class="text-muted">Typically 5 days before the new semester starts</small>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-info" id="createSchedule">
+                    <i class="fas fa-save"></i> Create Schedule
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock content %}
+
+{% block custom_js %}
+<script>
+var semEndDates = {{ sem_end_dates_json|safe }};
+
+$(document).ready(function() {
+    var selectedStudents = [];
+
+    function setToSemester(fromSem) {
+        var toVal = fromSem ? (parseInt(fromSem) + 1).toString() : '';
+        $('#toSemester').val(toVal);
+    }
+
+    $('#fromSemester').change(function() {
+        setToSemester($(this).val());
+        $('#studentsList').html('<p class="text-muted text-center">Select semesters and click "Load Students"</p>');
+        $('#selectedCount').text('0 students selected');
+    });
+
+    // Show promotion modal with pre-selected semesters
+    window.showPromotionModal = function(fromSem, toSem) {
+        // Date gate: block if semester hasn't ended
+        var endDate = semEndDates[parseInt(fromSem)];
+        if (endDate) {
+            var today = new Date().toISOString().split('T')[0];
+            if (today < endDate) {
+                alert('Semester ' + fromSem + ' has not ended yet (ends ' + endDate + ').\nPromotion will be available after the semester end date.');
+                return;
+            }
+        }
+        $('#fromSemester').val(fromSem);
+        setToSemester(fromSem);
+        $('#promotionModal').modal('show');
+        loadStudents();
+    };
+
+    // Load students for promotion
+    $('#loadStudentsBtn').click(loadStudents);
+
+    function loadStudents() {
+        var fromSem = $('#fromSemester').val();
+        if (!fromSem) {
+            alert('Please select the source semester');
+            return;
+        }
+
+        // Date gate check
+        var endDate = semEndDates[parseInt(fromSem)];
+        if (endDate) {
+            var today = new Date().toISOString().split('T')[0];
+            if (today < endDate) {
+                alert('Semester ' + fromSem + ' has not ended yet (ends ' + endDate + ').\nPromotion will be available after the semester end date.');
+                return;
+            }
+        }
+        
+        $('#studentsList').html('<div class="text-center"><i class="fas fa-spinner fa-spin fa-2x"></i></div>');
+        
+        $.get("{% url 'get_students_for_promotion' %}", {semester: fromSem}, function(data) {
+            if (data.students.length === 0) {
+                $('#studentsList').html('<p class="text-muted text-center">No students found in this semester</p>');
+                return;
+            }
+            
+            var html = '<div class="mb-2">' +
+                '<button class="btn btn-sm btn-outline-primary" id="selectAll">Select All</button> ' +
+                '<button class="btn btn-sm btn-outline-secondary" id="deselectAll">Deselect All</button>' +
+                '</div>';
+            
+            html += '<table class="table table-sm table-hover">';
+            html += '<thead><tr><th></th><th>Reg. No</th><th>Name</th><th>Year</th><th>Batch</th></tr></thead>';
+            html += '<tbody>';
+            
+            data.students.forEach(function(s) {
+                html += '<tr>' +
+                    '<td><input type="checkbox" class="student-checkbox" data-id="' + s.id + '" checked></td>' +
+                    '<td>' + s.register_no + '</td>' +
+                    '<td>' + s.name + '</td>' +
+                    '<td>Year ' + s.year_of_study + '</td>' +
+                    '<td>' + s.batch + '</td>' +
+                    '</tr>';
+            });
+            
+            html += '</tbody></table>';
+            $('#studentsList').html(html);
+            updateSelectedCount();
+            
+            // Bind select all/deselect all
+            $('#selectAll').click(function() {
+                $('.student-checkbox').prop('checked', true);
+                updateSelectedCount();
+            });
+            $('#deselectAll').click(function() {
+                $('.student-checkbox').prop('checked', false);
+                updateSelectedCount();
+            });
+            $('.student-checkbox').change(updateSelectedCount);
+        });
+    }
+    
+    function updateSelectedCount() {
+        var count = $('.student-checkbox:checked').length;
+        $('#selectedCount').text(count + ' students selected');
+    }
+    
+    // Confirm promotion
+    $('#confirmPromotion').click(function() {
+        var fromSem = $('#fromSemester').val();
+        var toSem = $('#toSemester').val();
+        if (!fromSem || !toSem) {
+            alert('Please select the source semester first');
+            return;
+        }
+        if (parseInt(toSem) !== parseInt(fromSem) + 1) {
+            alert('You can only promote to the next semester (Sem ' + fromSem + ' → Sem ' + (parseInt(fromSem)+1) + ').');
+            return;
+        }
+        
+        var studentIds = [];
+        $('.student-checkbox:checked').each(function() {
+            studentIds.push($(this).data('id'));
+        });
+        
+        if (studentIds.length === 0) {
+            alert('Please select at least one student');
+            return;
+        }
+        
+        if (!confirm('Promote ' + studentIds.length + ' students to Semester ' + toSem + '?')) {
+            return;
+        }
+        
+        var btn = $(this);
+        btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i> Promoting...');
+        
+        $.ajax({
+            url: "{% url 'manual_promote_students' %}",
+            type: 'POST',
+            contentType: 'application/json',
+            data: JSON.stringify({
+                student_ids: studentIds,
+                to_semester: parseInt(toSem)
+            }),
+            headers: {'X-CSRFToken': '{{ csrf_token }}'},
+            success: function(response) {
+                alert('Successfully promoted ' + response.promoted + ' students!');
+                location.reload();
+            },
+            error: function(xhr) {
+                alert('Error: ' + (xhr.responseJSON?.error || 'Unknown error'));
+                btn.prop('disabled', false).html('<i class="fas fa-check"></i> Promote Selected');
+            }
+        });
+    });
+    
+    // Run auto-promotion
+    $('#runAutoPromotion').click(function() {
+        if (!confirm('Run auto-promotion for all pending schedules?')) {
+            return;
+        }
+        
+        var btn = $(this);
+        btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i> Running...');
+        
+        $.ajax({
+            url: "{% url 'run_auto_promotion' %}",
+            type: 'POST',
+            headers: {'X-CSRFToken': '{{ csrf_token }}'},
+            success: function(response) {
+                if (response.total_promoted > 0) {
+                    alert('Successfully promoted ' + response.total_promoted + ' students!');
+                } else {
+                    alert('No students were due for promotion.');
+                }
+                location.reload();
+            },
+            error: function(xhr) {
+                alert('Error: ' + (xhr.responseJSON?.error || 'Unknown error'));
+                btn.prop('disabled', false).html('<i class="fas fa-play"></i> Run Auto-Promotion Now');
+            }
+        });
+    });
+    
+    // Create schedule
+    $('#createSchedule').click(function() {
+        var sem = $('#schedSemester').val();
+        var semId = $('#schedSemesterId').val();
+        var date = $('#schedDate').val();
+        
+        if (!sem || !date) {
+            alert('Please fill all fields');
+            return;
+        }
+        
+        $.ajax({
+            url: "{% url 'create_promotion_schedule' %}",
+            type: 'POST',
+            contentType: 'application/json',
+            data: JSON.stringify({
+                semester_id: semId || null,
+                from_semester: sem,
+                scheduled_date: date
+            }),
+            headers: {'X-CSRFToken': '{{ csrf_token }}'},
+            success: function(response) {
+                alert('Schedule created successfully!');
+                location.reload();
+            },
+            error: function(xhr) {
+                alert('Error: ' + (xhr.responseJSON?.error || 'Unknown error'));
+            }
+        });
+    });
+    
+    // Bulk promote button
+    $('#bulkPromoteBtn').click(function() {
+        $('#fromSemester').val('');
+        $('#toSemester').val('');
+        $('#studentsList').html('<p class="text-muted text-center">Select a semester and click "Load Students"</p>');
+        $('#selectedCount').text('0 students selected');
+        $('#promotionModal').modal('show');
+    });
+});
+</script>
+{% endblock custom_js %}

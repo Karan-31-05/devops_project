@@ -1,0 +1,11 @@
+register_no,full_name,email,gender,batch,branch,program,entry_type,admission_year
+9999000011,Test 1st Year A,test11@fake.invalid,M,N,CSE,B.E,REGULAR,2023
+9999000012,Test 1st Year B,test12@fake.invalid,F,P,CSE,B.E,REGULAR,2022
+9999000021,Test 2nd Year A,test21@fake.invalid,M,N,CSE,B.E,REGULAR,2024
+9999000022,Test 2nd Year B,test22@fake.invalid,F,Q,CSE,B.E,REGULAR,2024
+9999000031,Test 3rd Year A,test31@fake.invalid,M,P,CSE,B.E,REGULAR,2023
+9999000032,Test 3rd Year B,test32@fake.invalid,F,N,CSE,B.E,REGULAR,2023
+9999000041,Test 4th Year A,test41@fake.invalid,M,Q,CSE,B.E,REGULAR,2022
+9999000042,Test 4th Year B,test42@fake.invalid,F,P,CSE,B.E,REGULAR,2022
+9999000051,Test Lateral 2nd,test51@fake.invalid,M,N,CSE,B.E,LATERAL,2024
+9999000052,Test Lateral 3rd,test52@fake.invalid,F,Q,CSE,B.E,LATERAL,2023
