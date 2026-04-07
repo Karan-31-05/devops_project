@@ -13,7 +13,7 @@ pipeline {
 
     environment {
         DATABASE_URL = 'sqlite:///db.sqlite3'
-        VENV_DIR = '.venv_jenkins'
+        APP_PORT = '8000'
     }
 
     stages {
@@ -23,36 +23,22 @@ pipeline {
             }
         }
 
-        stage('Setup Python') {
+        stage('Start Server (Simple Deploy)') {
             steps {
                 sh '''
                     set -e
-                    python3 -m venv "$VENV_DIR"
-                    "$VENV_DIR/bin/python" -m pip install --upgrade pip
-                    "$VENV_DIR/bin/python" -m pip install -r requirements.txt
-                '''
-            }
-        }
+                    mkdir -p .logs
 
-        stage('Build / Validate') {
-            steps {
-                sh '''
-                    set -e
-                    "$VENV_DIR/bin/python" manage.py migrate --noinput
-                    "$VENV_DIR/bin/python" manage.py check
-                '''
-            }
-        }
+                    if ss -ltn | grep -q ":${APP_PORT}"; then
+                        echo "Server already running on port ${APP_PORT}; leaving it as-is."
+                    else
+                        echo "Starting Django server on port ${APP_PORT}."
+                        nohup env DATABASE_URL="$DATABASE_URL" python3 manage.py runserver 0.0.0.0:${APP_PORT} > .logs/runserver.log 2>&1 &
+                        sleep 3
+                    fi
 
-        stage('Package Artifact') {
-            steps {
-                sh '''
-                    set -e
-                    mkdir -p build
-                    tar -czf build/erp-${BUILD_NUMBER}.tar.gz \
-                        --exclude='.git' \
-                        --exclude="$VENV_DIR" \
-                        .
+                    ss -ltn | grep ":${APP_PORT}"
+                    tail -n 20 .logs/runserver.log || true
                 '''
             }
         }
@@ -60,14 +46,10 @@ pipeline {
 
     post {
         success {
-            archiveArtifacts artifacts: 'build/*.tar.gz', fingerprint: true
-            echo 'Build succeeded and artifact archived.'
+            echo 'Push detected and server step completed.'
         }
         failure {
             echo 'Build failed. Check stage logs for details.'
-        }
-        always {
-            cleanWs()
         }
     }
 }
